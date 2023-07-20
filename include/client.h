@@ -11,7 +11,7 @@ int client_connect(struct netc_client_t* client);
 /** Sends a message to the server. */
 int client_send_message(struct netc_client_t* client, char* message, size_t msglen);
 /** Receives a message from the server. */
-int client_receive_message(struct netc_client_t* client, char* message, size_t msglen);
+int client_receive_message(struct netc_client_t* client, char* message);
 
 /** Closes the client. */
 int client_close(struct netc_client_t* client);

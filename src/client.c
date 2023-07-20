@@ -59,11 +59,11 @@ int client_send_message(struct netc_client_t* client, char* message, size_t msgl
     return 0;
 };
 
-int client_receive_message(struct netc_client_t* client, char* message, size_t msglen)
+int client_receive_message(struct netc_client_t* client, char* message)
 {
     int sockfd = client->socket_fd;
 
-    int result = recv(sockfd, message, msglen, 0);
+    int result = recv(sockfd, message, MAX_BUFFER_SIZE, 0);
     if (result == -1) return errno;
 
     return 0;

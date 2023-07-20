@@ -90,12 +90,14 @@ int server_send_message(struct netc_client_t* client, char* message, size_t msgl
     return 0;
 };
 
-int server_receive_message(struct netc_client_t* client, char* message, size_t msglen)
+int server_receive_message(struct netc_client_t* client, char* message)
 {
     int sockfd = client->socket_fd;
     int flags = 0;
 
+    printf("Wtf\n");
     int result = recv(sockfd, message, MAX_BUFFER_SIZE, flags);
+    printf("Wtf2\n"); 
 
     if (result == -1) return errno;
     else if (result == 0) return -1; // client disconnected
@@ -131,27 +133,14 @@ int server_close_client(struct netc_server_t* server, struct netc_client_t* clie
     return 0;
 };
 
-// int client_set_non_blocking(struct netc_client_t* client)
-// {
-//     int flags = fcntl(client->socket_fd, F_GETFL, 0);
-//     if (flags == -1)
-//     {
-//         switch (errno)
-//         {
-//             case EBADF: error("unable to get socket flags: invalid socket file descriptor");
-//             default: error("unable to get socket flags");
-//         };
-//     } else if (flags & O_NONBLOCK) return; // socket is already non-blocking
+int client_set_non_blocking(struct netc_client_t* client)
+{
+    int flags = fcntl(client->socket_fd, F_GETFL, 0);
+    if (flags == -1) return errno;
+    else if (flags & O_NONBLOCK) return 0; // socket is already non-blocking
 
-//     int result = fcntl(client->socket_fd, F_SETFL, flags | O_NONBLOCK);
-//     if (result == -1)
-//     {
-//         switch (errno)
-//         {
-//             case EBADF: error("unable to set socket flags: invalid socket file descriptor");
-//             case EINTR: error("unable to set socket flags: system call was interrupted by a signal");
-//             case EINVAL: error("unable to set socket flags: invalid argument passed");
-//             default: error("unable to set socket flags");
-//         };
-//     }
-// };
+    int result = fcntl(client->socket_fd, F_SETFL, flags | O_NONBLOCK);
+    if (result == -1) return errno;
+
+    return 0;
+};

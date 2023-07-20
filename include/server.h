@@ -52,7 +52,7 @@ int server_accept(struct netc_server_t* server, struct netc_client_t* client);
 /** Sends a message to the client. */
 int server_send_message(struct netc_client_t* client, char* message, size_t msglen);
 /** Receives a message from the client. */
-int server_receive_message(struct netc_client_t* client, char* message, size_t msglen);
+int server_receive_message(struct netc_client_t* client, char* message);
 
 /** Closes the server. */
 int server_close_self(struct netc_server_t* server);
@@ -60,6 +60,6 @@ int server_close_self(struct netc_server_t* server);
 int server_close_client(struct netc_server_t* server, struct netc_client_t* client);
 
 /** Sets a client to nonblocking mode. */
-// int client_set_non_blocking(struct netc_client_t* client);
+int client_set_non_blocking(struct netc_client_t* client);
 
 #endif // SERVER_H
