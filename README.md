@@ -2,6 +2,8 @@
 
 A simple wrapper around TCP sockets for UNIX based systems. Written in C, and utilizes raw POSIX API calls.
 
+This library utilizes threading and blocking sockets. 
+
 ## Features:
 - [x] TCP Server and Client
 - [x] Error Handling

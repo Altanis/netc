@@ -1,70 +1,68 @@
 #include "client.h"
 #include "error.h"
 
+#include <stdio.h>
 #include <stdlib.h>
 
-struct netc_client_t* client_init()
+int client_init(struct netc_client_t* client, struct netc_client_config config)
 {
-    struct netc_client_t* client = malloc(sizeof(struct netc_client_t));
-    if (client == NULL) error("unable to allocate memory for netc_server_t struct");
+    if (client == NULL) return -1; // client is NULL
+    int protocol = config.ipv6 ? AF_INET6 : AF_INET;
 
-    client->socket_fd = socket(AF_INET, SOCK_STREAM, 0); // IPv4, TCP, 0
-    if (client->socket_fd == -1)
+    client->socket_fd = socket(protocol, SOCK_STREAM, 0); // IPv4, TCP, 0
+    if (client->socket_fd == -1) return netc_error(SOCKET);
+
+    if (protocol == AF_INET6)
     {
-        switch (errno)
-        {
-            case EACCES: error("unable to create socket file descriptor: permission denied"); 
-            case EAFNOSUPPORT: error("unable to create socket file descriptor: address family not supported");
-            case EINVAL: error("unable to create socket file descriptor: invalid argument");
-            case EMFILE: error("unable to create socket file descriptor: too many open files");
-            case ENFILE: error("unable to create socket file descriptor: too many open files in system");
-            case ENOBUFS: error("unable to create socket file descriptor: no buffer space available");
-            case ENOMEM: error("unable to create socket file descriptor: insufficient memory available");
-            case EPROTONOSUPPORT: error("unable to create socket file descriptor: protocol not supported");
-            default: error("unable to create socket file descriptor");
-        };
+        struct sockaddr_in6* addr = (struct sockaddr_in6*)&client->address;
+        addr->sin6_family = AF_INET6;
+        addr->sin6_port = htons(config.port);
+        addr->sin6_addr = in6addr_any;
     }
+    else
+    {
+        struct sockaddr_in* addr = (struct sockaddr_in*)&client->address;
+        addr->sin_family = AF_INET;
+        addr->sin_port = htons(config.port);
+        addr->sin_addr.s_addr = INADDR_ANY;
+    };
 
-    /** The family the socket's address belongs to. */
-    client->address.sin_family = AF_INET;
-    /** Binds to any available IP. */
-    client->address.sin_addr.s_addr = INADDR_ANY;
-    /** The port in network byte order. */
-    client->address.sin_port = htons(PORT);
     /** The size of the server's address. */
     client->addrlen = sizeof(client->address);
 
-    return client;
+    return 0;
 };
 
 int client_connect(struct netc_client_t* client)
 {
     int sockfd = client->socket_fd;
-    struct sockaddr* addr = (struct sockaddr*)&client->address;
+    struct sockaddr* addr = &client->address;
     socklen_t addrlen = client->addrlen;
-
+    
     int result = connect(sockfd, addr, addrlen);
-    if (result == -1) return errno;
+    if (result == -1) return netc_error(CONNECT);
 
     return 0;
 };
 
-int client_send_message(struct netc_client_t* client, char* message, size_t msglen)
+int client_send(struct netc_client_t* client, char* message, size_t msglen)
 {
     int sockfd = client->socket_fd;
 
     int result = send(sockfd, message, msglen, 0);
-    if (result == -1) return errno;
+    if (result == -1) return netc_error(CLNTSEND);
+    else if (result != msglen) return -(msglen - result); // message was not sent in full
 
     return 0;
 };
 
-int client_receive_message(struct netc_client_t* client, char* message)
+int client_receive(struct netc_client_t* client, char* message, size_t msglen)
 {
     int sockfd = client->socket_fd;
 
-    int result = recv(sockfd, message, MAX_BUFFER_SIZE, 0);
-    if (result == -1) return errno;
+    int result = recv(sockfd, message, msglen, 0);
+    if (result == -1) return netc_error(CLNTRECV);
+    else if (result != msglen) return -(msglen - result); // message was not received in full
 
     return 0;
 };
@@ -74,7 +72,7 @@ int client_close(struct netc_client_t* client)
     int sockfd = client->socket_fd;
 
     int result = close(sockfd);
-    if (result == -1) return errno;
+    if (result == -1) return netc_error(CLOSE);
 
     return 0;
 };
