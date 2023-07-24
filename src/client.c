@@ -19,7 +19,24 @@ int client_init(struct netc_client_t* client, struct netc_client_config config)
     if (addr == NULL) printf("addr is NULL\n");
     addr->sin_family = AF_INET;
     addr->sin_port = htons(config.port);
-    addr->sin_addr.s_addr = INADDR_ANY;
+    // addr->sin_addr.s_addr = INADDR_ANY;
+
+    // inetpton to 127.0.0.1
+    if (inet_pton(AF_INET, "127.0.0.1", &addr->sin_addr) <= 0) printf("inet_pton error\n");
+    else printf("inet_pton success\n");
+
+    // getaddrinfo
+    struct addrinfo hints, *res;
+    memset(&hints, 0, sizeof(hints));
+    hints.ai_family = AF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+
+    printf("getaddrinfo\n");
+    int result = getaddrinfo("127.0.0.1", "8080", &hints, &res);
+    printf("getaddrinfo\n");
+    if (result != 0) printf("getaddrinfo error\n");
+    else printf("getaddrinfo success\n");
 
     /** The size of the server's address. */
     client->addrlen = sizeof(client->address);
