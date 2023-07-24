@@ -15,7 +15,7 @@ struct netc_client_t
     /** The socket file descriptor. */
     int socket_fd;
     /** The address of the server to connect to. */
-    struct sockaddr address;
+    struct sockaddr_in address;
     /** The size of the client's address. */
     int addrlen;
 };
