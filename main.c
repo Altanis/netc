@@ -43,7 +43,7 @@ int main()
     server->on_disconnect = on_disconnect;
     server->on_message = on_message;
 
-    struct netc_server_config config = { .port = 8080, .max_connections = 10, .backlog = 3, .ipv6 = 0 };
+    struct netc_server_config config = { .port = 8080, .max_connections = 10, .backlog = 3 };
 
     server_init(server, config);
     server_bind(server);
