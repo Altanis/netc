@@ -5,63 +5,72 @@
 #include <stdlib.h>
 #include <string.h>
 
+int is_running = 1;
+
 int server_main_loop(struct netc_server_t* server)
 {
-    while (1)
+    server->on_ready(server);
+
+    while (is_running)
     {
-        int kq = server->kq;
-
-
-        /** There are multiple clients and one server socket attached to this kq. */
+#ifdef __linux__
+        int epoll_fd = server->epoll_fd;
+        struct epoll_event events[server->clients->elemental + 1];
+        int nev = epoll_wait(epoll_fd, events, server->clients->elemental + 1, -1);
+        if (nev == -1)
+            return netc_error(EPOLL);
+#elif __APPLE__
+        int pfd = server->pfd;
         struct kevent evlist[server->clients->size + 1];
-        int nev = kevent(kq, NULL, 0, evlist, server->clients->size + 1, NULL);
-        if (nev == -1) return netc_error(KEVENT);
+        int nev = kevent(pfd, NULL, 0, evlist, server->clients->size + 1, NULL);
+        if (nev == -1)
+            return netc_error(KEVENT);
+#endif
 
-        printf("number of events: %d\n", nev);
+        if (is_running == 0)
+            break;
+
         for (int i = 0; i < nev; ++i)
         {
+#ifdef __linux__
+            struct epoll_event ev = events[i];
+            int sockfd = ev.data.fd;
+#elif __APPLE__
             struct kevent ev = evlist[i];
             int sockfd = ev.ident;
-
-            /**
-             * Check for:
-             * - Incoming connection to server socket
-             * - Incoming data from client socket
-             * - Disconnection from client socket
-            */
+#endif
 
             if (sockfd == server->socket_fd)
             {
-                // incoming connection to server socket
-                struct netc_client_t* client = malloc(sizeof(struct netc_client_t));
-                
-                int result = server_accept(server, client);
-                if (result != 0) return netc_error(CLOSE);
+                if (ev.flags & EV_EOF || ev.flags & EV_ERROR)
+                    return netc_error(KEVENT); // EOF on server socket
+
+                server->on_connect(server);
             }
             else
             {
-                struct netc_client_t* client = server_get_client(server, sockfd);
-                char* buf = malloc(18);
-                
-                int result = server_receive(server, client, buf, 18);
-                if (result != 0) return netc_error(SERVRECV);
+                struct netc_client_t* client = server->clients->data[sockfd];
+                if (client == NULL)
+                {
+                    printf("netc warn: polling returned an event for a socket that is not in the server's client list. sockfd: %d\n", sockfd);
+                    printf("netc warn: this is likely a bug in netc. report this at https://github.com/Altanis/netc \n\n");
+                    continue;
+                }
 
-                printf("server received message: %s\n", buf);
-            };
-        };
-    };
-};
+                if (ev.flags & EV_EOF || ev.flags & EV_ERROR)
+                {
+                    if (server_close_client(server, client, ev.flags & EV_ERROR) != 0)
+                        return netc_error(CLOSE);
+                }
+                else if (ev.flags & EVFILT_READ)
+                {
+                    server->on_data(server, client);
+                }
+            }
+        }
+    }
 
-struct netc_client_t* server_get_client(struct netc_server_t* server, int sockfd)
-{
-    for (size_t i = 0; i < server->clients->size; ++i)
-    {
-        struct netc_client_t* client = server->clients->data[i];
-        if (client->socket_fd == sockfd)
-            return client;
-    };
-
-    return NULL;
+    return 0;
 };
 
 int server_init(struct netc_server_t* server, struct netc_server_config config)
@@ -70,7 +79,6 @@ int server_init(struct netc_server_t* server, struct netc_server_config config)
     int protocol = config.ipv6 ? AF_INET6 : AF_INET;
 
     server->port = config.port;
-    server->max_connections = config.max_connections;
     server->backlog = config.backlog;
 
     server->socket_fd = socket(protocol, SOCK_STREAM, 0); // IPv4, TCP, 0
@@ -94,15 +102,29 @@ int server_init(struct netc_server_t* server, struct netc_server_config config)
     /** The size of the server's address. */
     server->addrlen = sizeof(server->address);
 
+    if (config.reuse_addr && setsockopt(server->socket_fd, SOL_SOCKET, SO_REUSEADDR, &config.reuse_addr, sizeof(int)) != 0)
+        return netc_error(SOCKOPT);
+
     server->clients = malloc(sizeof(struct vector));
+    vector_init(server->clients, 10, sizeof(struct netc_client_t*));
 
     /** Register event for the server socket. */
-    server->kq = kqueue();
-    if (server->kq == -1) return netc_error(KQUEUE);
+#ifdef __linux__
+    server->epoll_fd = epoll_create1(0);
+    if (server->epoll_fd == -1) return netc_error(EPOLL);
+
+    struct epoll_event ev;
+    ev.events = EPOLLIN | EPOLLET;
+    ev.data.fd = server->socket_fd;
+    if (epoll_ctl(server->epoll_fd, EPOLL_CTL_ADD, server->socket_fd, &ev) == -1) return netc_error(EPOLL);
+#elif __APPLE__
+    server->pfd = kqueue();
+    if (server->pfd == -1) return netc_error(POLL);
 
     struct kevent ev;
-    EV_SET(&ev, server->socket_fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-    if (kevent(server->kq, &ev, 1, NULL, 0, NULL) == -1) return netc_error(KEVENT);
+    EV_SET(&ev, server->socket_fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
+    if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(KEVENT);
+#endif 
 
     return 0;
 };
@@ -133,8 +155,6 @@ int server_listen(struct netc_server_t* server)
 
 int server_accept(struct netc_server_t* server, struct netc_client_t* client)
 {
-    if (server->clients->size >= server->max_connections) return -1; // max connections reached
-
     int sockfd = server->socket_fd;
     struct sockaddr* addr = (struct sockaddr*)&client->address;
     socklen_t* addrlen = (socklen_t*)&client->addrlen;
@@ -143,13 +163,20 @@ int server_accept(struct netc_server_t* server, struct netc_client_t* client)
     if (result == -1) return netc_error(ACCEPT);
 
     client->socket_fd = result;
-    vector_push(server->clients, client);
+    vector_set_index(server->clients, client->socket_fd, client);
 
+    socket_set_non_blocking(client->socket_fd);
+
+#ifdef __linux__
+    struct epoll_event ev;
+    ev.events = EPOLLIN | EPOLLET;
+    ev.data.fd = client->socket_fd;
+    if (epoll_ctl(server->epoll_fd, EPOLL_CTL_ADD, client->socket_fd, &ev) == -1) return netc_error(EPOLL);
+#elif __APPLE__
     struct kevent ev;
-    EV_SET(&ev, client->socket_fd, EVFILT_READ, EV_ADD, 0, 0, NULL);
-    EV_SET(&ev, client->socket_fd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
-
-    server->on_connect(server, client);
+    EV_SET(&ev, client->socket_fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
+    if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(KEVENT);
+#endif
 
     return 0;
 };
@@ -176,8 +203,6 @@ int server_receive(struct netc_server_t* server, struct netc_client_t* client, c
     if (result == -1) return netc_error(SERVRECV);
     else if (result != msglen) return -(msglen - result); // message was not received in full
 
-    server->on_message(server, client, message);
-
     return 0;
 };
 
@@ -186,34 +211,37 @@ int server_close_self(struct netc_server_t* server)
     int result = close(server->socket_fd);
     if (result == -1) return netc_error(CLOSE);
 
+    is_running = 0;
+
     return 0;
 };
 
-int server_close_client(struct netc_server_t* server, struct netc_client_t* client)
+int server_close_client(struct netc_server_t* server, struct netc_client_t* client, int is_error)
 {
     int result = close(client->socket_fd);
     if (result == -1) return netc_error(CLOSE);
 
-    for (size_t i = 0; i < server->clients->size; ++i)
-    {
-        int* client_fd = server->clients->data[i];
-        if (*client_fd == client->socket_fd)
-        {
-            vector_delete(server->clients, i);
-            break;
-        };
-    };
+    vector_delete(server->clients, client->socket_fd);
 
+    server->on_disconnect(server, client, is_error);
     return 0;
 };
 
-int client_set_non_blocking(struct netc_client_t* client)
+int socket_get_flags(int sockfd)
 {
-    int flags = fcntl(client->socket_fd, F_GETFL, 0);
+    int flags = fcntl(sockfd, F_GETFL, 0);
+    if (flags == -1) return netc_error(FCNTL);
+
+    return flags;
+};
+
+int socket_set_non_blocking(int sockfd)
+{
+    int flags = fcntl(sockfd, F_GETFL, 0);
     if (flags == -1) return netc_error(FCNTL);
     else if (flags & O_NONBLOCK) return 0; // socket is already non-blocking
 
-    int result = fcntl(client->socket_fd, F_SETFL, flags | O_NONBLOCK);
+    int result = fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
     if (result == -1) return netc_error(FCNTL);
 
     return 0;

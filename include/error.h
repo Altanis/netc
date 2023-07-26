@@ -5,12 +5,12 @@
 #define netc_error(reason) (netc_errno_reason = reason, errno)
 
 /** The syscall the `errno` error code has originated from. */
-static int netc_errno_reason;
+int netc_errno_reason;
 
 /** ERROR CODES */
 #define KEVENT      1 /** kevent syscall */
 #define SOCKET      2 /** socket syscall */
-#define KQUEUE      3 /** kqueue syscall */
+#define POLL        3 /** polling syscalls (epoll, kqueue) */
 #define BIND        4 /** bind syscall */
 #define LISTEN      5 /** listen syscall */
 #define ACCEPT      6 /** accept syscall */
@@ -21,5 +21,6 @@ static int netc_errno_reason;
 #define CONNECT    11 /** connect syscall */
 #define CLNTSEND   12 /** client send syscall */
 #define CLNTRECV   13 /** client receive syscall */
+#define SOCKOPT    14 /** socket options */
 
 #endif // ERROR_H

@@ -1,36 +1,40 @@
 #include "server.h"
 #include "client.h"
-#include "error.h"
 
-#include "stdlib.h"
+#include <stdlib.h>
 #include <stdio.h>
-#include <unistd.h>
-
 #include <pthread.h>
+
+const int MAX_CONNECTIONS = 1;
 
 void on_ready(struct netc_server_t* server)
 {
     printf("server is ready.\n");
 };
 
-void on_connect(struct netc_server_t* server, struct netc_client_t* client)
+void on_connect(struct netc_server_t* server)
 {
-    printf("new socket connected.\n");
+    struct netc_client_t* client = malloc(sizeof(struct netc_client_t));
+    server_accept(server, client);
+
+    printf("new socket connected. socket id: %d\n", client->socket_fd);
 };
 
-void on_disconnect(struct netc_server_t* server, struct netc_client_t* client)
+void on_disconnect(struct netc_server_t* server, struct netc_client_t* client, int is_error)
 {
-    printf("socket disconnected.\n");
+    printf("socket disconnected. this was %s\n", is_error ? "closed disgracefully" : "closed gracefully");
 };
 
-void on_message(struct netc_server_t* server, struct netc_client_t* client, char* message)
+void on_data(struct netc_server_t* server, struct netc_client_t* client)
 {
-    printf("message received.\n");
+    printf("message received. socket id: %d\n", client->socket_fd);
 };
 
 void* thread_main(void* arg)
 {
-    server_listen((struct netc_server_t*)arg);
+    int r = server_listen((struct netc_server_t*)arg);
+    printf("server failed to listen %d\n", r);
+
     return NULL;
 };
 
@@ -41,26 +45,18 @@ int main()
     server->on_ready = on_ready;
     server->on_connect = on_connect;
     server->on_disconnect = on_disconnect;
-    server->on_message = on_message;
+    server->on_data = on_data;
 
-    struct netc_server_config config = { .port = 8080, .max_connections = 10, .backlog = 3 };
+    struct netc_server_config config = { .port = 8080, .backlog = 3, .reuse_addr = 1 };
 
-    server_init(server, config);
-    server_bind(server);
 
-    // create a thread
-    pthread_t thread;
-    pthread_create(&thread, NULL, thread_main, NULL);
+    int re = server_init(server, config);
+    if (re != 0) printf("server failed to init %d\n", re);
+    int reee = server_bind(server);
+    if (reee != 0) printf("server failed to bind %d\n", reee);
 
     printf("server listening on port %d\n", config.port);
-
-    struct netc_client_t* client = malloc(sizeof(struct netc_client_t));
-    client_init(client, (struct netc_client_config){ .port = 8080, .ipv6 = 0 });
-    client_connect(client);
-    printf("client connected to server\n");
-
-    // // send msg to server
-    // int rs = client_send(client, "hello from client", 18);
-    // printf("%d\n", rs);
-    // printf("client sent message\n");
+    thread_main(server);
+    // pthread_t thread;
+    // pthread_create(&thread, NULL, thread_main, server);
 };

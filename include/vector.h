@@ -6,7 +6,17 @@
 /** A struct representing a vector. */
 struct vector
 {
-    /** The size of the vector. */
+    /** 
+     * The length of the vector.
+     * NOTE: This is not the same as the size of the vector.
+     * ```c
+     * char array[4];
+     * array[0] = 1;
+     * length = 4, size = 1
+     * ```
+    */
+    size_t length;
+    /** The number of elements in the vector. */
     size_t size;
     /** The capacity of the vector. */
     size_t capacity;
@@ -22,6 +32,8 @@ int vector_resize(struct vector* vec, size_t size);
 void vector_delete(struct vector* vec, size_t index);
 /** Pushes an element to the vector. */
 void vector_push(struct vector* vec, void* element);
+/** Sets an element at a specific index. */
+void vector_set_index(struct vector* vec, size_t index, void* element);
 /** Frees the vector. */
 void vector_free(struct vector* vec);
 

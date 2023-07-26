@@ -3,11 +3,16 @@
 
 #include "vector.h"
 
-#include <sys/event.h>
 #include <errno.h>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <fcntl.h>
+
+#ifdef __linux__
+#include <sys/epoll.h>
+#elif __APPLE__
+#include <sys/event.h>
+#endif
 
 /** A structure representing the client. */
 struct netc_client_t
@@ -18,6 +23,13 @@ struct netc_client_t
     struct sockaddr address;
     /** The size of the client's address. */
     int addrlen;
+
+    /** The callback for when the client has connected to the server. */
+    void (*on_connect)(struct netc_client_t* client);
+    /** The callback for when the client has disconnected from the server. */
+    void (*on_disconnect)(struct netc_client_t* client);
+    /** The callback for when the client has received a message from the server. */
+    void (*on_data)(struct netc_client_t* client, char* message);
 };
 
 /** A structure representing the server. */
@@ -42,17 +54,17 @@ struct netc_server_t
     /** The last client which connected to the server. */
     struct netc_client_t* last_client;
 
-    /** The file descriptor representing the current kqueue. */
-    int kq; 
+    /** The file descriptor representing the current polling file descriptor. */
+    int pfd; 
 
     /** The callback for when the server is ready to listen for connections. */
     void (*on_ready)(struct netc_server_t* server);
     /** The callback for when an incoming connection occurs. */
-    void (*on_connect)(struct netc_server_t* server, struct netc_client_t* client);
+    void (*on_connect)(struct netc_server_t* server);
     /** The callback for when a client socket disconnects. */
-    void (*on_disconnect)(struct netc_server_t* server, struct netc_client_t* client);
+    void (*on_disconnect)(struct netc_server_t* server, struct netc_client_t* client, int is_error);
     /** The callback for when a message is received from a client. */
-    void (*on_message)(struct netc_server_t* server, struct netc_client_t* client, char* message);
+    void (*on_data)(struct netc_server_t* server, struct netc_client_t* client);
 };
 
 /** A structure representing the config of a client. */
@@ -69,13 +81,19 @@ struct netc_server_config
 {
     /** The port the server is connected to. */
     int port;
-    /** The maximum amount of connections permitted by the server. */
-    int max_connections;
     /** The maximum amount of sockets in the backlog. */
     int backlog;
     /** Whether or not to enable IPv6. */
     int ipv6;
+    /** Whether or not to set the SO_REUSEADDR option to prevent EADDRINUSE. */
+    int reuse_addr;
+
+    /** Whether or not to set sockets to non blocking mode. */
+    int non_blocking;
 };
+
+/** Whether or not the server is running. */
+int is_running;
 
 /** Initializes the server. */
 int server_init(struct netc_server_t* server, struct netc_server_config config);
@@ -99,10 +117,11 @@ int server_receive(struct netc_server_t* server, struct netc_client_t* client, c
 /** Closes the server. */
 int server_close_self(struct netc_server_t* server);
 /** Closes a client connection. */
-int server_close_client(struct netc_server_t* server, struct netc_client_t* client);
+int server_close_client(struct netc_server_t* server, struct netc_client_t* client, int is_error);
 
-
+/** Gets the client's flags. */
+int socket_get_flags(int sockfd);
 /** Sets a client to nonblocking mode. */
-int client_set_non_blocking(struct netc_client_t* client);
+int socket_set_non_blocking(int sockfd);
 
 #endif // SERVER_H

@@ -38,7 +38,7 @@ int client_connect(struct netc_client_t* client)
     int sockfd = client->socket_fd;
     struct sockaddr* addr = &client->address;
     socklen_t addrlen = client->addrlen;
-    
+
     int result = connect(sockfd, addr, addrlen);
     if (result == -1) return netc_error(CONNECT);
 
