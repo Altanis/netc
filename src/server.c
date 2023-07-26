@@ -138,7 +138,7 @@ int server_init(struct netc_server_t* server, struct netc_server_config config)
     /** Register event for the server socket. */
 #ifdef __linux__
     server->pfd = epoll_create1(0);
-    if (server->pfd == -1) return netc_error(EPOLL);
+    if (server->pfd == -1) return netc_error(EVCREATE);
 
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
