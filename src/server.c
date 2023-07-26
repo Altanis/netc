@@ -5,13 +5,13 @@
 #include <stdlib.h>
 #include <string.h>
 
-int is_running = 1;
+int netc_server_running = 1;
 
 int server_main_loop(struct netc_server_t* server)
 {
     server->on_ready(server);
 
-    while (is_running)
+    while (netc_server_running)
     {
 #ifdef __linux__
         int pfd = server->pfd;
@@ -27,7 +27,7 @@ int server_main_loop(struct netc_server_t* server)
             return netc_error(EVCREATE);
 #endif
 
-        if (is_running == 0)
+        if (netc_server_running == 0)
             break;
 
         for (int i = 0; i < nev; ++i)
@@ -238,7 +238,7 @@ int server_close_self(struct netc_server_t* server)
     int result = close(server->socket_fd);
     if (result == -1) return netc_error(CLOSE);
 
-    is_running = 0;
+    netc_server_running = 0;
 
     return 0;
 };
