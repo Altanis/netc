@@ -8,7 +8,7 @@
 int netc_errno_reason;
 
 /** ERROR CODES */
-#define KEVENT      1 /** kevent syscall */
+#define EVCREATE    1 /** kq() and epoll_create0() syscall */
 #define SOCKET      2 /** socket syscall */
 #define POLL        3 /** polling syscalls (epoll, kqueue) */
 #define BIND        4 /** bind syscall */

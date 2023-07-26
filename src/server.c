@@ -14,9 +14,9 @@ int server_main_loop(struct netc_server_t* server)
     while (is_running)
     {
 #ifdef __linux__
-        int epoll_fd = server->epoll_fd;
-        struct epoll_event events[server->clients->elemental + 1];
-        int nev = epoll_wait(epoll_fd, events, server->clients->elemental + 1, -1);
+        int pfd = server->pfd;
+        struct epoll_event events[server->clients->size + 1];
+        int nev = epoll_wait(pfd, events, server->clients->size + 1, -1);
         if (nev == -1)
             return netc_error(EPOLL);
 #elif __APPLE__
@@ -24,7 +24,7 @@ int server_main_loop(struct netc_server_t* server)
         struct kevent evlist[server->clients->size + 1];
         int nev = kevent(pfd, NULL, 0, evlist, server->clients->size + 1, NULL);
         if (nev == -1)
-            return netc_error(KEVENT);
+            return netc_error(EVCREATE);
 #endif
 
         if (is_running == 0)
@@ -43,7 +43,7 @@ int server_main_loop(struct netc_server_t* server)
             if (sockfd == server->socket_fd)
             {
                 if (ev.flags & EV_EOF || ev.flags & EV_ERROR)
-                    return netc_error(KEVENT); // EOF on server socket
+                    return netc_error(EVCREATE); // EOF on server socket
 
                 server->on_connect(server);
             }
@@ -110,20 +110,20 @@ int server_init(struct netc_server_t* server, struct netc_server_config config)
 
     /** Register event for the server socket. */
 #ifdef __linux__
-    server->epoll_fd = epoll_create1(0);
-    if (server->epoll_fd == -1) return netc_error(EPOLL);
+    server->pfd = epoll_create1(0);
+    if (server->pfd == -1) return netc_error(EPOLL);
 
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
     ev.data.fd = server->socket_fd;
-    if (epoll_ctl(server->epoll_fd, EPOLL_CTL_ADD, server->socket_fd, &ev) == -1) return netc_error(EPOLL);
+    if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, server->socket_fd, &ev) == -1) return netc_error(EPOLL);
 #elif __APPLE__
     server->pfd = kqueue();
     if (server->pfd == -1) return netc_error(POLL);
 
     struct kevent ev;
     EV_SET(&ev, server->socket_fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
-    if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(KEVENT);
+    if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(POLL);
 #endif 
 
     return 0;
@@ -171,11 +171,11 @@ int server_accept(struct netc_server_t* server, struct netc_client_t* client)
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
     ev.data.fd = client->socket_fd;
-    if (epoll_ctl(server->epoll_fd, EPOLL_CTL_ADD, client->socket_fd, &ev) == -1) return netc_error(EPOLL);
+    if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, client->socket_fd, &ev) == -1) return netc_error(EPOLL);
 #elif __APPLE__
     struct kevent ev;
     EV_SET(&ev, client->socket_fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
-    if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(KEVENT);
+    if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(EVCREATE);
 #endif
 
     return 0;
