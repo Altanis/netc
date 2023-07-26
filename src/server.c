@@ -18,7 +18,7 @@ int server_main_loop(struct netc_server_t* server)
         struct epoll_event events[server->clients->size + 1];
         int nev = epoll_wait(pfd, events, server->clients->size + 1, -1);
         if (nev == -1)
-            return netc_error(EPOLL);
+            return netc_error(EVCREATE);
 #elif __APPLE__
         int pfd = server->pfd;
         struct kevent evlist[server->clients->size + 1];
@@ -35,10 +35,36 @@ int server_main_loop(struct netc_server_t* server)
 #ifdef __linux__
             struct epoll_event ev = events[i];
             int sockfd = ev.data.fd;
+
+            if (sockfd == server->socket_fd)
+            {
+                if (ev.events & EPOLLERR || ev.events & EPOLLHUP)
+                    return netc_error(EVCREATE); // EOF on server socket
+
+                server->on_connect(server);
+            }
+            else
+            {
+                struct netc_client_t* client = server->clients->data[sockfd];
+                if (client == NULL)
+                {
+                    printf("netc warn: polling returned an event for a socket that is not in the server's client list. sockfd: %d\n", sockfd);
+                    printf("netc warn: this is likely a bug in netc. report this at https://github.com/Altanis/netc \n\n");
+                }
+
+                if (ev.events & EPOLLERR || ev.events & EPOLLHUP)
+                {
+                    if (server_close_client(server, client, ev.events & EPOLLERR) != 0)
+                        return netc_error(CLOSE);
+                }
+                else if (ev.events & EPOLLIN)
+                {
+                    server->on_data(server, client);
+                }
+            }
 #elif __APPLE__
             struct kevent ev = evlist[i];
             int sockfd = ev.ident;
-#endif
 
             if (sockfd == server->socket_fd)
             {
@@ -67,6 +93,7 @@ int server_main_loop(struct netc_server_t* server)
                     server->on_data(server, client);
                 }
             }
+#endif
         }
     }
 
@@ -116,7 +143,7 @@ int server_init(struct netc_server_t* server, struct netc_server_config config)
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
     ev.data.fd = server->socket_fd;
-    if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, server->socket_fd, &ev) == -1) return netc_error(EPOLL);
+    if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, server->socket_fd, &ev) == -1) return netc_error(EVCREATE);
 #elif __APPLE__
     server->pfd = kqueue();
     if (server->pfd == -1) return netc_error(POLL);
@@ -171,7 +198,7 @@ int server_accept(struct netc_server_t* server, struct netc_client_t* client)
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
     ev.data.fd = client->socket_fd;
-    if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, client->socket_fd, &ev) == -1) return netc_error(EPOLL);
+    if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, client->socket_fd, &ev) == -1) return netc_error(POLL);
 #elif __APPLE__
     struct kevent ev;
     EV_SET(&ev, client->socket_fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
