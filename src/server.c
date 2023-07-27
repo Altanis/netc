@@ -5,7 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 
-int netc_server_running = 1;
+static __thread int netc_server_running = 1;
 
 int server_main_loop(struct netc_server_t* server)
 {
