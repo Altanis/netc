@@ -5,7 +5,7 @@
 #define netc_error(reason) (netc_errno_reason = reason, errno)
 
 /** The syscall the `errno` error code has originated from. */
-static __thread int netc_errno_reason;
+extern __thread int netc_errno_reason;
 
 /** ERROR CODES */
 #define EVCREATE    1     /** kq() and epoll_create0() syscall */
