@@ -28,6 +28,8 @@ void on_disconnect(struct netc_server_t* server, struct netc_client_t* client, i
 void on_data(struct netc_server_t* server, struct netc_client_t* client)
 {
     printf("message received. socket id: %d\n", client->socket_fd);
+
+    server_send(client, "hello from server", 17);
 };
 
 void* thread_main(void* arg)
