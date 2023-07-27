@@ -93,7 +93,7 @@ struct netc_server_config
 };
 
 /** Whether or not the server is running. */
-extern int netc_server_running;
+int netc_server_running;
 
 /** Initializes the server. */
 int server_init(struct netc_server_t* server, struct netc_server_config config);
