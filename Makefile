@@ -8,10 +8,10 @@ SRC_DIR := src
 INCLUDE_DIR := include
 
 # Source files
-CLIENT_SRCS := $(wildcard $(SRC_DIR)/client.c)
-SERVER_SRCS := $(wildcard $(SRC_DIR)/server.c)
-VECTOR_SRCS := $(wildcard $(SRC_DIR)/vector.c)
-ERROR_SRCS := $(wildcard $(SRC_DIR)/error.c)
+CLIENT_SRCS := $(wildcard $(SRC_DIR)/tcp/client.c)
+SERVER_SRCS := $(wildcard $(SRC_DIR)/tcp/server.c)
+VECTOR_SRCS := $(wildcard $(SRC_DIR)/utils/vector.c)
+ERROR_SRCS := $(wildcard $(SRC_DIR)/utils/error.c)
 MAIN_SRCS := $(wildcard main.c)
 
 # Output binary

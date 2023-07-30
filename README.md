@@ -21,8 +21,4 @@ A UNIX compliant TCP wrapper which utilizes asynchronous polling. Written in C.
 #include <stdlib.h>
 #include <pthread.h>
 
-void on_ready(struct netc_server_t* server)
-{
-    printf("Server is listening on port %d!\n", server->port);
-};
 ```

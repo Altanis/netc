@@ -1,17 +1,18 @@
-#include "server.h"
-#include "error.h"
+#include "tcp/server.h"
+#include "utils/error.h"
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
-static __thread int netc_server_running = 1;
+__thread int netc_server_listening = 1;
 
-int server_main_loop(struct netc_server_t* server)
+int server_main_loop(struct netc_server* server)
 {
-    server->on_ready(server);
+    /** The client socket should be nonblocking when listening for events. */
+    socket_set_non_blocking(server->socket_fd);
 
-    while (netc_server_running)
+    while (netc_server_listening)
     {
 #ifdef __linux__
         int pfd = server->pfd;
@@ -23,12 +24,11 @@ int server_main_loop(struct netc_server_t* server)
         int pfd = server->pfd;
         struct kevent evlist[server->clients->size + 1];
         int nev = kevent(pfd, NULL, 0, evlist, server->clients->size + 1, NULL);
-        if (nev == -1)
-            return netc_error(EVCREATE);
+        if (nev == -1) return netc_error(EVCREATE);
+
 #endif
 
-        if (netc_server_running == 0)
-            break;
+        if (netc_server_listening == 0) break;
 
         for (int i = 0; i < nev; ++i)
         {
@@ -38,22 +38,24 @@ int server_main_loop(struct netc_server_t* server)
 
             if (sockfd == server->socket_fd)
             {
-                if (ev.events & EPOLLERR || ev.events & EPOLLHUP)
-                    return netc_error(EVCREATE); // EOF on server socket
+                if (ev.events & EPOLLERR || ev.events & EPOLLHUP) // server socket closed
+                    return netc_error(HANGUP);
 
                 server->on_connect(server);
             }
             else
             {
-                struct netc_client_t* client = server->clients->data[sockfd];
+                struct netc_client* client = server->clients->data[sockfd];
                 if (client == NULL)
                 {
                     printf("netc warn: polling returned an event for a socket that is not in the server's client list. sockfd: %d\n", sockfd);
                     printf("netc warn: this is likely a bug in netc. report this at https://github.com/Altanis/netc \n\n");
+                    continue;
                 }
 
-                if (ev.events & EPOLLERR || ev.events & EPOLLHUP)
+                if (ev.events & EPOLLERR || ev.events & EPOLLHUP) // client socket closed
                 {
+                    server->on_disconnect(server, client, ev.events & EPOLLERR);
                     if (server_close_client(server, client, ev.events & EPOLLERR) != 0)
                         return netc_error(CLOSE);
                 }
@@ -68,14 +70,14 @@ int server_main_loop(struct netc_server_t* server)
 
             if (sockfd == server->socket_fd)
             {
-                if (ev.flags & EV_EOF || ev.flags & EV_ERROR)
-                    return netc_error(EVCREATE); // EOF on server socket
+                if (ev.flags & EV_EOF || ev.flags & EV_ERROR) // server socket closed
+                    return netc_error(HANGUP); 
 
                 server->on_connect(server);
             }
             else
             {
-                struct netc_client_t* client = server->clients->data[sockfd];
+                struct netc_client* client = server->clients->data[sockfd];
                 if (client == NULL)
                 {
                     printf("netc warn: polling returned an event for a socket that is not in the server's client list. sockfd: %d\n", sockfd);
@@ -83,8 +85,10 @@ int server_main_loop(struct netc_server_t* server)
                     continue;
                 }
 
-                if (ev.flags & EV_EOF || ev.flags & EV_ERROR)
+                if (ev.flags & EV_EOF || ev.flags & EV_ERROR) // client socket closed
                 {
+                    server->on_disconnect(server, client, ev.flags & EV_ERROR);
+
                     if (server_close_client(server, client, ev.flags & EV_ERROR) != 0)
                         return netc_error(CLOSE);
                 }
@@ -100,13 +104,14 @@ int server_main_loop(struct netc_server_t* server)
     return 0;
 };
 
-int server_init(struct netc_server_t* server, struct netc_server_config config)
+int server_init(struct netc_server* server, struct netc_server_config config)
 {
     if (server == NULL) return -1; // server is NULL
     int protocol = config.ipv6 ? AF_INET6 : AF_INET;
 
     server->port = config.port;
     server->backlog = config.backlog;
+    server->non_blocking = config.non_blocking;
 
     server->socket_fd = socket(protocol, SOCK_STREAM, 0); // IPv4, TCP, 0
     if (server->socket_fd == -1) return netc_error(SOCKET);
@@ -133,7 +138,10 @@ int server_init(struct netc_server_t* server, struct netc_server_config config)
         return netc_error(SOCKOPT);
 
     server->clients = malloc(sizeof(struct vector));
-    vector_init(server->clients, 10, sizeof(struct netc_client_t*));
+    vector_init(server->clients, 10, sizeof(struct netc_client*));
+
+    if (config.non_blocking == 0) return 0;
+    if (socket_set_non_blocking(server->socket_fd) != 0) return netc_error(FCNTL);
 
     /** Register event for the server socket. */
 #ifdef __linux__
@@ -143,20 +151,20 @@ int server_init(struct netc_server_t* server, struct netc_server_config config)
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
     ev.data.fd = server->socket_fd;
-    if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, server->socket_fd, &ev) == -1) return netc_error(EVCREATE);
+    if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, server->socket_fd, &ev) == -1) return netc_error(POLL_FD);
 #elif __APPLE__
     server->pfd = kqueue();
-    if (server->pfd == -1) return netc_error(POLL);
+    if (server->pfd == -1) return netc_error(EVCREATE);
 
     struct kevent ev;
     EV_SET(&ev, server->socket_fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
-    if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(POLL);
+    if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(POLL_FD);
 #endif 
 
     return 0;
 };
 
-int server_bind(struct netc_server_t* server)
+int server_bind(struct netc_server* server)
 {
     int sockfd = server->socket_fd;
     struct sockaddr* addr = (struct sockaddr*)&server->address;
@@ -168,19 +176,17 @@ int server_bind(struct netc_server_t* server)
     return 0;
 };
 
-int server_listen(struct netc_server_t* server)
+int server_listen(struct netc_server* server)
 {
     int sockfd = server->socket_fd;
 
     int result = listen(sockfd, server->backlog);
     if (result == -1) return netc_error(LISTEN);
-
-    server_main_loop(server);
-
+    
     return 0;
 };
 
-int server_accept(struct netc_server_t* server, struct netc_client_t* client)
+int server_accept(struct netc_server* server, struct netc_client* client)
 {
     int sockfd = server->socket_fd;
     struct sockaddr* addr = (struct sockaddr*)&client->address;
@@ -192,23 +198,24 @@ int server_accept(struct netc_server_t* server, struct netc_client_t* client)
     client->socket_fd = result;
     vector_set_index(server->clients, client->socket_fd, client);
 
-    socket_set_non_blocking(client->socket_fd);
+    if (server->non_blocking == 0) return 0;
+    if (socket_set_non_blocking(client->socket_fd) != 0) return netc_error(FCNTL);
 
 #ifdef __linux__
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLET;
     ev.data.fd = client->socket_fd;
-    if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, client->socket_fd, &ev) == -1) return netc_error(POLL);
+    if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, client->socket_fd, &ev) == -1) return netc_error(POLL_FD);
 #elif __APPLE__
     struct kevent ev;
     EV_SET(&ev, client->socket_fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
-    if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(EVCREATE);
+    if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(POLL_FD);
 #endif
 
     return 0;
 };
 
-int server_send(struct netc_client_t* client, char* message, size_t msglen)
+int server_send(struct netc_client* client, char* message, size_t msglen)
 {
     int sockfd = client->socket_fd;
     int flags = 0;
@@ -220,7 +227,7 @@ int server_send(struct netc_client_t* client, char* message, size_t msglen)
     return 0;
 };
 
-int server_receive(struct netc_server_t* server, struct netc_client_t* client, char* message, size_t msglen)
+int server_receive(struct netc_server* server, struct netc_client* client, char* message, size_t msglen)
 {
     int sockfd = client->socket_fd;
     int flags = 0;
@@ -233,24 +240,23 @@ int server_receive(struct netc_server_t* server, struct netc_client_t* client, c
     return 0;
 };
 
-int server_close_self(struct netc_server_t* server)
+int server_close_self(struct netc_server* server)
 {
     int result = close(server->socket_fd);
     if (result == -1) return netc_error(CLOSE);
 
-    netc_server_running = 0;
+    netc_server_listening = 0;
 
     return 0;
 };
 
-int server_close_client(struct netc_server_t* server, struct netc_client_t* client, int is_error)
+int server_close_client(struct netc_server* server, struct netc_client* client, int is_error)
 {
     int result = close(client->socket_fd);
     if (result == -1) return netc_error(CLOSE);
 
     vector_delete(server->clients, client->socket_fd);
 
-    server->on_disconnect(server, client, is_error);
     return 0;
 };
 
