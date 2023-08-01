@@ -51,7 +51,6 @@ int client_main_loop(struct netc_client* client)
             }
             else if (ev.events & EPOLLERR || ev.events & EPOLLHUP)
             {
-                client->on_disconnect(client, ev.events & EPOLLERR);
                 if (client_close(client, ev.events & EPOLLERR) != 0) return netc_error(CLOSE);
             }
 #elif __APPLE__
@@ -77,7 +76,6 @@ int client_main_loop(struct netc_client* client)
             }
             else if (ev.flags & EV_ERROR || ev.flags & EV_EOF)
             {
-                client->on_disconnect(client, ev.flags & EV_ERROR);
                 if (client_close(client, ev.flags & EV_ERROR) != 0) return netc_error(CLOSE);
             }
 #endif
@@ -172,6 +170,7 @@ int client_receive(struct netc_client* client, char* message, size_t msglen)
 
     int result = recv(sockfd, message, msglen, 0);
     if (result == -1) return netc_error(CLNTRECV);
+    else if (result == 0) return netc_error(BADRECV);
     else if (result != msglen) return -(msglen - result); // message was not received in full
 
     return 0;
@@ -179,10 +178,14 @@ int client_receive(struct netc_client* client, char* message, size_t msglen)
 
 int client_close(struct netc_client* client, int is_error)
 {
+    if (client->on_disconnect) client->on_disconnect(client, is_error);
+
     int sockfd = client->socket_fd;
 
     int result = close(sockfd);
     if (result == -1) return netc_error(CLOSE);
+
+    netc_client_listening = 0;
 
     return 0;
 };

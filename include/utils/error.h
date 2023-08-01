@@ -24,5 +24,6 @@ extern __thread int netc_errno_reason;
 #define SOCKOPT    14     /** socket options */
 #define HANGUP     15     /** unexpected socket hangup */
 #define INETPTON   16     /** inet_pton syscall */
+#define BADRECV    17     /** socket closed when trying to recv() */
 
 #endif // ERROR_H

@@ -78,10 +78,10 @@ struct netc_server
 
     /** The callback for when an incoming connection occurs. */
     void (*on_connect)(struct netc_server* server);
-    /** The callback for when a client socket disconnects. */
-    void (*on_disconnect)(struct netc_server* server, struct netc_client* client, int is_error);
     /** The callback for when a message is received from a client. */
     void (*on_data)(struct netc_server* server, struct netc_client* client);
+    /** The callback for when a client socket disconnects. */
+    void (*on_disconnect)(struct netc_server* server, struct netc_client* client, int is_error);
 };
 
 /** A structure representing the config of the server. */

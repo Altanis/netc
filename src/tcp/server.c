@@ -46,16 +46,10 @@ int server_main_loop(struct netc_server* server)
             else
             {
                 struct netc_client* client = server->clients->data[sockfd];
-                if (client == NULL)
-                {
-                    printf("netc warn: polling returned an event for a socket that is not in the server's client list. sockfd: %d\n", sockfd);
-                    printf("netc warn: this is likely a bug in netc. report this at https://github.com/Altanis/netc \n\n");
-                    continue;
-                }
+                if (client == NULL) continue;
 
                 if (ev.events & EPOLLERR || ev.events & EPOLLHUP) // client socket closed
                 {
-                    server->on_disconnect(server, client, ev.events & EPOLLERR);
                     if (server_close_client(server, client, ev.events & EPOLLERR) != 0)
                         return netc_error(CLOSE);
                 }
@@ -78,17 +72,10 @@ int server_main_loop(struct netc_server* server)
             else
             {
                 struct netc_client* client = server->clients->data[sockfd];
-                if (client == NULL)
-                {
-                    printf("netc warn: polling returned an event for a socket that is not in the server's client list. sockfd: %d\n", sockfd);
-                    printf("netc warn: this is likely a bug in netc. report this at https://github.com/Altanis/netc \n\n");
-                    continue;
-                }
+                if (client == NULL) continue;
 
                 if (ev.flags & EV_EOF || ev.flags & EV_ERROR) // client socket closed
                 {
-                    server->on_disconnect(server, client, ev.flags & EV_ERROR);
-
                     if (server_close_client(server, client, ev.flags & EV_ERROR) != 0)
                         return netc_error(CLOSE);
                 }
@@ -235,6 +222,7 @@ int server_receive(struct netc_server* server, struct netc_client* client, char*
     int result = recv(sockfd, message, msglen, flags);
 
     if (result == -1) return netc_error(SERVRECV);
+    else if (result == 0) return netc_error(BADRECV);
     else if (result != msglen) return -(msglen - result); // message was not received in full
 
     return 0;
@@ -252,6 +240,8 @@ int server_close_self(struct netc_server* server)
 
 int server_close_client(struct netc_server* server, struct netc_client* client, int is_error)
 {
+    if (server->on_disconnect) server->on_disconnect(server, client, is_error);
+
     int result = close(client->socket_fd);
     if (result == -1) return netc_error(CLOSE);
 
