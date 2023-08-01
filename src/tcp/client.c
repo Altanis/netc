@@ -1,17 +1,25 @@
 #include "tcp/client.h"
 #include "utils/error.h"
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <unistd.h>
 
-__thread int netc_client_listening = 1;
+#ifdef __linux__
+#include <sys/epoll.h>
+#elif __APPLE__
+#include <sys/event.h>
+#endif
 
-int client_main_loop(struct netc_client* client)
+__thread int netc_tcp_client_listening = 1;
+
+int tcp_client_main_loop(struct netc_tcp_client* client)
 {
     /** The client socket should be nonblocking when listening for events. */
-    socket_set_non_blocking(client->socket_fd);
+    tcp_socket_set_non_blocking(client->socket_fd);
 
-    while (netc_client_listening)
+    while (netc_tcp_client_listening)
     {
 #ifdef __linux__
         int pfd = client->pfd;
@@ -25,7 +33,7 @@ int client_main_loop(struct netc_client* client)
         if (nev == -1) return netc_error(EVCREATE);
 #endif
 
-        if (netc_client_listening == 0) break;
+        if (netc_tcp_client_listening == 0) break;
 
         for (int i = 0; i < nev; ++i)
         {
@@ -34,7 +42,7 @@ int client_main_loop(struct netc_client* client)
             int sockfd = ev.data.fd;
 
             if (ev.events & EPOLLIN)
-                client->on_data(client);
+                 client->on_data(client);
             else if (ev.events & EPOLLOUT)
             {
                 int error = 0;
@@ -44,21 +52,21 @@ int client_main_loop(struct netc_client* client)
                 if (result == -1 || error != 0)
                     return netc_error(CONNECT);
                 else
-                    client->on_connect(client);
+                     client->on_connect(client);
 
                 ev.events = EPOLLOUT;
                 if (epoll_ctl(pfd, EPOLL_CTL_DEL, sockfd, &ev) == -1) return netc_error(POLL_FD);
             }
             else if (ev.events & EPOLLERR || ev.events & EPOLLHUP)
             {
-                if (client_close(client, ev.events & EPOLLERR) != 0) return netc_error(CLOSE);
+                if (tcp_client_close(client, ev.events & EPOLLERR) != 0) return netc_error(CLOSE);
             }
 #elif __APPLE__
             struct kevent ev = evlist[i];
             int sockfd = ev.ident;
 
             if (ev.filter == EVFILT_READ)
-                client->on_data(client);
+                 client->on_data(client);
             else if (ev.filter == EVFILT_WRITE)
             {
                 int error = 0;
@@ -68,7 +76,7 @@ int client_main_loop(struct netc_client* client)
                 if (result == -1 || error != 0)
                     return netc_error(CONNECT);
                 else
-                    client->on_connect(client);
+                     client->on_connect(client);
 
                 // deregister event
                 EV_SET(&ev, sockfd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
@@ -76,7 +84,7 @@ int client_main_loop(struct netc_client* client)
             }
             else if (ev.flags & EV_ERROR || ev.flags & EV_EOF)
             {
-                if (client_close(client, ev.flags & EV_ERROR) != 0) return netc_error(CLOSE);
+                if (tcp_client_close(client, ev.flags & EV_ERROR) != 0) return netc_error(CLOSE);
             }
 #endif
         };
@@ -85,7 +93,7 @@ int client_main_loop(struct netc_client* client)
     return 0;
 };
 
-int client_init(struct netc_client* client, struct netc_client_config config)
+int tcp_client_init(struct netc_tcp_client* client, struct netc_tcp_client_config config)
 {
     if (client == NULL) return -1; // client is NULL
 
@@ -116,7 +124,7 @@ int client_init(struct netc_client* client, struct netc_client_config config)
     client->addrlen = sizeof(client->address);
 
     if (config.non_blocking == 0) return 0; 
-    if (socket_set_non_blocking(client->socket_fd) != 0) return netc_error(FCNTL);
+    if (tcp_socket_set_non_blocking(client->socket_fd) != 0) return netc_error(FCNTL);
 
     /** Register events for a nonblocking socket. */
 #ifdef __linux__
@@ -141,7 +149,7 @@ int client_init(struct netc_client* client, struct netc_client_config config)
     return 0;
 };
 
-int client_connect(struct netc_client* client)
+int tcp_client_connect(struct netc_tcp_client* client)
 {
     int sockfd = client->socket_fd;
     struct sockaddr* addr = &client->address;
@@ -153,7 +161,7 @@ int client_connect(struct netc_client* client)
     return 0;
 };
 
-int client_send(struct netc_client* client, char* message, size_t msglen)
+int tcp_client_send(struct netc_tcp_client* client, char* message, size_t msglen)
 {
     int sockfd = client->socket_fd;
 
@@ -164,7 +172,7 @@ int client_send(struct netc_client* client, char* message, size_t msglen)
     return 0;
 };
 
-int client_receive(struct netc_client* client, char* message, size_t msglen)
+int tcp_client_receive(struct netc_tcp_client* client, char* message, size_t msglen)
 {
     int sockfd = client->socket_fd;
 
@@ -176,7 +184,7 @@ int client_receive(struct netc_client* client, char* message, size_t msglen)
     return 0;
 };
 
-int client_close(struct netc_client* client, int is_error)
+int tcp_client_close(struct netc_tcp_client* client, int is_error)
 {
     if (client->on_disconnect) client->on_disconnect(client, is_error);
 
@@ -185,7 +193,7 @@ int client_close(struct netc_client* client, int is_error)
     int result = close(sockfd);
     if (result == -1) return netc_error(CLOSE);
 
-    netc_client_listening = 0;
+    netc_tcp_client_listening = 0;
 
     return 0;
 };

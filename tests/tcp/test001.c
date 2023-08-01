@@ -9,6 +9,7 @@
 #include "tcp/client.h"
 #include "utils/error.h"
 
+#include <errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
@@ -33,78 +34,78 @@ static int test001_client_connect = 0;
 static int test001_client_data = 0;
 static int test001_client_disconnect = 0;
 
-static void* server_thread_nonblocking_main(void* arg);
-static void server_on_connect(struct netc_server* server);
-static void server_on_data(struct netc_server* server, struct netc_client* client);
-static void server_on_disconnect(struct netc_server* server, struct netc_client* client, int is_error);
+static void* test001_server_thread_nonblocking_main(void* arg);
+static void test001_server_on_connect(struct netc_tcp_server* server);
+static void test001_server_on_data(struct netc_tcp_server* server, struct netc_tcp_client* client);
+static void test001_on_disconnect(struct netc_tcp_server* server, struct netc_tcp_client* client, int is_error);
 
-static void* client_thread_nonblocking_main(void* arg);
-static void client_on_connect(struct netc_client* client);
-static void client_on_data(struct netc_client* client);
-static void client_on_disconnect(struct netc_client* client, int is_error);
+static void* test001_client_thread_nonblocking_main(void* arg);
+static void tet001_client_on_connect(struct netc_tcp_client* client);
+static void test001_client_on_data(struct netc_tcp_client* client);
+static void test001_client_on_disconnect(struct netc_tcp_client* client, int is_error);
 
-static void* server_thread_nonblocking_main(void* arg)
+static void* test001_server_thread_nonblocking_main(void* arg)
 {
-    struct netc_server* server = (struct netc_server*)arg;
-    int r = server_main_loop(server);
+    struct netc_tcp_server* server = (struct netc_tcp_server*)arg;
+    int r = tcp_server_main_loop(server);
     if (r != 0) printf(ANSI_RED "[TEST CASE 001] client main loop aborted:\nerrno: %d\nreason: %d\n%s", r, netc_errno_reason, ANSI_RESET);
 
     return NULL;
 };
 
-static void server_on_connect(struct netc_server* server)
+static void test001_server_on_connect(struct netc_tcp_server* server)
 {
-    struct netc_client* client = malloc(sizeof(struct netc_client));
-    server_accept(server, client);
+    struct netc_tcp_client* client = malloc(sizeof(struct netc_tcp_client));
+    tcp_server_accept(server, client);
 
     printf("[TEST CASE 001] new socket connected. socket id: %d\n", client->socket_fd);
     test001_server_connect++;
 };
 
-static void server_on_data(struct netc_server* server, struct netc_client* client)
+static void test001_server_on_data(struct netc_tcp_server* server, struct netc_tcp_client* client)
 {    
-    char buffer[18];
+    char* buffer = malloc(18);
     int recv_result = 0;
-    if ((recv_result = server_receive(server, client, &buffer, 17)) != 0)
+    if ((recv_result = tcp_server_receive(server, client, buffer, 17)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 001] server failed to receive\nerrno: %d\nerrno reason: %d\n%s", recv_result, netc_errno_reason, ANSI_RESET);
         return;
     };
     printf("[TEST CASE 001] message received. socket id: %d, message: %s\n", client->socket_fd, buffer);
 
-    server_send(client, "hello from server", 17);
+    tcp_server_send(client, "hello from server", 17);
     test001_server_data++;
 };
 
-static void server_on_disconnect(struct netc_server* server, struct netc_client* client, int is_error)
+static void test001_on_disconnect(struct netc_tcp_server* server, struct netc_tcp_client* client, int is_error)
 {
     printf("[TEST CASE 001] socket disconnected. this was %s\n", is_error ? "closed disgracefully" : "closed gracefully");
     test001_server_disconnect++;
-    server_close_self(server);
+    tcp_server_close_self(server);
 };
 
-static void* client_thread_nonblocking_main(void* arg)
+static void* test001_client_thread_nonblocking_main(void* arg)
 {
-    struct netc_client* client = (struct netc_client*)arg;
-    int r = client_main_loop(client);
+    struct netc_tcp_client* client = (struct netc_tcp_client*)arg;
+    int r = tcp_client_main_loop(client);
     if (r != 0) printf(ANSI_RED "[TEST CASE 001] client main loop aborted:\nerrno: %d\nreason: %d\n%s", r, netc_errno_reason, ANSI_RESET);
 
     return NULL;
 };
 
-static void client_on_connect(struct netc_client* client)
+static void tet001_client_on_connect(struct netc_tcp_client* client)
 {
     printf("[TEST CASE 001] client connected to server!\n");
     test001_client_connect++;
 
-    client_send(client, "hello from client", 17);
+    tcp_client_send(client, "hello from client", 17);
 };
 
-static void client_on_data(struct netc_client* client)
+static void test001_client_on_data(struct netc_tcp_client* client)
 {
     int recv_result = 0;
-    char buffer[18];
-    if ((recv_result = client_receive(client, &buffer, 17)) != 0)
+    char* buffer = malloc(18);
+    if ((recv_result = tcp_client_receive(client, buffer, 17)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 001] client failed to receive\nerrno: %d\nerrno reason: %d\n%s", recv_result, netc_errno_reason, ANSI_RESET);
         return;
@@ -114,14 +115,14 @@ static void client_on_data(struct netc_client* client)
     test001_client_data++;
 
     int close_result = 0;
-    if ((close_result = client_close(client, 0)) != 0)
+    if ((close_result = tcp_client_close(client, 0)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 001] client failed to close\nerrno: %d\nerrno reason: %d\n%s", close_result, netc_errno_reason, ANSI_RESET);
         return;
     };
 };
 
-static void client_on_disconnect(struct netc_client* client, int is_error)
+static void test001_client_on_disconnect(struct netc_tcp_client* client, int is_error)
 {
     printf("[TEST CASE 001] client disconnected from server. this was %s\n", is_error ? "closed disgracefully" : "closed gracefully");
     test001_client_disconnect++;
@@ -129,12 +130,12 @@ static void client_on_disconnect(struct netc_client* client, int is_error)
 
 static int test001()
 {
-    struct netc_server* server = malloc(sizeof(struct netc_server));
-    server->on_connect = server_on_connect;
-    server->on_data = server_on_data;
-    server->on_disconnect = server_on_disconnect;
+    struct netc_tcp_server* server = malloc(sizeof(struct netc_tcp_server));
+    if (server->on_connect) server->on_connect = test001_server_on_connect;
+    server->on_data = test001_server_on_data;
+    server->on_disconnect = test001_on_disconnect;
 
-    struct netc_server_config server_config = {
+    struct netc_tcp_server_config server_config = {
         .port = PORT,
         .backlog = BACKLOG,
         .reuse_addr = REUSE_ADDRESS,
@@ -143,21 +144,21 @@ static int test001()
     };
 
     int init_result = 0;
-    if ((init_result = server_init(server, server_config)) != 0)
+    if ((init_result = tcp_server_init(server, server_config)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 001] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", init_result, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 
     int bind_result = 0;
-    if ((bind_result = server_bind(server)) != 0)
+    if ((bind_result = tcp_server_bind(server)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 001] server failed to bind\nerrno: %d\nerrno reason: %d\n%s", bind_result, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 
     int listen_result = 0;
-    if ((listen_result = server_listen(server)) != 0)
+    if ((listen_result = tcp_server_listen(server)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 001] server failed to listen\nerrno: %d\nerrno reason: %d\n%s", listen_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -165,14 +166,14 @@ static int test001()
 
     printf("[TEST CASE 001] server listening on port %d\n", PORT);
     pthread_t server_thread;
-    pthread_create(&server_thread, NULL, server_thread_nonblocking_main, server);
+    pthread_create(&server_thread, NULL, test001_server_thread_nonblocking_main, server);
 
-    struct netc_client* client = malloc(sizeof(struct netc_client));
-    client->on_connect = client_on_connect;
-    client->on_data = client_on_data;
-    client->on_disconnect = client_on_disconnect;
+    struct netc_tcp_client* client = malloc(sizeof(struct netc_tcp_client));
+    client->on_connect = tet001_client_on_connect;
+    client->on_data = test001_client_on_data;
+    client->on_disconnect = test001_client_on_disconnect;
 
-    struct netc_client_config client_config = {
+    struct netc_tcp_client_config client_config = {
         .ip = IP,
         .port = PORT,
         .ipv6_connect_from = USE_IPV6,
@@ -181,17 +182,17 @@ static int test001()
     };
 
     int client_init_result = 0;
-    if ((client_init_result = client_init(client, client_config)) != 0)
+    if ((client_init_result = tcp_client_init(client, client_config)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 001] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", client_init_result, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 
     pthread_t client_thread;
-    pthread_create(&client_thread, NULL, client_thread_nonblocking_main, client);
+    pthread_create(&client_thread, NULL, test001_client_thread_nonblocking_main, client);
 
     int client_connect_result = 0;
-    if ((client_connect_result = client_connect(client)) != 0 && client_connect_result != EINPROGRESS)
+    if ((client_connect_result = tcp_client_connect(client)) != 0 && client_connect_result != EINPROGRESS)
     {
         printf(ANSI_RED "[TEST CASE 001] client failed to connect\nerrno: %d\nerrno reason: %d\n%s", client_connect_result, netc_errno_reason, ANSI_RESET);
         return 1;

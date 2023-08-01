@@ -1,6 +1,8 @@
 #ifndef ERROR_H
 #define ERROR_H
 
+#include <errno.h>
+
 /** Sets the error code for netc, and returns the current errno. */
 #define netc_error(reason) (netc_errno_reason = reason, errno)
 

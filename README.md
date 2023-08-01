@@ -6,7 +6,7 @@ A UNIX compliant TCP wrapper which utilizes asynchronous polling. Written in C.
 - [x] TCP Server and Client
 - [x] IPv6 Support
 - [x] Asynchronous Callback System
-- [x] Blocking vs Non-Blocking Mode
+- [x] Blocking and Non-Blocking Mode
 - [ ] HTTP and WS abstractions
 - [ ] SSL/TLS Support
 - [ ] Socket Flag Support
