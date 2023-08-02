@@ -8,6 +8,8 @@
 
 #ifdef __linux__
 #include <sys/epoll.h>
+#elif _WIN32
+#include <winsock2.h>
 #elif __APPLE__
 #include <sys/event.h>
 #endif
@@ -26,6 +28,10 @@ int tcp_client_main_loop(struct netc_tcp_client* client)
         struct epoll_event events[1];
         int nev = epoll_wait(pfd, events, 1, -1);
         if (nev == -1) return netc_error(EVCREATE);
+#elif _WIN32
+        int pfd = client->pfd;
+        int nev = WSAWaitForMultipleEvents(1, &pfd, FALSE, -1, FALSE);
+        if (nev == WSA_WAIT_FAILED) return netc_error(EVCREATE);
 #elif __APPLE__
         int pfd = client->pfd;
         struct kevent evlist[1];
@@ -60,6 +66,30 @@ int tcp_client_main_loop(struct netc_tcp_client* client)
             else if (ev.events & EPOLLERR || ev.events & EPOLLHUP)
             {
                 if (tcp_client_close(client, ev.events & EPOLLERR) != 0) return netc_error(CLOSE);
+            }
+#elif _WIN32
+            int sockfd = client->socket_fd;
+
+            if (WSAEnumNetworkEvents(sockfd, pfd, &client->events) == SOCKET_ERROR) return netc_error(POLL_FD);
+
+            if (client->events.lNetworkEvents & FD_READ)
+                 client->on_data(client);
+            else if (client->events.lNetworkEvents & FD_WRITE)
+            {
+                int error = 0;
+                socklen_t len = sizeof(error);
+                int result = getsockopt(sockfd, SOL_SOCKET, SO_ERROR, &error, &len);
+
+                if (result == -1 || error != 0)
+                    return netc_error(CONNECT);
+                else
+                     client->on_connect(client);
+
+                if (WSAResetEvent(pfd) == FALSE) return netc_error(POLL_FD);
+            }
+            else if (client->events.lNetworkEvents & FD_CLOSE)
+            {
+                if (tcp_client_close(client, client->events.iErrorCode[FD_CLOSE_BIT]) != 0) return netc_error(CLOSE);
             }
 #elif __APPLE__
             struct kevent ev = evlist[i];
@@ -135,6 +165,11 @@ int tcp_client_init(struct netc_tcp_client* client, struct netc_tcp_client_confi
     ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLET;
     ev.data.fd = client->socket_fd;
     if (epoll_ctl(client->pfd, EPOLL_CTL_ADD, client->socket_fd, &ev) == -1) return netc_error(POLL_FD);
+#elif _WIN32
+    client->pfd = WSACreateEvent();
+    if (client->pfd == WSA_INVALID_EVENT) return netc_error(EVCREATE);
+
+    if (WSAEventSelect(client->socket_fd, client->pfd, FD_READ | FD_WRITE | FD_CLOSE) == SOCKET_ERROR) return netc_error(POLL_FD);
 #elif __APPLE__
     client->pfd = kqueue();
     if (client->pfd == -1) return netc_error(EVCREATE);

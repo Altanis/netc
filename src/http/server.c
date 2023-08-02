@@ -7,7 +7,7 @@
 
 __thread int netc_http_server_listening = 1;
 
-int http_server_main_loop(struct http_server* server)
+int http_server_main_loopf(struct http_server* server)
 {
     
 };

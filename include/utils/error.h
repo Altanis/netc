@@ -1,10 +1,19 @@
 #ifndef ERROR_H
 #define ERROR_H
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <errno.h>
+#endif
 
+#ifdef _WIN32
+/** Sets the error code for netc, and returns the current errno. */
+#define netc_error(reason) (netc_errno_reason = reason, WSAGetLastError())
+#else
 /** Sets the error code for netc, and returns the current errno. */
 #define netc_error(reason) (netc_errno_reason = reason, errno)
+#endif
 
 /** The syscall the `errno` error code has originated from. */
 extern __thread int netc_errno_reason;

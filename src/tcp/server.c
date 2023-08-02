@@ -29,6 +29,10 @@ int tcp_server_main_loop(struct netc_tcp_server* server)
         int nev = epoll_wait(pfd, events, server->clients->size + 1, -1);
         if (nev == -1)
             return netc_error(EVCREATE);
+#elif _WIN32
+        int pfd = server->pfd;
+        int nev = WSAWaitForMultipleEvents(server->clients->size + 1, &pfd, FALSE, -1, FALSE);
+        if (nev == WSA_WAIT_FAILED) return netc_error(EVCREATE);
 #elif __APPLE__
         int pfd = server->pfd;
         struct kevent evlist[server->clients->size + 1];
@@ -66,6 +70,44 @@ int tcp_server_main_loop(struct netc_tcp_server* server)
                      server->on_data(server, client);
                 }
             }
+#elif _WIN32
+            int sockfd = server->socket_fd;
+
+            if (sockfd == server->socket_fd)
+            {
+                if (WSAEnumNetworkEvents(sockfd, server->pfd, &server->events) == SOCKET_ERROR) return netc_error(HANGUP);
+
+                if (server->events.lNetworkEvents & FD_ACCEPT)
+                {
+                    if (server->events.iErrorCode[FD_ACCEPT_BIT] != 0) return netc_error(HANGUP);
+                    if (server->on_connect) server->on_connect(server);
+                }
+            }
+            else
+            {
+                struct netc_tcp_client* client = server->clients->data[sockfd];
+                if (client == NULL) continue;
+
+                if (WSAEnumNetworkEvents(sockfd, server->pfd, &client->events) == SOCKET_ERROR) return netc_error(HANGUP);
+
+                if (client->events.lNetworkEvents & FD_READ)
+                {
+                    if (client->events.iErrorCode[FD_READ_BIT] != 0) return netc_error(HANGUP);
+                    server->on_data(server, client);
+                }
+                else if (client->events.lNetworkEvents & FD_WRITE)
+                {
+                    if (client->events.iErrorCode[FD_WRITE_BIT] != 0) return netc_error(HANGUP);
+                }
+                else if (client->events.lNetworkEvents & FD_CLOSE)
+                {
+                    if (client->events.iErrorCode[FD_CLOSE_BIT] != 0) return netc_error(HANGUP);
+
+                    if (tcp_server_close_client(server, client, 0) != 0)
+                        return netc_error(CLOSE);
+                }
+            }
+
 #elif __APPLE__
             struct kevent ev = evlist[i];
             int sockfd = ev.ident;
@@ -147,6 +189,11 @@ int tcp_server_init(struct netc_tcp_server* server, struct netc_tcp_server_confi
     ev.events = EPOLLIN | EPOLLET;
     ev.data.fd = server->socket_fd;
     if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, server->socket_fd, &ev) == -1) return netc_error(POLL_FD);
+#elif _WIN32
+    server->pfd = WSACreateEvent();
+    if (server->pfd == WSA_INVALID_EVENT) return netc_error(EVCREATE);
+
+    if (WSAEventSelect(server->socket_fd, server->pfd, FD_ACCEPT) == SOCKET_ERROR) return netc_error(POLL_FD);
 #elif __APPLE__
     server->pfd = kqueue();
     if (server->pfd == -1) return netc_error(EVCREATE);
@@ -201,6 +248,8 @@ int tcp_server_accept(struct netc_tcp_server* server, struct netc_tcp_client* cl
     ev.events = EPOLLIN | EPOLLET;
     ev.data.fd = client->socket_fd;
     if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, client->socket_fd, &ev) == -1) return netc_error(POLL_FD);
+#elif _WIN32
+    if (WSAEventSelect(client->socket_fd, server->pfd, FD_READ | FD_WRITE | FD_CLOSE) == SOCKET_ERROR) return netc_error(POLL_FD);
 #elif __APPLE__
     struct kevent ev;
     EV_SET(&ev, client->socket_fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
