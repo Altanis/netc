@@ -36,8 +36,8 @@ static int test001_client_disconnect = 0;
 
 static void* test001_server_thread_nonblocking_main(void* arg);
 static void test001_server_on_connect(struct netc_tcp_server* server);
-static void test001_server_on_data(struct netc_tcp_server* server, struct netc_tcp_client* client);
-static void test001_on_disconnect(struct netc_tcp_server* server, struct netc_tcp_client* client, int is_error);
+static void test001_server_on_data(struct netc_tcp_server* server, int sockfd);
+static void test001_on_disconnect(struct netc_tcp_server* server, int sockfd, int is_error);
 
 static void* test001_client_thread_nonblocking_main(void* arg);
 static void tet001_client_on_connect(struct netc_tcp_client* client);
@@ -58,26 +58,27 @@ static void test001_server_on_connect(struct netc_tcp_server* server)
     struct netc_tcp_client* client = malloc(sizeof(struct netc_tcp_client));
     tcp_server_accept(server, client);
 
-    printf("[TEST CASE 001] new socket connected. socket id: %d\n", client->socket_fd);
+    printf("[TEST CASE 001] new socket connected. socket id: %d\n", client->sockfd);
     test001_server_connect++;
 };
 
-static void test001_server_on_data(struct netc_tcp_server* server, struct netc_tcp_client* client)
+static void test001_server_on_data(struct netc_tcp_server* server, int sockfd)
 {    
-    char* buffer = malloc(18);
+    char* buffer = calloc(18, sizeof(char));
+    
     int recv_result = 0;
-    if ((recv_result = tcp_server_receive(server, client, buffer, 17)) != 0)
+    if ((recv_result = tcp_server_receive(sockfd, buffer, 17)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 001] server failed to receive\nerrno: %d\nerrno reason: %d\n%s", recv_result, netc_errno_reason, ANSI_RESET);
         return;
     };
-    printf("[TEST CASE 001] message received. socket id: %d, message: %s\n", client->socket_fd, buffer);
+    printf("[TEST CASE 001] message received. socket id: %d, message: %s\n", sockfd, buffer);
 
-    tcp_server_send(client, "hello from server", 17);
+    tcp_server_send(sockfd, "hello from server", 17);
     test001_server_data++;
 };
 
-static void test001_on_disconnect(struct netc_tcp_server* server, struct netc_tcp_client* client, int is_error)
+static void test001_on_disconnect(struct netc_tcp_server* server, int sockfd, int is_error)
 {
     printf("[TEST CASE 001] socket disconnected. this was %s\n", is_error ? "closed disgracefully" : "closed gracefully");
     test001_server_disconnect++;
@@ -104,7 +105,8 @@ static void tet001_client_on_connect(struct netc_tcp_client* client)
 static void test001_client_on_data(struct netc_tcp_client* client)
 {
     int recv_result = 0;
-    char* buffer = malloc(18);
+    char* buffer = calloc(18, sizeof(char));
+    
     if ((recv_result = tcp_client_receive(client, buffer, 17)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 001] client failed to receive\nerrno: %d\nerrno reason: %d\n%s", recv_result, netc_errno_reason, ANSI_RESET);

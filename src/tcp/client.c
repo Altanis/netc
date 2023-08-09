@@ -14,12 +14,13 @@
 #include <sys/event.h>
 #endif
 
-__thread int netc_tcp_client_listening = 1;
+__thread int netc_tcp_client_listening = 0;
 
 int tcp_client_main_loop(struct netc_tcp_client* client)
 {
     /** The client socket should be nonblocking when listening for events. */
-    tcp_socket_set_non_blocking(client->socket_fd);
+    socket_set_non_blocking(client->sockfd);
+    netc_tcp_client_listening = 1;
 
     while (netc_tcp_client_listening)
     {
@@ -47,7 +48,7 @@ int tcp_client_main_loop(struct netc_tcp_client* client)
             struct epoll_event ev = events[i];
             int sockfd = ev.data.fd;
 
-            if (ev.events & EPOLLIN)
+            if (ev.events & EPOLLIN && client->on_data != NULL)
                  client->on_data(client);
             else if (ev.events & EPOLLOUT)
             {
@@ -57,7 +58,7 @@ int tcp_client_main_loop(struct netc_tcp_client* client)
 
                 if (result == -1 || error != 0)
                     return netc_error(CONNECT);
-                else
+                else if (client->on_connect != NULL)
                      client->on_connect(client);
 
                 ev.events = EPOLLOUT;
@@ -68,11 +69,11 @@ int tcp_client_main_loop(struct netc_tcp_client* client)
                 if (tcp_client_close(client, ev.events & EPOLLERR) != 0) return netc_error(CLOSE);
             }
 #elif _WIN32
-            int sockfd = client->socket_fd;
+            SOCKET sockfd = client->sockfd;
 
             if (WSAEnumNetworkEvents(sockfd, pfd, &client->events) == SOCKET_ERROR) return netc_error(POLL_FD);
 
-            if (client->events.lNetworkEvents & FD_READ)
+            if (client->events.lNetworkEvents & FD_READ && client->on_data != NULL)
                  client->on_data(client);
             else if (client->events.lNetworkEvents & FD_WRITE)
             {
@@ -82,7 +83,7 @@ int tcp_client_main_loop(struct netc_tcp_client* client)
 
                 if (result == -1 || error != 0)
                     return netc_error(CONNECT);
-                else
+                else if (client->on_connect != NULL)
                      client->on_connect(client);
 
                 if (WSAResetEvent(pfd) == FALSE) return netc_error(POLL_FD);
@@ -95,7 +96,7 @@ int tcp_client_main_loop(struct netc_tcp_client* client)
             struct kevent ev = evlist[i];
             int sockfd = ev.ident;
 
-            if (ev.filter == EVFILT_READ)
+            if (ev.filter == EVFILT_READ && client->on_data != NULL)
                  client->on_data(client);
             else if (ev.filter == EVFILT_WRITE)
             {
@@ -105,7 +106,7 @@ int tcp_client_main_loop(struct netc_tcp_client* client)
 
                 if (result == -1 || error != 0)
                     return netc_error(CONNECT);
-                else
+                else if (client->on_connect != NULL)
                      client->on_connect(client);
 
                 // deregister event
@@ -125,17 +126,17 @@ int tcp_client_main_loop(struct netc_tcp_client* client)
 
 int tcp_client_init(struct netc_tcp_client* client, struct netc_tcp_client_config config)
 {
-    if (client == NULL) return -1; // client is NULL
-
+    if (client == NULL) return -1; 
+    
     int protocol_from = config.ipv6_connect_from ? AF_INET6 : AF_INET;
     int protocol_to = config.ipv6_connect_to ? AF_INET6 : AF_INET;
 
-    client->socket_fd = socket(protocol_from, SOCK_STREAM, 0); // IPv4, TCP, 0
-    if (client->socket_fd == -1) return netc_error(SOCKET);
+    client->sockfd = socket(protocol_from, SOCK_STREAM, 0); // IPv4, TCP, 0
+    if (client->sockfd == -1) return netc_error(SOCKET);
 
     if (protocol_from == AF_INET6)
     {
-        struct sockaddr_in6* addr = (struct sockaddr_in6*)&client->address;
+        struct sockaddr_in6* addr = (struct sockaddr_in6*)&client->sockaddr;
         addr->sin6_family = AF_INET6;
         addr->sin6_port = htons(config.port);
 
@@ -143,18 +144,17 @@ int tcp_client_init(struct netc_tcp_client* client, struct netc_tcp_client_confi
     }
     else
     {
-        struct sockaddr_in* addr = (struct sockaddr_in*)&client->address;
+        struct sockaddr_in* addr = (struct sockaddr_in*)&client->sockaddr;
         addr->sin_family = AF_INET;
         addr->sin_port = htons(config.port);
 
         if (inet_pton(protocol_to, config.ip, &addr->sin_addr) <= 0) return netc_error(INETPTON);
     };
 
-    /** The size of the server's address. */
-    client->addrlen = sizeof(client->address);
+    client->addrlen = sizeof(client->sockaddr);
 
     if (config.non_blocking == 0) return 0; 
-    if (tcp_socket_set_non_blocking(client->socket_fd) != 0) return netc_error(FCNTL);
+    if (socket_set_non_blocking(client->sockfd) != 0) return netc_error(FCNTL);
 
     /** Register events for a nonblocking socket. */
 #ifdef __linux__
@@ -163,21 +163,21 @@ int tcp_client_init(struct netc_tcp_client* client, struct netc_tcp_client_confi
 
     struct epoll_event ev;
     ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLET;
-    ev.data.fd = client->socket_fd;
-    if (epoll_ctl(client->pfd, EPOLL_CTL_ADD, client->socket_fd, &ev) == -1) return netc_error(POLL_FD);
+    ev.data.fd = client->sockfd;
+    if (epoll_ctl(client->pfd, EPOLL_CTL_ADD, client->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32
     client->pfd = WSACreateEvent();
     if (client->pfd == WSA_INVALID_EVENT) return netc_error(EVCREATE);
 
-    if (WSAEventSelect(client->socket_fd, client->pfd, FD_READ | FD_WRITE | FD_CLOSE) == SOCKET_ERROR) return netc_error(POLL_FD);
+    if (WSAEventSelect(client->sockfd, client->pfd, FD_READ | FD_WRITE | FD_CLOSE) == SOCKET_ERROR) return netc_error(POLL_FD);
 #elif __APPLE__
     client->pfd = kqueue();
     if (client->pfd == -1) return netc_error(EVCREATE);
 
     struct kevent ev[2];
     int events = 0;
-    EV_SET(&ev[events++], client->socket_fd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
-    EV_SET(&ev[events++], client->socket_fd, EVFILT_WRITE, EV_ADD | EV_CLEAR, 0, 0, NULL);
+    EV_SET(&ev[events++], client->sockfd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
+    EV_SET(&ev[events++], client->sockfd, EVFILT_WRITE, EV_ADD | EV_CLEAR, 0, 0, NULL);
     if (kevent(client->pfd, ev, events, NULL, 0, NULL) == -1) return netc_error(POLL_FD);
 #endif
 
@@ -186,8 +186,8 @@ int tcp_client_init(struct netc_tcp_client* client, struct netc_tcp_client_confi
 
 int tcp_client_connect(struct netc_tcp_client* client)
 {
-    int sockfd = client->socket_fd;
-    struct sockaddr* addr = &client->address;
+    socket_t sockfd = client->sockfd;
+    struct sockaddr* addr = &client->sockaddr;
     socklen_t addrlen = client->addrlen;
 
     int result = connect(sockfd, addr, addrlen);
@@ -198,9 +198,10 @@ int tcp_client_connect(struct netc_tcp_client* client)
 
 int tcp_client_send(struct netc_tcp_client* client, char* message, size_t msglen)
 {
-    int sockfd = client->socket_fd;
+    socket_t sockfd = client->sockfd;
+    int flags = 0;
 
-    int result = send(sockfd, message, msglen, 0);
+    int result = send(sockfd, message, msglen, flags);
     if (result == -1) return netc_error(CLNTSEND);
     else if (result != msglen) return -(msglen - result); // message was not sent in full
 
@@ -209,9 +210,10 @@ int tcp_client_send(struct netc_tcp_client* client, char* message, size_t msglen
 
 int tcp_client_receive(struct netc_tcp_client* client, char* message, size_t msglen)
 {
-    int sockfd = client->socket_fd;
+    socket_t sockfd = client->sockfd;
+    int flags = 0;
 
-    int result = recv(sockfd, message, msglen, 0);
+    int result = recv(sockfd, message, msglen, flags);
     if (result == -1) return netc_error(CLNTRECV);
     else if (result == 0) return netc_error(BADRECV);
     else if (result != msglen) return -(msglen - result); // message was not received in full
@@ -221,9 +223,9 @@ int tcp_client_receive(struct netc_tcp_client* client, char* message, size_t msg
 
 int tcp_client_close(struct netc_tcp_client* client, int is_error)
 {
-    if (client->on_disconnect) client->on_disconnect(client, is_error);
+    if (client->on_disconnect != NULL) client->on_disconnect(client, is_error);
 
-    int sockfd = client->socket_fd;
+    socket_t sockfd = client->sockfd;
 
     int result = close(sockfd);
     if (result == -1) return netc_error(CLOSE);

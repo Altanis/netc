@@ -6,16 +6,6 @@
 /** A struct representing a vector. */
 struct vector
 {
-    /** 
-     * The length of the vector.
-     * NOTE: This is not the same as the size of the vector.
-     * ```c
-     * char array[4];
-     * array[0] = 1;
-     * length = 4, size = 1
-     * ```
-    */
-    size_t length;
     /** The number of elements in the vector. */
     size_t size;
     /** The capacity of the vector. */

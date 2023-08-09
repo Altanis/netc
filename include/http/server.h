@@ -1,5 +1,5 @@
-#ifndef HTTP_H
-#define HTTP_H
+#ifndef HTTP_SERVER_H
+#define HTTP_SERVER_H
 
 #include "tcp/server.h"
 
@@ -68,7 +68,7 @@ struct http_server
     void (*on_request)(struct http_server* server, struct netc_tcp_client* client, struct http_request* request);
 };
 
-/** Whether or not the server is running. */
+/** Whether or not the server is listening for events. */
 extern __thread int netc_http_server_listening;
 
 /** A basic loop for a non-blocking HTTP server to respond to requests. */
@@ -85,4 +85,4 @@ int http_server_send_response(struct http_server* server, struct http_response* 
 /** Closes the HTTP server. */
 int http_server_close(struct http_server* server);
 
-#endif // HTTP_H
+#endif // HTTP_SERVERH

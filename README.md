@@ -3,16 +3,20 @@
 A UNIX compliant TCP wrapper which utilizes asynchronous polling. Written in C.
 
 ## Features:
-- [x] TCP Server and Client
-- [x] IPv6 Support
-- [x] Asynchronous Callback System
-- [x] Blocking and Non-Blocking Mode
-- [ ] HTTP and WS abstractions
+
+- [X] TCP Server and Client
+- [X] IPv6 Support
+- [X] Asynchronous Callback System
+- [X] Blocking and Non-Blocking Mode
+- [ ] UDP Server and Client
+- [ ] Windows Support
+- [ ] HTTP/2 and WS abstractions
 - [ ] SSL/TLS Support
 - [ ] Socket Flag Support
-- [ ] WindowsAPI Support <!-- Who would even use Windows for a tcp server lmao -->
+- [ ] HTTP/3 and QUIC abstractions
 
-## Usage:
+Usage:
+
 ```c
 #include "netc/server.h"
 #include "netc/client.h"

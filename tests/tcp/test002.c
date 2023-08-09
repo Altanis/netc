@@ -48,12 +48,13 @@ static void* test002_server_thread_blocking_main(void* arg)
         return NULL;
     } else {
         test002_server_connect++;
-        printf("[TEST CASE 002] new socket connected. socket id: %d\n", client->socket_fd);
+        printf("[TEST CASE 002] new socket connected. socket id: %d\n", client->sockfd);
     }
 
     int recv_result;
-    char* buffer = malloc(18);
-    if ((recv_result = tcp_server_receive(server, client, buffer, 17)) != 0)
+    char* buffer = calloc(18, sizeof(char));
+
+    if ((recv_result = tcp_server_receive(client->sockfd, buffer, 17)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 002] server failed to receive data from client\nerrno: %d\nerrno reason: %d\n%s", recv_result, netc_errno_reason, ANSI_RESET);
         return NULL;
@@ -63,7 +64,7 @@ static void* test002_server_thread_blocking_main(void* arg)
     }
 
     int send_result;
-    if ((send_result = tcp_server_send(client, "hello from server", 17)) != 0)
+    if ((send_result = tcp_server_send(client->sockfd, "hello from server", 17)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 002] server failed to send data to client\nerrno: %d\nerrno reason: %d\n%s", send_result, netc_errno_reason, ANSI_RESET);
         return NULL;
@@ -73,7 +74,7 @@ static void* test002_server_thread_blocking_main(void* arg)
 
     // check if recv == 0
     int disconnect_result;
-    if ((disconnect_result = tcp_server_receive(server, client, buffer, 18)) != 0)
+    if ((disconnect_result = tcp_server_receive(client->sockfd, buffer, 17)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 002] server failed to disconnect from client\nerrno: %d\nerrno reason: %d\n%s", disconnect_result, netc_errno_reason, ANSI_RESET);
         return NULL;
@@ -109,7 +110,8 @@ static void* test002_client_thread_blocking_main(void* arg)
     }
 
     int recv_result = 0;
-    char* buffer = malloc(18);
+    char* buffer = calloc(18, sizeof(char));
+
     if ((recv_result = tcp_client_receive(client, buffer, 17)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 002] client failed to receive data from server\nerrno: %d\nerrno reason: %d\n%s", recv_result, netc_errno_reason, ANSI_RESET);

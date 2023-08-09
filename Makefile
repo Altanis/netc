@@ -12,6 +12,7 @@ TEST_DIR := tests
 TCP_SRCS := $(wildcard $(SRC_DIR)/tcp/*.c)
 HTTP_SRCS := $(wildcard $(SRC_DIR)/http/*.c)
 UTILS_SRCS := $(wildcard $(SRC_DIR)/utils/*.c)
+COMMON_SRC := $(wildcard $(SRC_DIR)/socket.c)
 
 # Test files
 TEST_TCP_SRCS := $(wildcard $(TEST_DIR)/tcp/*.c)
@@ -23,7 +24,7 @@ OUTPUT := netc
 
 all: $(OUTPUT)
 
-$(OUTPUT): $(TCP_SRCS) $(UTILS_SRCS) $(TEST_TCP_SRCS) $(MAIN_SRCS)
+$(OUTPUT): $(COMMON_SRC) $(TCP_SRCS) $(UTILS_SRCS) $(TEST_TCP_SRCS) $(MAIN_SRCS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 clean:

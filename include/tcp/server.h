@@ -1,7 +1,8 @@
-#ifndef SERVER_H
-#define SERVER_H
+#ifndef TCP_SERVER_H
+#define TCP_SERVER_H
 
 #include "utils/vector.h"
+#include "socket.h"
 
 #include <arpa/inet.h>
 
@@ -9,13 +10,13 @@
 struct netc_tcp_client
 {
     /** The socket file descriptor. */
-    int socket_fd;
+    socket_t sockfd;
     /** The address of the server to connect to. */
-    struct sockaddr address;
+    struct sockaddr sockaddr;
     /** The size of the client's address. */
-    int addrlen;
+    socklen_t addrlen;
 
-    /** The file descriptor representing the current polling file descriptor. */
+    /** The polling file descriptor. */
     int pfd;
 
     /** The callback for when the client has connected to the server. */
@@ -46,33 +47,31 @@ struct netc_tcp_client_config
 struct netc_tcp_server
 {
     /** The socket file descriptor. */
-    int socket_fd;
+    socket_t sockfd;
     /** The server's address. */
     struct sockaddr address;
     /** The size of the server's address. */
-    int addrlen;
-
-    /** The port the server is running on. */
+    socklen_t addrlen;
+    /** The port the server is bound to. */
     int port;
-    /** The maximum amount of connections permitted by the server. */
-    int max_connections;
+
     /** The maximum amount of sockets in the backlog. */
     int backlog;
     /** Whether or not all sockets should be non blocking. */
     int non_blocking;
 
-    /** A vector of each client struct connected to the server. */
-    struct vector* clients; // <netc_tcp_client>
+    /** A vector of each client sockfd connected to the server. */
+    struct vector* clients; // <socket_t>
 
-    /** The file descriptor representing the current polling file descriptor. */
+    /** The polling file descriptor. */
     int pfd;
 
     /** The callback for when an incoming connection occurs. */
     void (*on_connect)(struct netc_tcp_server* server);
     /** The callback for when a message is received from a client. */
-    void (*on_data)(struct netc_tcp_server* server, struct netc_tcp_client* client);
+    void (*on_data)(struct netc_tcp_server* server, socket_t sockfd);
     /** The callback for when a client socket disconnects. */
-    void (*on_disconnect)(struct netc_tcp_server* server, struct netc_tcp_client* client, int is_error);
+    void (*on_disconnect)(struct netc_tcp_server* server, socket_t sockfd, int is_error);
 };
 
 /** A structure representing the config of a TCP server. */
@@ -91,7 +90,7 @@ struct netc_tcp_server_config
     int non_blocking;
 };
 
-/** Whether or not the server is running. */
+/** Whether or not the server is listening for events. */
 extern __thread int netc_tcp_server_listening;
 
 /** The main loop of a nonblocking TCP server. */
@@ -107,18 +106,13 @@ int tcp_server_listen(struct netc_tcp_server* server);
 int tcp_server_accept(struct netc_tcp_server* server, struct netc_tcp_client* client);
 
 /** Sends a message to the client. Returns a number less than 0 to represent the number of bytes left to send. */
-int tcp_server_send(struct netc_tcp_client* client, char* message, size_t msglen);
+int tcp_server_send(int sockfd, char* message, size_t msglen);
 /** Receives a message from the client. Returns a number less than 0 to represent the number of bytes left to send. Returns 0 if the client has disconnected. */
-int tcp_server_receive(struct netc_tcp_server* server, struct netc_tcp_client* client, char* message, size_t msglen);
+int tcp_server_receive(int sockfd, char* message, size_t msglen);
 
 /** Closes the TCP server. */
 int tcp_server_close_self(struct netc_tcp_server* server);
 /** Closes a client connection. */
-int tcp_server_close_client(struct netc_tcp_server* server, struct netc_tcp_client* client, int is_error);
+int tcp_server_close_client(struct netc_tcp_server* server, int sockfd, int is_error);
 
-/** Gets a socket's flags. */
-int tcp_socket_get_flags(int sockfd);
-/** Sets a socket to nonblocking mode. */
-int tcp_socket_set_non_blocking(int sockfd);
-
-#endif // SERVER_H
+#endif // TCP_SERVER_H

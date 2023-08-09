@@ -1,5 +1,5 @@
-#ifndef CLIENT_H
-#define CLIENT_H
+#ifndef TCP_CLIENT_H
+#define TCP_CLIENT_H
 
 #include "tcp/server.h"
 
@@ -20,4 +20,4 @@ int tcp_client_receive(struct netc_tcp_client* client, char* message, size_t msg
 /** Closes the TCP client. */
 int tcp_client_close(struct netc_tcp_client* client, int is_error);
 
-#endif // CLIENT_H
+#endif // TCP_CLIENT_H
