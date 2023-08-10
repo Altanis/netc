@@ -10,14 +10,13 @@ struct netc_udp_client
 {
     /** The socket file descriptor. */
     socket_t sockfd;
-    /** The polling file descriptor. */
-    int pfd;
-    /** The client's address. */
+        /** The client's address. */
     struct sockaddr_in sockaddr;
     /** The size of the client's address. */
     socklen_t addrlen;
-    /** The port the client is bound to. */
-    int port;
+
+    /** The polling file descriptor. */
+    int pfd;
 
     /** The callback for when data is received. */
     void (*on_data)();

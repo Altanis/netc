@@ -135,43 +135,23 @@ int tcp_server_main_loop(struct netc_tcp_server* server)
     return 0;
 };
 
-int tcp_server_init(struct netc_tcp_server* server, struct netc_tcp_server_config config)
+int tcp_server_init(struct netc_tcp_server* server, int ipv6, int reuse_addr, int non_blocking)
 {
     if (server == NULL) return -1;
-    int protocol = config.ipv6 ? AF_INET6 : AF_INET;
 
-    server->port = config.port;
-    server->backlog = config.backlog;
-    server->non_blocking = config.non_blocking;
+    server->non_blocking = non_blocking;
+    int protocol = ipv6 ? AF_INET6 : AF_INET;
 
     server->sockfd = socket(protocol, SOCK_STREAM, 0); // IPv4, TCP, 0
     if (server->sockfd == -1) return netc_error(SOCKET);
 
-    if (protocol == AF_INET6)
-    {
-        struct sockaddr_in6* addr = (struct sockaddr_in6*)&server->address;
-        addr->sin6_family = AF_INET6;
-        addr->sin6_addr = in6addr_any;
-        addr->sin6_port = htons(server->port);
-    }
-    else
-    {
-        struct sockaddr_in* addr = (struct sockaddr_in*)&server->address;
-        addr->sin_family = AF_INET;
-        addr->sin_addr.s_addr = INADDR_ANY;
-        addr->sin_port = htons(server->port);
-    }
-
-    /** The size of the server's address. */
-    server->addrlen = sizeof(server->address);
-
-    if (config.reuse_addr && setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, &config.reuse_addr, sizeof(int)) != 0)
+    if (reuse_addr && setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int)) != 0)
         return netc_error(SOCKOPT);
 
     server->clients = malloc(sizeof(struct vector));
     vector_init(server->clients, 10, sizeof(int));
 
-    if (config.non_blocking == 0) return 0;
+    if (server->non_blocking == 0) return 0;
     if (socket_set_non_blocking(server->sockfd) != 0) return netc_error(FCNTL);
 
     /** Register event for the server socket. */
@@ -200,11 +180,12 @@ int tcp_server_init(struct netc_tcp_server* server, struct netc_tcp_server_confi
     return 0;
 };
 
-int tcp_server_bind(struct netc_tcp_server* server)
+int tcp_server_bind(struct netc_tcp_server* server, struct sockaddr* address, socklen_t addrlen)
 {
+    server->address = address;
+
     socket_t sockfd = server->sockfd;
-    struct sockaddr* addr = (struct sockaddr*)&server->address;
-    socklen_t addrlen = server->addrlen;
+    struct sockaddr* addr = server->address;
 
     int result = bind(sockfd, addr, addrlen);
     if (result == -1) return netc_error(BIND);
@@ -212,11 +193,11 @@ int tcp_server_bind(struct netc_tcp_server* server)
     return 0;
 };
 
-int tcp_server_listen(struct netc_tcp_server* server)
+int tcp_server_listen(struct netc_tcp_server* server, int backlog)
 {
     socket_t sockfd = server->sockfd;
 
-    int result = listen(sockfd, server->backlog);
+    int result = listen(sockfd, backlog);
     if (result == -1) return netc_error(LISTEN);
     
     return 0;

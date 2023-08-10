@@ -9,9 +9,9 @@ extern __thread int netc_tcp_client_listening;
 int tcp_client_main_loop(struct netc_tcp_client* client);
 
 /** Initializes a TCP client. */
-int tcp_client_init(struct netc_tcp_client* client, struct netc_tcp_client_config config);
+int tcp_client_init(struct netc_tcp_client* client, int ipv6, int non_blocking);
 /** Connects the TCP client to the server. */
-int tcp_client_connect(struct netc_tcp_client* client);
+int tcp_client_connect(struct netc_tcp_client* client, struct sockaddr* address, socklen_t addrlen);
 /** Sends data to the server. Returns -1 if message not sent in full. */
 int tcp_client_send(struct netc_tcp_client* client, char* message, size_t msglen);
 /** Receives data from the server. Returns -1 if message not received in full. */

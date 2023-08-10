@@ -12,6 +12,8 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#include <stdbool.h>
+#include <sys/_endian.h>
 
 #define IP "127.0.0.1"
 #define PORT 8080
@@ -90,14 +92,27 @@ static void* test002_client_thread_blocking_main(void* arg)
 {
     struct netc_tcp_client* client = (struct netc_tcp_client*)arg;
 
-    int connect_result = 0;
-    if ((connect_result = tcp_client_connect(client)) != 0)
+    struct sockaddr_in addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(PORT)
+    };
+
+    if (inet_pton(AF_INET, IP, &(addr.sin_addr)) <= 0)
     {
-        printf(ANSI_RED "[TEST CASE 002] client failed to connect\nerrno: %d\nerrno reason: %d\n%s", connect_result, netc_errno_reason, ANSI_RESET);
+        printf(ANSI_RED "[TEST CASE 002] client failed to convert ip address\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return NULL;
-    } else {
+    };
+
+    int client_connect_result = 0;
+    if ((client_connect_result = tcp_client_connect(client, (struct sockaddr*)&addr, (socklen_t)sizeof(addr))) != 0 && client_connect_result != EINPROGRESS)
+    {
+        printf(ANSI_RED "[TEST CASE 002] client failed to connect\nerrno: %d\nerrno reason: %d\n%s", client_connect_result, netc_errno_reason, ANSI_RESET);
+        return NULL;
+    }
+    else
+    {
         test002_client_connect++;
-        printf("[TEST CASE 002] client connected to server!\n");
+        printf("[TEST CASE 002] client connected!\n");
     }
 
     int send_result = 0;
@@ -105,7 +120,9 @@ static void* test002_client_thread_blocking_main(void* arg)
     {
         printf(ANSI_RED "[TEST CASE 002] client failed to send data to server\nerrno: %d\nerrno reason: %d\n%s", send_result, netc_errno_reason, ANSI_RESET);
         return NULL;
-    } else {
+    } 
+    else 
+    {
         printf("[TEST CASE 002] client sent data to server!\n");
     }
 
@@ -137,30 +154,28 @@ static void* test002_client_thread_blocking_main(void* arg)
 static int test002()
 {
     struct netc_tcp_server* server = malloc(sizeof(struct netc_tcp_server));
-    struct netc_tcp_server_config server_config = {
-        .port = PORT,
-        .backlog = BACKLOG,
-        .reuse_addr = REUSE_ADDRESS,
-        .ipv6 = USE_IPV6,
-        .non_blocking = SERVER_NON_BLOCKING
+    struct sockaddr_in saddr = {
+        .sin_family = AF_INET,
+        .sin_addr.s_addr = INADDR_ANY,
+        .sin_port = htons(PORT)
     };
 
     int init_result = 0;
-    if ((init_result = tcp_server_init(server, server_config)) != 0)
+    if ((init_result = tcp_server_init(server, USE_IPV6, REUSE_ADDRESS, SERVER_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 002] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", init_result, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 
     int bind_result = 0;
-    if ((bind_result = tcp_server_bind(server)) != 0)
+    if ((bind_result = tcp_server_bind(server, (struct sockaddr*)&saddr, (socklen_t)sizeof(saddr))) != 0)
     {
         printf(ANSI_RED "[TEST CASE 002] server failed to bind\nerrno: %d\nerrno reason: %d\n%s", bind_result, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 
     int listen_result = 0;
-    if ((listen_result = tcp_server_listen(server)) != 0)
+    if ((listen_result = tcp_server_listen(server, BACKLOG)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 002] server failed to listen\nerrno: %d\nerrno reason: %d\n%s", listen_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -171,16 +186,9 @@ static int test002()
     pthread_create(&server_thread, NULL, test002_server_thread_blocking_main, server);
 
     struct netc_tcp_client* client = malloc(sizeof(struct netc_tcp_client));
-    struct netc_tcp_client_config client_config = {
-        .ip = IP,
-        .port = PORT,
-        .ipv6_connect_from = USE_IPV6,
-        .ipv6_connect_to = USE_IPV6,
-        .non_blocking = CLIENT_NON_BLOCKING
-    };
 
     int client_init_result = 0;
-    if ((client_init_result = tcp_client_init(client, client_config)) != 0)
+    if ((client_init_result = tcp_client_init(client, USE_IPV6, CLIENT_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[TEST CASE 002] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", client_init_result, netc_errno_reason, ANSI_RESET);
         return 1;

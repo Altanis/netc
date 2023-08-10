@@ -124,36 +124,16 @@ int tcp_client_main_loop(struct netc_tcp_client* client)
     return 0;
 };
 
-int tcp_client_init(struct netc_tcp_client* client, struct netc_tcp_client_config config)
+int tcp_client_init(struct netc_tcp_client* client, int ipv6, int non_blocking)
 {
     if (client == NULL) return -1; 
     
-    int protocol_from = config.ipv6_connect_from ? AF_INET6 : AF_INET;
-    int protocol_to = config.ipv6_connect_to ? AF_INET6 : AF_INET;
+    int protocol = ipv6 ? AF_INET6 : AF_INET;
 
-    client->sockfd = socket(protocol_from, SOCK_STREAM, 0); // IPv4, TCP, 0
+    client->sockfd = socket(protocol, SOCK_STREAM, 0); // IPv4, TCP, 0
     if (client->sockfd == -1) return netc_error(SOCKET);
 
-    if (protocol_from == AF_INET6)
-    {
-        struct sockaddr_in6* addr = (struct sockaddr_in6*)&client->sockaddr;
-        addr->sin6_family = AF_INET6;
-        addr->sin6_port = htons(config.port);
-
-        if (inet_pton(protocol_to, config.ip, &addr->sin6_addr) <= 0) return netc_error(INETPTON);
-    }
-    else
-    {
-        struct sockaddr_in* addr = (struct sockaddr_in*)&client->sockaddr;
-        addr->sin_family = AF_INET;
-        addr->sin_port = htons(config.port);
-
-        if (inet_pton(protocol_to, config.ip, &addr->sin_addr) <= 0) return netc_error(INETPTON);
-    };
-
-    client->addrlen = sizeof(client->sockaddr);
-
-    if (config.non_blocking == 0) return 0; 
+    if (non_blocking == 0) return 0; 
     if (socket_set_non_blocking(client->sockfd) != 0) return netc_error(FCNTL);
 
     /** Register events for a nonblocking socket. */
@@ -184,11 +164,12 @@ int tcp_client_init(struct netc_tcp_client* client, struct netc_tcp_client_confi
     return 0;
 };
 
-int tcp_client_connect(struct netc_tcp_client* client)
+int tcp_client_connect(struct netc_tcp_client* client, struct sockaddr* addr, socklen_t addrlen)
 {
+    client->sockaddr = addr;
+    client->addrlen = addrlen;
+
     socket_t sockfd = client->sockfd;
-    struct sockaddr* addr = &client->sockaddr;
-    socklen_t addrlen = client->addrlen;
 
     int result = connect(sockfd, addr, addrlen);
     if (result == -1) return netc_error(CONNECT);
