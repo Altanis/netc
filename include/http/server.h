@@ -3,25 +3,19 @@
 
 #include "tcp/server.h"
 
-/** The different HTTP methods. */
-enum http_method
-{
-    HTTP_METHOD_GET,
-    HTTP_METHOD_POST,
-    HTTP_METHOD_PUT,
-    HTTP_METHOD_DELETE,
-    HTTP_METHOD_HEAD,
-    HTTP_METHOD_CONNECT,
-    HTTP_METHOD_OPTIONS,
-    HTTP_METHOD_TRACE,
-    HTTP_METHOD_PATCH
-};
+#define MAX_HTTP_METHOD_LEN 7
+#define MAX_HTTP_PATH_LEN 2000
+#define MAX_HTTP_VERSION_LEN 8
+#define MAX_HTTP_HEADER_NAME_LEN 256
+#define MAX_HTTP_HEADER_VALUE_LEN 4096
+#define MAX_HTTP_HEADER_LEN (MAX_HTTP_HEADER_NAME_LEN + MAX_HTTP_HEADER_VALUE_LEN + 1)
+#define MAX_HTTP_HEADER_COUNT 24
 
 /** A structure representing the HTTP request. */
 struct http_request
 {
     /** The HTTP method. */
-    enum http_method method;
+    char* method;
     /** The complete HTTP path to request to. */
     char* path;
     /** The HTTP version. */
@@ -29,8 +23,6 @@ struct http_request
 
     /** The HTTP headers. */
     struct vector* headers; // <http_header>
-    /** The HTTP body. */
-    char* body;
 };
 
 /** A structure representing the HTTP response. */
@@ -62,27 +54,31 @@ struct http_header
 struct http_server
 {
     /** The TCP server. */
-    struct netc_tcp_server* server;
+    struct netc_tcp_server server;
 
+    /** User defined data to be passed to the event callbacks. */
+    void* data;
+    
+    /** The callback for when a client connects. */
+    void (*on_connect)(struct http_server* server, struct netc_tcp_client* client, void* data);
     /** The callback for when a request is received. */
-    void (*on_request)(struct http_server* server, struct netc_tcp_client* client, struct http_request* request);
+    void (*on_request)(struct http_server* server, socket_t sockfd, void* data);
+    /** The callback for when a client disconnects. */
+    void (*on_disconnect)(struct http_server* server, socket_t sockfd, int is_error, void* data);
 };
 
 /** Whether or not the server is listening for events. */
 extern __thread int netc_http_server_listening;
 
-/** A basic loop for a non-blocking HTTP server to respond to requests. */
-int http_server_main_loop(struct http_server* server);
-
 /** Initializes the HTTP server. */
-int http_server_init(struct http_server* server, struct netc_tcp_server_config config);
-/** Starts the HTTP server. */
+int http_server_init(struct http_server* server, int ipv6, int reuse_addr, struct sockaddr* address, socklen_t addrlen, int backlog);
+/** Starts a nonblocking event loop for the HTTP server. */
 int http_server_start(struct http_server* server);
 /** Parses the HTTP request. */
-int http_server_parse_request(struct http_server* server, char* buffer, struct http_request* request);
+int http_server_parse_request(struct http_server* server, socket_t sockfd, struct http_request* request);
 /** Sends the HTTP response. */
 int http_server_send_response(struct http_server* server, struct http_response* response);
 /** Closes the HTTP server. */
 int http_server_close(struct http_server* server);
 
-#endif // HTTP_SERVERH
+#endif // HTTP_SERVER_H

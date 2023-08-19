@@ -1,17 +1,29 @@
 #include "udp/server.h"
 
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/errno.h>
+#include <unistd.h>
+#include <sys/fcntl.h>
+#include <sys/socket.h>
+
 #ifdef __linux__
 #include <sys/epoll.h>
 #elif _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #elif __APPLE__
 #include <sys/event.h>
 #endif
 
+__thread int netc_udp_server_listening = 0;
+
 int udp_server_main_loop(struct netc_udp_server* server)
 {
     /** The server socket should be nonblocking when listening for events. */
     socket_set_non_blocking(server->sockfd);
+    netc_udp_server_listening = 1;
 
     while (netc_udp_server_listening)
     {
@@ -26,8 +38,8 @@ int udp_server_main_loop(struct netc_udp_server* server)
         if (nev == WSA_WAIT_FAILED) return netc_error(EVCREATE);
 #elif __APPLE__
         int pfd = server->pfd;
-        struct kevent evlist[1];
-        int nev = kevent(pfd, NULL, 0, evlist, 1, NULL);
+        struct kevent events[1];
+        int nev = kevent(pfd, NULL, 0, events, 1, NULL);
         if (nev == -1) return netc_error(EVCREATE);
 #endif
 
@@ -37,53 +49,32 @@ int udp_server_main_loop(struct netc_udp_server* server)
         {
 #ifdef __linux__
             struct epoll_event ev = events[i];
-            int sockfd = ev.data.fd;
-            if (ev.events & EPOLLIN && server->on_data != NULL) server->on_data();
+            socket_t sockfd = ev.data.fd;
+            if (ev.events & EPOLLIN && server->on_data != NULL) server->on_data(server, server->data);
 #elif _WIN32
             SOCKET sockfd = server->sockfd;
             if (WSAEnumNetworkEvents(sockfd, pfd, &server->events) == SOCKET_ERROR) return netc_error(POLL_FD);
+            if (server->events.lNetworkEvents & FD_READ && server->on_data != NULL) server->on_data(server, server->data);
 #elif __APPLE__
-            int sockfd = server->sockfd;
-            if (evlist[i].flags & EVFILT_READ && server->on_data != NULL) server->on_data();
+            socket_t sockfd = server->sockfd;
+            if (events[i].flags & EVFILT_READ && server->on_data != NULL) server->on_data(server, server->data);
 #endif
         };
 
     };
+
+    return 0;
 };
 
-int udp_server_init(struct netc_udp_server* server, struct netc_udp_server_config config)
+int udp_server_init(struct netc_udp_server* server, int ipv6, int non_blocking)
 {
     if (server == NULL) return -1;
-    int protocol = config.ipv6 ? AF_INET6 : AF_INET;
-
-    server->port = config.port;
-    server->backlog = config.backlog;
+    int protocol = ipv6 ? AF_INET6 : AF_INET;
 
     server->sockfd = socket(protocol, SOCK_DGRAM, 0); // IPv4, UDP, 0
     if (server->sockfd == -1) return netc_error(SOCKET);
 
-    if (protocol == AF_INET6)
-    {
-        struct sockaddr_in6* addr = (struct sockaddr_in6*)&server->socket_addr;
-        addr->sin6_family = AF_INET6;
-        addr->sin6_port = htons(config.port);
-        addr->sin6_addr = in6addr_any;
-    }
-    else
-    {
-        struct sockaddr_in* addr = (struct sockaddr_in*)&server->socket_addr;
-        addr->sin_family = AF_INET;
-        addr->sin_port = htons(config.port);
-        addr->sin_addr.s_addr = htonl(INADDR_ANY);
-    };
-
-    /** The size of the server's address. */
-    server->addrlen = sizeof(server->socket_addr);
-
-    if (config.reuse_addr && setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, &config.reuse_addr, sizeof(int)) == -1) 
-        return netc_error(SOCKOPT);
-
-    if (config.non_blocking == 0) return 0;
+    if (non_blocking == 0) return 0;
     if (socket_set_non_blocking(server->sockfd) == -1) return netc_error(FCNTL);
 
     /** Register event for the server socket. */
@@ -109,13 +100,18 @@ int udp_server_init(struct netc_udp_server* server, struct netc_udp_server_confi
     EV_SET(&ev, server->sockfd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
     if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(POLL_FD);
 #endif
+    return 0;
 };
 
-int udp_server_bind(struct netc_udp_server* server)
+int udp_server_bind(struct netc_udp_server* server, struct sockaddr* addr, socklen_t addrlen, int reuse_addr)
 {
+    server->sockaddr = addr;
+    server->addrlen = addrlen;
+
+    if (reuse_addr && setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int)) == -1) 
+        return netc_error(SOCKOPT);
+
     socket_t sockfd = server->sockfd;
-    struct sockaddr* addr = (struct sockaddr*)&server->socket_addr;
-    socklen_t addrlen = server->addrlen;
 
     int result = bind(sockfd, addr, addrlen);
     if (result == -1) return netc_error(BIND);
@@ -123,36 +119,39 @@ int udp_server_bind(struct netc_udp_server* server)
     return 0;
 };
 
-int udp_server_receive(struct netc_udp_server* server, char* message, size_t msglen, struct sockaddr* client_addr, socklen_t* client_addrlen)
+int udp_server_send(struct netc_udp_server* server, const char* message, size_t msglen, int flags, struct sockaddr* client_addr, socklen_t client_addrlen)
 {
     socket_t sockfd = server->sockfd;
-    struct sockaddr* addr = (struct sockaddr*)&server->socket_addr;
-    socklen_t addrlen = server->addrlen;
 
-    int result = recvfrom(sockfd, message, msglen, 0, client_addr, client_addrlen);
-    if (result == -1) return netc_error(SERVRECV);
+    int result = sendto(sockfd, message, msglen, flags, client_addr, client_addrlen);
+    if (result == -1) netc_error(BADSEND);
 
-    return 0;
+    return result;
 };
 
-int udp_server_send(struct netc_udp_server* server, const char* message, size_t msglen, struct sockaddr* client_addr, socklen_t client_addrlen)
+int udp_server_receive(struct netc_udp_server* server, char* message, size_t msglen, int flags, struct sockaddr* client_addr, socklen_t* client_addrlen)
 {
     socket_t sockfd = server->sockfd;
-    struct sockaddr* addr = (struct sockaddr*)&server->socket_addr;
-    socklen_t addrlen = server->addrlen;
 
-    int result = sendto(sockfd, message, msglen, 0, client_addr, client_addrlen);
-    if (result == -1) return netc_error(SERVSEND);
+    int result = recvfrom(sockfd, message, msglen, flags, client_addr, client_addrlen);
+    if (result == -1) netc_error(BADRECV);
 
-    return 0;
+    return result;
 };
 
 int udp_server_close(struct netc_udp_server* server)
 {
     socket_t sockfd = server->sockfd;
 
+#ifdef _WIN32
+    int result = closesocket(sockfd);
+#else
     int result = close(sockfd);
+#endif
+
     if (result == -1) return netc_error(CLOSE);
+
+    netc_udp_server_listening = 0;
 
     return 0;
 };

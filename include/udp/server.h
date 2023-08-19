@@ -11,36 +11,25 @@
 /** A structure representing a UDP server. */
 struct netc_udp_server
 {
+#ifdef _WIN32
+    /** The Windows socket library data. */
+    WSADATA* wsa;
+#endif
     /** The socket file descriptor. */
     socket_t sockfd;
-    /** The polling file descriptor. */
-    int pfd;
     /** The server's address. */
-    struct sockaddr_in socket_addr;
+    struct sockaddr* sockaddr;
     /** The size of the server's address. */
     socklen_t addrlen;
-    /** The port the server is bound to. */
-    int port;
-    /** The maximum amount of sockets in the backlog. */
-    int backlog;
+
+    /** The polling file descriptor. */
+    int pfd;
+
+    /** User defined data to be passed to the event callbacks. */
+    void* data;
 
     /** The callback for when data is received. */
-    void (*on_data)();
-};
-
-/** A structure representing the config of a UDP server. */
-struct netc_udp_server_config
-{
-    /** The port the server is bound to. */
-    int port;
-    /** Whether or not to enable IPv6. */
-    int ipv6;
-    /** Whether or not to set the SO_REUSEADDR option to prevent EADDRINUSE. */
-    int reuse_addr;
-    /** Whether or not the server is non blocking. */
-    int non_blocking;
-    /** The maximum amount of sockets in the backlog. */
-    int backlog;
+    void (*on_data)(struct netc_udp_server* server, void* data);
 };
 
 /** Whether or not the server is listening for events. */
@@ -50,13 +39,14 @@ extern __thread int netc_udp_server_listening;
 int udp_server_main_loop(struct netc_udp_server* server);
 
 /** Initializes a UDP server. */
-int udp_server_init(struct netc_udp_server* server, struct netc_udp_server_config config);
+int udp_server_init(struct netc_udp_server* server, int ipv6, int non_blocking);
 /** Binds a UDP server to an address. */
-int udp_server_bind(struct netc_udp_server* server);
-/** Receives a message from a client. */
-int udp_server_receive(struct netc_udp_server* server, char* message, size_t msglen, struct sockaddr* client_addr, socklen_t* client_addrlen);
-/** Sends a message to a client. */
-int udp_server_send(struct netc_udp_server* server, const char* message, size_t msglen, struct sockaddr* client_addr, socklen_t client_addrlen);
+int udp_server_bind(struct netc_udp_server* server, struct sockaddr* addr, socklen_t addrlen, int reuse_addr);
+
+/** Sends a message to a client. Returns the result of the `sendto` syscall. */
+int udp_server_send(struct netc_udp_server* server, const char* message, size_t msglen, int flags, struct sockaddr* client_addr, socklen_t client_addrlen);
+/** Receives a message from a client. Returns the result of the `recvfrom` syscall. */
+int udp_server_receive(struct netc_udp_server* server, char* message, size_t msglen, int flags, struct sockaddr* client_addr, socklen_t* client_addrlen);
 
 /** Closes the UDP server. */
 int udp_server_close(struct netc_udp_server* server);

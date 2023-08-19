@@ -8,21 +8,11 @@ A UNIX compliant TCP wrapper which utilizes asynchronous polling. Written in C.
 - [X] IPv6 Support
 - [X] Asynchronous Callback System
 - [X] Blocking and Non-Blocking Mode
-- [ ] UDP Server and Client
-- [ ] Windows Support
-- [ ] HTTP/2 and WS abstractions
+- [X] UDP Server and Client
+- [X] Windows Support
+- [ ] HTTP/1.1 and WS Abstractions
 - [ ] SSL/TLS Support
-- [ ] Socket Flag Support
-- [ ] HTTP/3 and QUIC abstractions
-
-Usage:
-
-```c
-#include "netc/server.h"
-#include "netc/client.h"
-
-#include <stdio.h>
-#include <stdlib.h>
-#include <pthread.h>
-
-```
+- [ ] Buffering
+- [ ] HTTP/2 Abstractions
+- [ ] Socket Flags
+- [ ] HTTP/3 and QUIC Abstractions

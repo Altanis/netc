@@ -4,69 +4,114 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/errno.h>
+#include <unistd.h>
+#include <sys/fcntl.h>
+#include <sys/socket.h>
+
+#ifdef __linux__
+#include <sys/epoll.h>
+#elif _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+#elif __APPLE__
+#include <sys/event.h>
+#endif
 
 __thread int netc_http_server_listening = 0;
 
-int http_server_main_loop(struct http_server* server)
+void __tcp_on_connect__(struct netc_tcp_server* server, void* data)
 {
-    netc_http_server_listening = 1;
+    struct http_server* http_server = data;
+
+    struct netc_tcp_client client;
+    tcp_server_accept(server, &client);
+
+    /** TODO(Altanis): Work on TLS/SSL. */
+
+    if (http_server->on_connect != NULL)
+        http_server->on_connect(http_server, &client, http_server->data);
 };
 
-int http_server_init(struct http_server* server, struct netc_tcp_server_config config)
+void __tcp_on_data__(struct netc_tcp_server* server, socket_t sockfd, void* data)
 {
-    if (server == NULL) return -1;
-    server->server = malloc(sizeof(struct netc_tcp_server));
-
-    int init_result = 0;
-    if ((init_result = tcp_server_init(server->server, config)) != 0) return init_result; 
+    struct http_server* http_server = data;
+    if (http_server->on_request != NULL)
+        http_server->on_request(http_server, sockfd, http_server->data);
 };
 
-int http_server_start(struct http_server* server)
+void __tcp_on_disconnect__(struct netc_tcp_server* server, socket_t sockfd, int is_error, void* data)
 {
-    if (server == NULL) return -1;
+    /** Who asked? */
+    struct http_server* http_server = data;
+    if (http_server->on_disconnect != NULL)
+        http_server->on_disconnect(http_server, sockfd, is_error, http_server->data);
+};
 
-    if (tcp_server_bind(server) != 0) return netc_error(BIND);
-    if (tcp_server_listen(server) != 0) return netc_error(LISTEN);
+int http_server_init(struct http_server* http_server, int ipv6, int reuse_addr, struct sockaddr* address, socklen_t addrlen, int backlog)
+{
+    struct netc_tcp_server tcp_server = {0};
+    tcp_server.data = http_server;
+    
+    int init_result = tcp_server_init(&tcp_server, ipv6, reuse_addr, 1);
+    if (init_result != 0) return init_result;
 
-    if (server->server->non_blocking) return tcp_server_main_loop(server->server);
+    int bind_result = tcp_server_bind(&tcp_server, address, addrlen);
+    if (bind_result != 0) return bind_result;
+
+    int listen_result = tcp_server_listen(&tcp_server, backlog);
+    if (listen_result != 0) return listen_result;
+
+    tcp_server.on_connect = __tcp_on_connect__;
+    tcp_server.on_data = __tcp_on_data__;
+    tcp_server.on_disconnect = __tcp_on_disconnect__;
+
+    http_server->server = tcp_server;
 
     return 0;
 };
 
-int http_server_parse_request(struct http_server* server, char* buffer, struct http_request* request)
+int http_server_start(struct http_server* server)
 {
-    if (server == NULL || buffer == NULL || request == NULL) return -1;
+    return tcp_server_main_loop(&server->server);
+};
 
-    char* line = strtok(buffer, "\r\n");
-    if (line == NULL) return -1;
+int http_server_parse_request(struct http_server* server, socket_t sockfd, struct http_request* request)
+{
+    if (socket_recv_until(sockfd, request->method, MAX_HTTP_METHOD_LEN, " ", 1) <= 0) return -1;
+    if (socket_recv_until(sockfd, request->path, MAX_HTTP_PATH_LEN, " ", 1) <= 0) return -1;
+    if (socket_recv_until(sockfd, request->version, MAX_HTTP_VERSION_LEN, "\r", 1) <= 0) return -1;
 
-    char* method = strtok(line, " ");
-    if (method == NULL) return -1;
-
-    char* path = strtok(NULL, " ");
-    if (path == NULL) return -1;
-
-    char* version = strtok(NULL, " ");
-    if (version == NULL) return -1;
-
-    request->method = http_method_from_string(method);
-    request->path = path;
-    request->version = version;
-
-    while ((line = strtok(NULL, "\r\n")) != NULL)
+    request->headers = malloc(sizeof(struct vector));
+    if (request->headers == NULL)
     {
-        char* name = strtok(line, ":");
-        if (name == NULL) return -1;
+        printf("netc ran out of memory while trying to allocate space for a vector.\n");
+        return -1;
+    };
 
-        char* value = strtok(NULL, ":");
+    vector_init(request->headers, 8, sizeof(struct http_header));
+
+    char* buffer = calloc(MAX_HTTP_HEADER_LEN, sizeof(char));
+    if (buffer == NULL) return -1;
+
+    while (socket_recv_until(sockfd, buffer, MAX_HTTP_HEADER_LEN, "\r", 1) > 0)
+    {
+        struct http_header* header = calloc(1, sizeof(struct http_header));
+        header->name = calloc(MAX_HTTP_HEADER_NAME_LEN, sizeof(char));
+        header->value = calloc(MAX_HTTP_HEADER_VALUE_LEN, sizeof(char));
+
+        if (header->name == NULL || header->value == NULL) return -1;
+
+        char* value = strchr(buffer, ':');
         if (value == NULL) return -1;
 
-        struct http_header* header = malloc(sizeof(struct http_header));
-        header->name = name;
-        header->value = value;
+        strncpy(header->name, buffer, value - buffer);
+        strncpy(header->value, value + 1, strlen(value) - 1);
 
         vector_push(request->headers, header);
-    }
+
+        memset(buffer, 0, MAX_HTTP_HEADER_LEN);
+    };
 
     return 0;
 };

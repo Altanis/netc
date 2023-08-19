@@ -2,9 +2,10 @@
 #define ERROR_H
 
 #ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #else
-#include <errno.h>
+#include <sys/errno.h>
 #endif
 
 #ifdef _WIN32
@@ -19,22 +20,25 @@
 extern __thread int netc_errno_reason;
 
 /** ERROR CODES */
-#define EVCREATE    1     /** kqueue and epoll_create1 syscalls */
-#define SOCKET      2     /** socket syscall */
-#define POLL_FD     3     /** kevent, epoll_wait, and epoll_ctl syscalls */
-#define BIND        4     /** bind syscall */
-#define LISTEN      5     /** listen syscall */
-#define ACCEPT      6     /** accept syscall */
-#define SERVSEND    7     /** server send syscall */
-#define SERVRECV    8     /** server receive syscall */
-#define CLOSE       9     /** close syscall */
-#define FCNTL      10     /** fcntl syscall */
-#define CONNECT    11     /** connect syscall */
-#define CLNTSEND   12     /** client send syscall */
-#define CLNTRECV   13     /** client receive syscall */
-#define SOCKOPT    14     /** socket options */
-#define HANGUP     15     /** unexpected socket hangup */
-#define INETPTON   16     /** inet_pton syscall */
-#define BADRECV    17     /** socket closed when trying to recv() */
+
+/** syscalls */
+#define EVCREATE        1     /** kqueue and epoll_create1 syscalls */
+#define SOCKET          2     /** socket syscall */
+#define POLL_FD         3     /** kevent, epoll_wait, and epoll_ctl syscalls */
+#define BIND            4     /** bind syscall */
+#define LISTEN          5     /** listen syscall */
+#define ACCEPT          6     /** accept syscall */
+#define BADSEND         7     /** send syscall */
+#define BADRECV         8     /** receive syscall */
+#define CLOSE           9     /** close syscall */
+#define FCNTL          10     /** fcntl syscall */
+#define CONNECT        11     /** connect syscall */
+#define SOCKOPT        12     /** socket options */
+#define HANGUP         13     /** unexpected socket hangup */
+#define INETPTON       14     /** inet_pton syscall */
+#define WSASTARTUP     15     /** WSAStartup() */
+
+/** Prints the current error. */
+void netc_perror();
 
 #endif // ERROR_H

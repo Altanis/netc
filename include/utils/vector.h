@@ -18,12 +18,12 @@ struct vector
 void vector_init(struct vector* vec, size_t capacity, size_t size);
 /** Resizes the vector. Returns a `0` if a resize is required, or a `-1` if not. */
 int vector_resize(struct vector* vec, size_t size);
+/** Gets an element based off index. */
+void* vector_get(struct vector* vec, size_t index);
 /** Deletes an element based off index. */
 void vector_delete(struct vector* vec, size_t index);
 /** Pushes an element to the vector. */
 void vector_push(struct vector* vec, void* element);
-/** Sets an element at a specific index. */
-void vector_set_index(struct vector* vec, size_t index, void* element);
 /** Frees the vector. */
 void vector_free(struct vector* vec);
 

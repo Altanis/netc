@@ -7,7 +7,10 @@ void vector_init(struct vector* vec, size_t capacity, size_t size)
 {
     vec->data = malloc(size * capacity);
     if (vec->data == NULL)
-        printf("The program ran out of memory while trying to allocate space for a vector.\n");
+    {
+        printf("netc ran out of memory while trying to allocate space for a vector.\n");
+        return;
+    };
 
     vec->size = 0;
     vec->capacity = capacity;
@@ -20,12 +23,20 @@ int vector_resize(struct vector* vec, size_t size)
         vec->capacity *= 2;
         vec->data = realloc(vec->data, size * vec->capacity);
         if (vec->data == NULL) 
-            printf("The program ran out of memory while trying to allocate more space for a vector.\n");
+        {
+            printf("netc ran out of memory while trying to allocate more space for a vector.\n");
+            return -1;
+        };
 
         return 0;
     }
 
     return -1;
+};
+
+void* vector_get(struct vector* vec, size_t index)
+{
+    return vec->data[index];
 };
 
 void vector_delete(struct vector* vec, size_t index)

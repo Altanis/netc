@@ -4,13 +4,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <errno.h>
+#include <sys/errno.h>
 #include <unistd.h>
-#include <fcntl.h>
+#include <sys/fcntl.h>
+#include <sys/socket.h>
 
 #ifdef __linux__
 #include <sys/epoll.h>
 #elif _WIN32
+#define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #elif __APPLE__
 #include <sys/event.h>
@@ -38,8 +40,8 @@ int tcp_server_main_loop(struct netc_tcp_server* server)
         if (nev == WSA_WAIT_FAILED) return netc_error(EVCREATE);
 #elif __APPLE__
         int pfd = server->pfd;
-        struct kevent evlist[server->clients->size + 1];
-        int nev = kevent(pfd, NULL, 0, evlist, server->clients->size + 1, NULL);
+        struct kevent events[server->clients->size + 1];
+        int nev = kevent(pfd, NULL, 0, events, server->clients->size + 1, NULL);
         if (nev == -1) return netc_error(EVCREATE);
 #endif
 
@@ -49,14 +51,14 @@ int tcp_server_main_loop(struct netc_tcp_server* server)
         {
 #ifdef __linux__
             struct epoll_event ev = events[i];
-            int sockfd = ev.data.fd;
+            socket_t sockfd = ev.data.fd;
 
             if (sockfd == server->sockfd)
             {
                 if (ev.events & EPOLLERR || ev.events & EPOLLHUP) // server socket closed
                     return netc_error(HANGUP);
 
-                 if (server->on_connect != NULL) server->on_connect(server);
+                 if (server->on_connect != NULL) server->on_connect(server, server->data);
             }
             else
             {
@@ -67,7 +69,7 @@ int tcp_server_main_loop(struct netc_tcp_server* server)
                 }
                 else if (ev.events & EPOLLIN && server->on_data != NULL) 
                 {
-                     server->on_data(server, sockfd);
+                     server->on_data(server, sockfd, server->data);
                 }
             }
 #elif _WIN32
@@ -80,7 +82,7 @@ int tcp_server_main_loop(struct netc_tcp_server* server)
                 if (server->events.lNetworkEvents & FD_ACCEPT)
                 {
                     if (server->events.iErrorCode[FD_ACCEPT_BIT] != 0) return netc_error(HANGUP);
-                    if (server->on_connect != NULL) server->on_connect(server);
+                    if (server->on_connect != NULL) server->on_connect(server, server->data);
                 }
             }
             else
@@ -90,7 +92,7 @@ int tcp_server_main_loop(struct netc_tcp_server* server)
                 if (client->events.lNetworkEvents & FD_READ)
                 {
                     if (client->events.iErrorCode[FD_READ_BIT] != 0) return netc_error(HANGUP);
-                   if (server->on_data != NULL) server->on_data(server, sockfd);
+                   if (server->on_data != NULL) server->on_data(server, sockfd, server->data);
                 }
                 else if (client->events.lNetworkEvents & FD_WRITE)
                 {
@@ -104,17 +106,16 @@ int tcp_server_main_loop(struct netc_tcp_server* server)
                         return netc_error(CLOSE);
                 }
             }
-
 #elif __APPLE__
-            struct kevent ev = evlist[i];
-            int sockfd = ev.ident;
+            struct kevent ev = events[i];
+            socket_t sockfd = ev.ident;
 
             if (sockfd == server->sockfd)
             {
                 if (ev.flags & EV_EOF || ev.flags & EV_ERROR) // server socket closed
                     return netc_error(HANGUP); 
 
-                if (server->on_connect != NULL) server->on_connect(server);
+                if (server->on_connect != NULL) server->on_connect(server, server->data);
             }
             else
             {
@@ -125,7 +126,7 @@ int tcp_server_main_loop(struct netc_tcp_server* server)
                 }
                 else if (ev.flags & EVFILT_READ && server->on_data != NULL)
                 {
-                     server->on_data(server, sockfd);
+                     server->on_data(server, sockfd, server->data);
                 }
             }
 #endif
@@ -149,6 +150,7 @@ int tcp_server_init(struct netc_tcp_server* server, int ipv6, int reuse_addr, in
         return netc_error(SOCKOPT);
 
     server->clients = malloc(sizeof(struct vector));
+    if (server->clients == NULL) printf("netc ran out of memory while trying to allocate space for a vector.\n");
     vector_init(server->clients, 10, sizeof(int));
 
     if (server->non_blocking == 0) return 0;
@@ -234,27 +236,20 @@ int tcp_server_accept(struct netc_tcp_server* server, struct netc_tcp_client* cl
     return 0;
 };
 
-int tcp_server_send(int sockfd, char* message, size_t msglen)
+int tcp_server_send(socket_t sockfd, char* message, size_t msglen, int flags)
 {
-    int flags = 0;
     int result = send(sockfd, message, msglen, flags);
-    
-    if (result == -1) return netc_error(SERVSEND);
-    else if (result != msglen) return -(msglen - result); // message was not sent in full
+    if (result == -1) netc_error(BADSEND);
 
-    return 0;
+    return result;
 };
 
-int tcp_server_receive(int sockfd, char* message, size_t msglen)
+int tcp_server_receive(socket_t sockfd, char* message, size_t msglen, int flags)
 {
-    int flags = 0;
     int result = recv(sockfd, message, msglen, flags);
+    if (result == -1) netc_error(BADRECV);
 
-    if (result == -1) return netc_error(SERVRECV);
-    else if (result == 0) return netc_error(BADRECV);
-    else if (result != msglen) return -(msglen - result); // message was not received in full
-
-    return 0;
+    return result;
 };
 
 int tcp_server_close_self(struct netc_tcp_server* server)
@@ -267,11 +262,16 @@ int tcp_server_close_self(struct netc_tcp_server* server)
     return 0;
 };
 
-int tcp_server_close_client(struct netc_tcp_server* server, int sockfd, int is_error)
+int tcp_server_close_client(struct netc_tcp_server* server, socket_t sockfd, int is_error)
 {
-    if (server->on_disconnect != NULL) server->on_disconnect(server, sockfd, is_error);
+    if (server->on_disconnect != NULL) server->on_disconnect(server, sockfd, is_error, server->data);
 
+#ifdef _WIN32
+    int result = closesocket(sockfd);
+#else
     int result = close(sockfd);
+#endif
+
     if (result == -1) return netc_error(CLOSE);
 
     vector_delete(server->clients, sockfd);
