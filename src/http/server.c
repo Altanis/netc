@@ -22,6 +22,36 @@
 
 __thread int netc_http_server_listening = 0;
 
+int _path_matches(const char* path, const char* pattern) 
+{
+    while (*pattern) 
+    {
+        if (*pattern == '*') 
+        {
+            /** Check for end of path. */
+            if (*(pattern + 1) == '\0') return 1;
+
+            /** Recursively try all positions for the wildcard match. */
+            while (*path) 
+            {
+                if (_path_matches(path, pattern + 1)) return 1;
+                else ++path;
+            }
+            
+            return 0;
+        } 
+        else
+        {
+            if (*path != *pattern) return 0;
+            
+            ++path;
+            ++pattern;
+        }
+    }
+
+    return (*path == '\0');
+};
+
 void __tcp_on_connect__(struct netc_tcp_server* server, void* data)
 {
     struct http_server* http_server = data;
@@ -231,11 +261,17 @@ void (*http_server_find_route(struct http_server* server, const char* path))(str
     if (callback != NULL) return callback;
 
     /** Check for wildcards. */
-    for (size_t i = 0; i < server->routes->size; ++i)
+    for (size_t i = 0; i < server->routes->capacity; ++i)
     {
         struct map_entry* entry = &server->routes->entries[i];
-        if (entry->key == NULL) continue;
+        char* pattern = (char*)entry->key;
+        if (pattern == NULL) continue;
+        
+        if (_path_matches(path, pattern))
+            return (void (*)(struct http_server*, socket_t, struct http_request))entry->value;
     };
+
+    return NULL;
 };
 
 void http_server_remove_route(struct http_server* server, const char* path)

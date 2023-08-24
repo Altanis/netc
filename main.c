@@ -103,7 +103,7 @@ int main()
     if (http_server_init(&server, 0, 1, (struct sockaddr*)&addr, sizeof(addr), 128) != 0)
         printf("server failed to initialize\n");
 
-    http_server_create_route(&server, "/", incomingm);
+    http_server_create_route(&server, "/*", incomingm);
 
     printf("server initialized %d\n", server.server.pfd);
     http_server_start(&server);

@@ -54,12 +54,12 @@ struct http_query
 };
 
 /** A structure representing an entry in the routes map. */
-struct http_route_entry
+struct http_route
 {
     /** The callback. */
     void (*callback)(struct http_server* server, socket_t sockfd, struct http_request request);
-    /** The trie node associated with it to represent wildcards. */
-    struct trie_node* node;
+    /** The path. */
+    char* path;
 };
 
 /** A structure representing the HTTP server. */
