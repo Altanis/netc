@@ -3,24 +3,23 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
-#include <sys/types.h>
 #include <sys/socket.h>
 
-size_t socket_recv_until(socket_t sockfd, char* buffer, size_t buffer_size, char* bytes, int remove_delimiter)
+ssize_t socket_recv_until(socket_t sockfd, char* buffer, size_t buffer_size, char* bytes, int remove_delimiter)
 {
     size_t bytes_len = strlen(bytes);
     size_t bytes_received = 0;
 
     while ((bytes_received + bytes_len) <= buffer_size)
     {
-        int recv_result = recv(sockfd, buffer + bytes_received, 1, 0);
+        ssize_t recv_result = recv(sockfd, buffer + bytes_received, 1, 0);
         if (recv_result <= 0) 
         {
             if (recv_result == -1) 
             {
                 if (errno == EAGAIN || errno == EWOULDBLOCK) break;
                 netc_error(BADRECV);
-            }
+            };
 
             return recv_result;
         }
@@ -30,8 +29,10 @@ size_t socket_recv_until(socket_t sockfd, char* buffer, size_t buffer_size, char
         if (bytes_received >= bytes_len && strncmp(buffer + bytes_received - bytes_len, bytes, bytes_len) == 0)
         {
             if (remove_delimiter)
-                for (int i = 0; i < bytes_len; ++i) 
-                    buffer[bytes_received - bytes_len + i] = '\0';
+            {
+                buffer[bytes_received - bytes_len] = '\0';
+                --bytes_received;
+            };
 
             break;
         }

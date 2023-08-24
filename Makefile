@@ -1,6 +1,6 @@
 # Compiler settings
 CC := clang
-CFLAGS := -Iinclude -Ofast
+CFLAGS := -g -Iinclude
 LDLIBS :=
 
 # Source file directories

@@ -26,23 +26,32 @@ void incomings(struct http_server* server, struct netc_tcp_client* client, void*
     printf("incoming connection\n");
 };
 
-void incomingm(struct http_server* server, socket_t sockfd, void* data)
+void incomingm(struct http_server* server, socket_t sockfd, struct http_request request)
 {
-    printf("incoming request!!! wow!!!!!!! deep!!!!!!\n");
-    struct http_request request = {0};
-
-    http_server_parse_request(server, sockfd, &request);
-
+    printf("incoming data at request /\nDETAILS:\n\n");
     printf("method: %s\n", request.method);
     printf("path: %s\n", request.path);
     printf("version: %s\n", request.version);
 
-    printf("headers:\n");
-    for (int i = 0; i < request.headers->size; ++i)
+    if (request.query != NULL)
     {
-        struct http_header* header = vector_get(request.headers, i);
-        printf("\t%s: %s\n", header->name, header->value);
+        for (size_t i = 0; i < request.query->size; ++i)
+        {
+            struct http_query* query = vector_get(request.query, i);
+            printf("query: %s=%s\n", query->key, query->value);
+        };
+    }
+
+    if (request.headers != NULL)
+    {
+        for (size_t i = 0; i < request.headers->size; ++i)
+        {
+            struct http_header* header = vector_get(request.headers, i);
+            printf("header: %s=%s\n", header->name, header->value);
+        };
     };
+
+    printf("body: %s\n", request.body);
 };
 
 int main()
@@ -87,12 +96,14 @@ int main()
     };
 
     struct http_server server = {0};
+    // server.config = {...};
 
     server.on_connect = incomings;
-    server.on_request = incomingm;
 
     if (http_server_init(&server, 0, 1, (struct sockaddr*)&addr, sizeof(addr), 128) != 0)
         printf("server failed to initialize\n");
+
+    http_server_create_route(&server, "/", incomingm);
 
     printf("server initialized %d\n", server.server.pfd);
     http_server_start(&server);

@@ -150,7 +150,6 @@ int tcp_server_init(struct netc_tcp_server* server, int ipv6, int reuse_addr, in
         return netc_error(SOCKOPT);
 
     server->clients = malloc(sizeof(struct vector));
-    if (server->clients == NULL) printf("netc ran out of memory while trying to allocate space for a vector.\n");
     vector_init(server->clients, 10, sizeof(int));
 
     if (server->non_blocking == 0) return 0;

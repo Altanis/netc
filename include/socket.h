@@ -3,6 +3,7 @@
 
 #include "utils/error.h"
 
+#include <sys/types.h>
 #include <sys/fcntl.h>
 
 #ifdef _WIN32
@@ -13,8 +14,8 @@
     typedef int socket_t;
 #endif
 
-/** Receives from a socket until a certain byte. */
-size_t socket_recv_until(socket_t sockfd, char* buffer, size_t buffer_size, char* bytes, int remove_delimiter);
+/** Receives from a socket until a certain byte (nonblocking). */
+ssize_t socket_recv_until(socket_t sockfd, char* buffer, size_t buffer_size, char* bytes, int remove_delimiter);
 
 /** Gets a socket's flags. */
 int socket_get_flags(socket_t sockfd);

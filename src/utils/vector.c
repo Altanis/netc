@@ -18,20 +18,17 @@ void vector_init(struct vector* vec, size_t capacity, size_t size)
 
 int vector_resize(struct vector* vec, size_t size)
 {
-    if (vec->size >= vec->capacity)
+    if (vec->size < vec->capacity) return -1;
+
+    vec->capacity *= 2;
+    vec->data = realloc(vec->data, size * vec->capacity);
+    if (vec->data == NULL) 
     {
-        vec->capacity *= 2;
-        vec->data = realloc(vec->data, size * vec->capacity);
-        if (vec->data == NULL) 
-        {
-            printf("netc ran out of memory while trying to allocate more space for a vector.\n");
-            return -1;
-        };
+        printf("netc ran out of memory while trying to allocate more space for a vector.\n");
+        return -1;
+    };
 
-        return 0;
-    }
-
-    return -1;
+    return 0;
 };
 
 void* vector_get(struct vector* vec, size_t index)
@@ -56,4 +53,5 @@ void vector_push(struct vector* vec, void* element)
 void vector_free(struct vector* vec)
 {
     free(vec->data);
+    free(vec);
 };

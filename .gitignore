@@ -1,3 +1,5 @@
 /.vscode
 /.cache
 compile_commands.json
+obj
+netc.dSYM
