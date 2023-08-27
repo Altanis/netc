@@ -11,7 +11,8 @@ A UNIX compliant TCP wrapper which utilizes asynchronous polling. Written in C.
 - [X] UDP Server and Client
 - [X] Windows Support
 - [ ] HTTP/1.1 and WS Abstractions
-- [ ] SSL/TLS Support
+- [ ] SSL/TLS Support (for HTTP/1.1 and WS Client)
+<!-- In my opinion, there is no point of providing SSL suport for servers due to reverse proxies providing them. -->
 - [ ] Buffering
 - [ ] HTTP/2 Abstractions
 - [ ] Socket Flags

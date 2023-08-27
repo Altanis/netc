@@ -1,6 +1,5 @@
 #include "socket.h"
 
-#include <stdio.h>
 #include <stddef.h>
 #include <string.h>
 #include <sys/socket.h>
@@ -22,7 +21,7 @@ ssize_t socket_recv_until(socket_t sockfd, char* buffer, size_t buffer_size, cha
             };
 
             return recv_result;
-        }
+        };
 
         bytes_received += recv_result;
 

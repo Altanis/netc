@@ -18,6 +18,17 @@
 #include <time.h>
 #include <unistd.h>
 
+#undef IP
+#undef PORT
+#undef BACKLOG
+#undef REUSE_ADDRESS
+#undef USE_IPV6
+#undef SERVER_NON_BLOCKING
+#undef CLIENT_NON_BLOCKING
+#undef ANSI_RED
+#undef ANSI_GREEN
+#undef ANSI_RESET
+
 #define IP "127.0.0.1"
 #define PORT 8080
 #define BACKLOG 3
@@ -35,23 +46,23 @@ static int udp_test001_server_data = 0;
 static int udp_test001_client_data = 0;
 
 static void* udp_test001_server_thread_nonblocking_main(void* arg);
-static void udp_test001_server_on_data(struct netc_udp_server* server, void* data);
+static void udp_test001_server_on_data(struct udp_server* server, void* data);
 
 static void* udp_test001_client_thread_nonblocking_main(void* arg);
-static void udp_test001_client_on_data(struct netc_udp_client* client, void* data);
+static void udp_test001_client_on_data(struct udp_client* client, void* data);
 
 static int udp_test001();
 
 static void* udp_test001_server_thread_nonblocking_main(void* arg)
 {
-    struct netc_udp_server* server = (struct netc_udp_server*)arg;
+    struct udp_server* server = (struct udp_server*)arg;
     int r = udp_server_main_loop(server);
     if (r != 0) printf(ANSI_RED "[UDP TEST CASE 001] server main loop aborted:\nerrno: %d\nreason: %d\n%s", r, netc_errno_reason, ANSI_RESET);
 
     return NULL;
 };
 
-static void udp_test001_server_on_data(struct netc_udp_server* server, void* data)
+static void udp_test001_server_on_data(struct udp_server* server, void* data)
 {
     char* buffer = calloc(18, sizeof(char));
     struct sockaddr client_addr;
@@ -78,14 +89,14 @@ static void udp_test001_server_on_data(struct netc_udp_server* server, void* dat
 
 static void* udp_test001_client_thread_nonblocking_main(void* arg)
 {
-    struct netc_udp_client* client = (struct netc_udp_client*)arg;
+    struct udp_client* client = (struct udp_client*)arg;
     int r = udp_client_main_loop(client);
     if (r != 0) printf(ANSI_RED "[UDP TEST CASE 001] client main loop aborted:\nerrno: %d\nreason: %d\n%s", r, netc_errno_reason, ANSI_RESET);
 
     return NULL;
 };
 
-static void udp_test001_client_on_data(struct netc_udp_client* client, void* data)
+static void udp_test001_client_on_data(struct udp_client* client, void* data)
 {
     char* buffer = calloc(18, sizeof(char));
 
@@ -107,7 +118,7 @@ static void udp_test001_client_on_data(struct netc_udp_client* client, void* dat
 
 static int udp_test001()
 {
-    struct netc_udp_server* server = malloc(sizeof(struct netc_udp_server));
+    struct udp_server* server = malloc(sizeof(struct udp_server));
     server->on_data = udp_test001_server_on_data;
 
     struct sockaddr_in udp_server_addr = {
@@ -134,7 +145,7 @@ static int udp_test001()
     pthread_t server_thread;
     pthread_create(&server_thread, NULL, udp_test001_server_thread_nonblocking_main, server);
 
-    struct netc_udp_client* client = malloc(sizeof(struct netc_udp_client));
+    struct udp_client* client = malloc(sizeof(struct udp_client));
     client->on_data = udp_test001_client_on_data;
 
     struct sockaddr_in udp_client_addr = {

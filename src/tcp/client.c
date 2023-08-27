@@ -17,7 +17,7 @@
 
 __thread int netc_tcp_client_listening = 0;
 
-int tcp_client_main_loop(struct netc_tcp_client* client)
+int tcp_client_main_loop(struct tcp_client* client)
 {
     /** The client socket should be nonblocking when listening for events. */
     socket_set_non_blocking(client->sockfd);
@@ -125,7 +125,7 @@ int tcp_client_main_loop(struct netc_tcp_client* client)
     return 0;
 };
 
-int tcp_client_init(struct netc_tcp_client* client, int ipv6, int non_blocking)
+int tcp_client_init(struct tcp_client* client, int ipv6, int non_blocking)
 {
     if (client == NULL) return -1; 
     
@@ -165,7 +165,7 @@ int tcp_client_init(struct netc_tcp_client* client, int ipv6, int non_blocking)
     return 0;
 };
 
-int tcp_client_connect(struct netc_tcp_client* client, struct sockaddr* addr, socklen_t addrlen)
+int tcp_client_connect(struct tcp_client* client, struct sockaddr* addr, socklen_t addrlen)
 {
     client->sockaddr = addr;
     client->addrlen = addrlen;
@@ -173,12 +173,12 @@ int tcp_client_connect(struct netc_tcp_client* client, struct sockaddr* addr, so
     socket_t sockfd = client->sockfd;
 
     int result = connect(sockfd, addr, addrlen);
-    if (result == -1) return netc_error(CONNECT);
+    if (result == -1 && errno != EINPROGRESS) return netc_error(CONNECT);
 
     return 0;
 };
 
-int tcp_client_send(struct netc_tcp_client* client, char* message, size_t msglen, int flags)
+int tcp_client_send(struct tcp_client* client, char* message, size_t msglen, int flags)
 {
     socket_t sockfd = client->sockfd;
 
@@ -188,7 +188,7 @@ int tcp_client_send(struct netc_tcp_client* client, char* message, size_t msglen
     return result;
 };
 
-int tcp_client_receive(struct netc_tcp_client* client, char* message, size_t msglen, int flags)
+int tcp_client_receive(struct tcp_client* client, char* message, size_t msglen, int flags)
 {
     socket_t sockfd = client->sockfd;
 
@@ -198,7 +198,7 @@ int tcp_client_receive(struct netc_tcp_client* client, char* message, size_t msg
     return result;
 };
 
-int tcp_client_close(struct netc_tcp_client* client, int is_error)
+int tcp_client_close(struct tcp_client* client, int is_error)
 {
     if (client->on_disconnect != NULL) client->on_disconnect(client, is_error, client->data);
 

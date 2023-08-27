@@ -19,7 +19,7 @@
 
 __thread int netc_udp_server_listening = 0;
 
-int udp_server_main_loop(struct netc_udp_server* server)
+int udp_server_main_loop(struct udp_server* server)
 {
     /** The server socket should be nonblocking when listening for events. */
     socket_set_non_blocking(server->sockfd);
@@ -66,7 +66,7 @@ int udp_server_main_loop(struct netc_udp_server* server)
     return 0;
 };
 
-int udp_server_init(struct netc_udp_server* server, int ipv6, int non_blocking)
+int udp_server_init(struct udp_server* server, int ipv6, int non_blocking)
 {
     if (server == NULL) return -1;
     int protocol = ipv6 ? AF_INET6 : AF_INET;
@@ -103,7 +103,7 @@ int udp_server_init(struct netc_udp_server* server, int ipv6, int non_blocking)
     return 0;
 };
 
-int udp_server_bind(struct netc_udp_server* server, struct sockaddr* addr, socklen_t addrlen, int reuse_addr)
+int udp_server_bind(struct udp_server* server, struct sockaddr* addr, socklen_t addrlen, int reuse_addr)
 {
     server->sockaddr = addr;
     server->addrlen = addrlen;
@@ -119,7 +119,7 @@ int udp_server_bind(struct netc_udp_server* server, struct sockaddr* addr, sockl
     return 0;
 };
 
-int udp_server_send(struct netc_udp_server* server, const char* message, size_t msglen, int flags, struct sockaddr* client_addr, socklen_t client_addrlen)
+int udp_server_send(struct udp_server* server, char* message, size_t msglen, int flags, struct sockaddr* client_addr, socklen_t client_addrlen)
 {
     socket_t sockfd = server->sockfd;
 
@@ -129,7 +129,7 @@ int udp_server_send(struct netc_udp_server* server, const char* message, size_t 
     return result;
 };
 
-int udp_server_receive(struct netc_udp_server* server, char* message, size_t msglen, int flags, struct sockaddr* client_addr, socklen_t* client_addrlen)
+int udp_server_receive(struct udp_server* server, char* message, size_t msglen, int flags, struct sockaddr* client_addr, socklen_t* client_addrlen)
 {
     socket_t sockfd = server->sockfd;
 
@@ -139,7 +139,7 @@ int udp_server_receive(struct netc_udp_server* server, char* message, size_t msg
     return result;
 };
 
-int udp_server_close(struct netc_udp_server* server)
+int udp_server_close(struct udp_server* server)
 {
     socket_t sockfd = server->sockfd;
 

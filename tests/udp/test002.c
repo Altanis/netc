@@ -18,6 +18,17 @@
 #include <time.h>
 #include <unistd.h>
 
+#undef IP
+#undef PORT
+#undef BACKLOG
+#undef REUSE_ADDRESS
+#undef USE_IPV6
+#undef SERVER_NON_BLOCKING
+#undef CLIENT_NON_BLOCKING
+#undef ANSI_RED
+#undef ANSI_GREEN
+#undef ANSI_RESET
+
 #define IP "127.0.0.1"
 #define PORT 8080
 #define BACKLOG 3
@@ -41,7 +52,7 @@ static int udp_test002();
 
 static void* udp_test002_server_thread_blocking_main(void* arg)
 {
-    struct netc_udp_server* server = (struct netc_udp_server*)arg;
+    struct udp_server* server = (struct udp_server*)arg;
     char* buffer = calloc(18, sizeof(char));
     struct sockaddr client_addr;
     socklen_t client_addrlen = sizeof(client_addr);
@@ -67,7 +78,7 @@ static void* udp_test002_server_thread_blocking_main(void* arg)
     return NULL;
 };
 
-static void udp_test002_server_on_data(struct netc_udp_server* server, void* data)
+static void udp_test002_server_on_data(struct udp_server* server, void* data)
 {
     char* buffer = calloc(18, sizeof(char));
     struct sockaddr client_addr;
@@ -94,7 +105,7 @@ static void udp_test002_server_on_data(struct netc_udp_server* server, void* dat
 
 static void* udp_test002_client_thread_blocking_main(void* arg)
 {
-    struct netc_udp_client* client = (struct netc_udp_client*)arg;
+    struct udp_client* client = (struct udp_client*)arg;
 
     int send_result = 0;
     if ((send_result = udp_client_send(client, "hello from client", 18, 0, NULL, 0)) != 18)
@@ -120,7 +131,7 @@ static void* udp_test002_client_thread_blocking_main(void* arg)
     return NULL;
 };
 
-static void udp_test002_client_on_data(struct netc_udp_client* client, void* data)
+static void udp_test002_client_on_data(struct udp_client* client, void* data)
 {
     char* buffer = calloc(18, sizeof(char));
 
@@ -142,7 +153,7 @@ static void udp_test002_client_on_data(struct netc_udp_client* client, void* dat
 
 static int udp_test002()
 {
-    struct netc_udp_server* server = malloc(sizeof(struct netc_udp_server));
+    struct udp_server* server = malloc(sizeof(struct udp_server));
     server->on_data = udp_test002_server_on_data;
 
     struct sockaddr_in udp_server_addr = {
@@ -169,7 +180,7 @@ static int udp_test002()
     pthread_t server_thread;
     pthread_create(&server_thread, NULL, udp_test002_server_thread_blocking_main, server);
 
-    struct netc_udp_client* client = malloc(sizeof(struct netc_udp_client));
+    struct udp_client* client = malloc(sizeof(struct udp_client));
     client->on_data = udp_test002_client_on_data;
 
     struct sockaddr_in udp_client_addr = {

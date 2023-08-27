@@ -20,7 +20,7 @@
 
 __thread int netc_tcp_server_listening = 0;
 
-int tcp_server_main_loop(struct netc_tcp_server* server)
+int tcp_server_main_loop(struct tcp_server* server)
 {
     /** The server socket should be nonblocking when listening for events. */
     socket_set_non_blocking(server->sockfd);
@@ -136,7 +136,7 @@ int tcp_server_main_loop(struct netc_tcp_server* server)
     return 0;
 };
 
-int tcp_server_init(struct netc_tcp_server* server, int ipv6, int reuse_addr, int non_blocking)
+int tcp_server_init(struct tcp_server* server, int ipv6, int reuse_addr, int non_blocking)
 {
     if (server == NULL) return -1;
 
@@ -181,7 +181,7 @@ int tcp_server_init(struct netc_tcp_server* server, int ipv6, int reuse_addr, in
     return 0;
 };
 
-int tcp_server_bind(struct netc_tcp_server* server, struct sockaddr* address, socklen_t addrlen)
+int tcp_server_bind(struct tcp_server* server, struct sockaddr* address, socklen_t addrlen)
 {
     server->address = address;
 
@@ -194,7 +194,7 @@ int tcp_server_bind(struct netc_tcp_server* server, struct sockaddr* address, so
     return 0;
 };
 
-int tcp_server_listen(struct netc_tcp_server* server, int backlog)
+int tcp_server_listen(struct tcp_server* server, int backlog)
 {
     socket_t sockfd = server->sockfd;
 
@@ -204,7 +204,7 @@ int tcp_server_listen(struct netc_tcp_server* server, int backlog)
     return 0;
 };
 
-int tcp_server_accept(struct netc_tcp_server* server, struct netc_tcp_client* client)
+int tcp_server_accept(struct tcp_server* server, struct tcp_client* client)
 {
     socket_t sockfd = server->sockfd;
     struct sockaddr* addr = (struct sockaddr*)&client->sockaddr;
@@ -251,7 +251,7 @@ int tcp_server_receive(socket_t sockfd, char* message, size_t msglen, int flags)
     return result;
 };
 
-int tcp_server_close_self(struct netc_tcp_server* server)
+int tcp_server_close_self(struct tcp_server* server)
 {
     int result = close(server->sockfd);
     if (result == -1) return netc_error(CLOSE);
@@ -261,7 +261,7 @@ int tcp_server_close_self(struct netc_tcp_server* server)
     return 0;
 };
 
-int tcp_server_close_client(struct netc_tcp_server* server, socket_t sockfd, int is_error)
+int tcp_server_close_client(struct tcp_server* server, socket_t sockfd, int is_error)
 {
     if (server->on_disconnect != NULL) server->on_disconnect(server, sockfd, is_error, server->data);
 

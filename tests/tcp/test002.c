@@ -15,6 +15,17 @@
 #include <stdbool.h>
 #include <sys/_endian.h>
 
+#undef IP
+#undef PORT
+#undef BACKLOG
+#undef REUSE_ADDRESS
+#undef USE_IPV6
+#undef SERVER_NON_BLOCKING
+#undef CLIENT_NON_BLOCKING
+#undef ANSI_RED
+#undef ANSI_GREEN
+#undef ANSI_RESET
+
 #define IP "127.0.0.1"
 #define PORT 8080
 #define BACKLOG 3
@@ -40,8 +51,8 @@ static void* tcp_test002_client_thread_blocking_main(void* arg);
 
 static void* tcp_test002_server_thread_blocking_main(void* arg)
 {
-    struct netc_tcp_server* server = (struct netc_tcp_server*)arg;
-    struct netc_tcp_client* client = malloc(sizeof(struct netc_tcp_client));
+    struct tcp_server* server = (struct tcp_server*)arg;
+    struct tcp_client* client = malloc(sizeof(struct tcp_client));
 
     int accept_result;
     if ((accept_result = tcp_server_accept(server, client)) != 0)
@@ -90,7 +101,7 @@ static void* tcp_test002_server_thread_blocking_main(void* arg)
 
 static void* tcp_test002_client_thread_blocking_main(void* arg)
 {
-    struct netc_tcp_client* client = (struct netc_tcp_client*)arg;
+    struct tcp_client* client = (struct tcp_client*)arg;
 
     struct sockaddr_in addr = {
         .sin_family = AF_INET,
@@ -104,7 +115,7 @@ static void* tcp_test002_client_thread_blocking_main(void* arg)
     };
 
     int client_connect_result = 0;
-    if ((client_connect_result = tcp_client_connect(client, (struct sockaddr*)&addr, (socklen_t)sizeof(addr))) != 0 && client_connect_result != EINPROGRESS)
+    if ((client_connect_result = tcp_client_connect(client, (struct sockaddr*)&addr, (socklen_t)sizeof(addr))) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] client failed to connect\nerrno: %d\nerrno reason: %d\n%s", client_connect_result, netc_errno_reason, ANSI_RESET);
         return NULL;
@@ -153,7 +164,7 @@ static void* tcp_test002_client_thread_blocking_main(void* arg)
 
 static int tcp_test002()
 {
-    struct netc_tcp_server* server = malloc(sizeof(struct netc_tcp_server));
+    struct tcp_server* server = malloc(sizeof(struct tcp_server));
     struct sockaddr_in saddr = {
         .sin_family = AF_INET,
         .sin_addr.s_addr = INADDR_ANY,
@@ -185,7 +196,7 @@ static int tcp_test002()
     pthread_t server_thread;
     pthread_create(&server_thread, NULL, tcp_test002_server_thread_blocking_main, server);
 
-    struct netc_tcp_client* client = malloc(sizeof(struct netc_tcp_client));
+    struct tcp_client* client = malloc(sizeof(struct tcp_client));
 
     int client_init_result = 0;
     if ((client_init_result = tcp_client_init(client, USE_IPV6, CLIENT_NON_BLOCKING)) != 0)
