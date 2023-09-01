@@ -18,7 +18,6 @@
 #undef IP
 #undef PORT
 #undef BACKLOG
-#undef REUSE_ADDRESS
 #undef USE_IPV6
 #undef SERVER_NON_BLOCKING
 #undef CLIENT_NON_BLOCKING
@@ -29,7 +28,6 @@
 #define IP "127.0.0.1"
 #define PORT 8080
 #define BACKLOG 3
-#define REUSE_ADDRESS 1
 #define USE_IPV6 0
 #define SERVER_NON_BLOCKING 0
 #define CLIENT_NON_BLOCKING 0
@@ -172,9 +170,16 @@ static int tcp_test002()
     };
 
     int init_result = 0;
-    if ((init_result = tcp_server_init(server, USE_IPV6, REUSE_ADDRESS, SERVER_NON_BLOCKING)) != 0)
+    if ((init_result = tcp_server_init(server, USE_IPV6, SERVER_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", init_result, netc_errno_reason, ANSI_RESET);
+        return 1;
+    };
+
+    int optval = 1;
+    if (setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) != 0)
+    {
+        printf(ANSI_RED "[TCP TEST CASE 002] server failed to setsockopt\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 

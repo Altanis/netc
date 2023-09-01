@@ -10,7 +10,7 @@ struct http_server
     /** The TCP server. */
     struct tcp_server server;
     /** A map storing all the routes to their callbacks. */
-    struct vector* routes; // <char* path, void (*)(struct http_server* server, socket_t sockfd, struct http_request request)>
+    struct vector routes; // <http_route>
 
     /** User defined data to be passed to the event callbacks. */
     void* data;
@@ -61,7 +61,7 @@ struct http_route
 extern __thread int netc_http_server_listening;
 
 /** Initializes the HTTP server. */
-int http_server_init(struct http_server* server, int ipv6, int reuse_addr, struct sockaddr* address, socklen_t addrlen, int backlog);
+int http_server_init(struct http_server* server, int ipv6, struct sockaddr* address, socklen_t addrlen, int backlog);
 /** Starts a nonblocking event loop for the HTTP server. */
 int http_server_start(struct http_server* server);
 
@@ -72,10 +72,12 @@ void (*http_server_find_route(struct http_server* server, const char* path))(str
 /** Removes a route for a path. */
 void http_server_remove_route(struct http_server* server, const char* path);
 
-/** Parses the HTTP request. */
-int http_server_parse_request(struct http_server* server, socket_t sockfd, struct http_request* request);
+/** Sends chunked data to the client. */
+int http_server_send_chunked_data(struct http_server* server, socket_t sockfd, char* data);
 /** Sends the HTTP response. */
 int http_server_send_response(struct http_server* server, socket_t sockfd, struct http_response* response);
+/** Parses the HTTP request. */
+int http_server_parse_request(struct http_server* server, socket_t sockfd, struct http_request* request);
 
 /** Closes the HTTP server. */
 int http_server_close(struct http_server* server);

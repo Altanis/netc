@@ -103,13 +103,10 @@ int udp_server_init(struct udp_server* server, int ipv6, int non_blocking)
     return 0;
 };
 
-int udp_server_bind(struct udp_server* server, struct sockaddr* addr, socklen_t addrlen, int reuse_addr)
+int udp_server_bind(struct udp_server* server, struct sockaddr* addr, socklen_t addrlen)
 {
     server->sockaddr = addr;
     server->addrlen = addrlen;
-
-    if (reuse_addr && setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int)) == -1) 
-        return netc_error(SOCKOPT);
 
     socket_t sockfd = server->sockfd;
 

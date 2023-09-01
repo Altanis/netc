@@ -16,7 +16,6 @@
 #undef IP
 #undef PORT
 #undef BACKLOG
-#undef REUSE_ADDRESS
 #undef USE_IPV6
 #undef SERVER_NON_BLOCKING
 #undef CLIENT_NON_BLOCKING
@@ -27,7 +26,6 @@
 #define IP "127.0.0.1"
 #define PORT 8080
 #define BACKLOG 3
-#define REUSE_ADDRESS 1
 #define USE_IPV6 0
 #define SERVER_NON_BLOCKING 1
 #define CLIENT_NON_BLOCKING 1
@@ -141,7 +139,7 @@ static int http_test001()
         .sin_port = htons(PORT)
     };
 
-    if (http_server_init(&server, USE_IPV6, REUSE_ADDRESS, (struct sockaddr*)&addr, sizeof(addr), BACKLOG) != 0)
+    if (http_server_init(&server, USE_IPV6, (struct sockaddr*)&addr, sizeof(addr), BACKLOG) != 0)
     {
         printf(ANSI_RED "[HTTP TEST CASE 001] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;

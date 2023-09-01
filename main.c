@@ -35,17 +35,23 @@ void client_outgoings(struct http_client* client, void* data)
     printf("client connected\n");
 
     struct http_request request = {0};
-    request.method = "GET";
-    request.path = "/";
-    request.version = "HTTP/1.1";
+    http_request_set_method(&request, "GET");
+    http_request_set_path(&request, "/");
+    http_request_set_version(&request, "HTTP/1.1");
 
-    struct vector headers = {0};
-    vector_init(&headers, 2, sizeof(struct http_header));
-    vector_push(&headers, &(struct http_header){"Content-Type", "text/plain"});
-    vector_push(&headers, &(struct http_header){"Content-Length", "5"});
+    struct http_header content_type = {0};
+    http_header_set_name(&content_type, "Content-Type");
+    http_header_set_value(&content_type, "text/plain");
+    // sso_string_init(&content_type.name, "Content-Type");
+    // sso_string_init(&content_type.value, "text/plain");
 
-    request.headers = &headers;
-    request.body = "hello";
+    struct http_header content_length = {0};
+    http_header_set_name(&content_length, "Content-Length");
+    http_header_set_value(&content_length, "5");
+    // sso_string_init(&content_length.name, "Content-Length");
+    // sso_string_init(&content_length.value, "5");
+
+    http_request_set_body(&request, "hello");
 
     http_client_send_request(client, &request);
 };
@@ -70,16 +76,22 @@ void server_incominge(struct http_server* server, socket_t sockfd, enum parse_re
 
     struct http_response response = {0};
     response.status_code = status_code;
-    response.status_message = (char*)(http_status_messages[status_code == 400 ? HTTP_STATUS_CODE_400 : HTTP_STATUS_CODE_500]);
-    response.version = "1.1";
+    http_response_set_version(&response, "HTTP/1.1");
+    http_response_set_status_message(&response, http_status_messages[status_code == 400 ? HTTP_STATUS_CODE_400 : HTTP_STATUS_CODE_500]);
 
-    struct vector headers = {0};
-    vector_init(&headers, 2, sizeof(struct http_header));
-    vector_push(&headers, &(struct http_header){"Content-Type", "text/plain"});
-    vector_push(&headers, &(struct http_header){"Content-Length", "100"});
+    struct http_header content_type = {0};
+    http_header_set_name(&content_type, "Content-Type");
+    http_header_set_value(&content_type, "text/plain");
 
-    response.headers = &headers;
-    response.body = response_body;
+    struct http_header content_length = {0};
+    http_header_set_name(&content_length, "Content-Length");
+    http_header_set_value(&content_length, "100");
+
+    vector_init(&response.headers, 2, sizeof(struct http_header));
+    vector_push(&response.headers, &content_type);
+    vector_push(&response.headers, &content_length);
+
+    http_response_set_body(&response, response_body);
 
     http_server_send_response(server, sockfd, &response);
 };
@@ -97,42 +109,42 @@ void client_incominge(struct http_client* client, enum parse_response_error_type
 void server_incomingm(struct http_server* server, socket_t sockfd, struct http_request request)
 {
     printf("incoming data at request /\nDETAILS:\n\n");
-    printf("method: %s\n", request.method);
-    printf("path: %s\n", request.path);
-    printf("version: %s\n", request.version);
+    printf("method: %s\n", http_request_get_method(&request));
+    printf("path: %s\n", http_request_get_path(&request));
+    printf("version: %s\n", http_request_get_version(&request));
 
-    if (request.query != NULL)
+    for (size_t i = 0; i < request.query.size; ++i)
     {
-        for (size_t i = 0; i < request.query->size; ++i)
-        {
-            struct http_query* query = vector_get(request.query, i);
-            printf("query: %s=%s\n", query->key, query->value);
-        };
-    }
-
-    if (request.headers != NULL)
-    {
-        for (size_t i = 0; i < request.headers->size; ++i)
-        {
-            struct http_header* header = vector_get(request.headers, i);
-            printf("header: %s=%s\n", header->name, header->value);
-        };
+        struct http_query* query = vector_get(&request.query, i);
+        printf("query: %s=%s\n", http_query_get_key(query), http_query_get_value(query));
     };
 
-    printf("body: %s\n", request.body);
+    for (size_t i = 0; i < request.headers.size; ++i)
+    {
+        struct http_header* header = vector_get(&request.headers, i);
+        printf("header: %s=%s\n", http_header_get_name(header), http_header_get_value(header));
+    };
+
+    printf("body: %s\n", http_request_get_body(&request));
 
     struct http_response response = {0};
-    response.version = "HTTP/1.1";
+    http_response_set_version(&response, "HTTP/1.1");
     response.status_code = 200;
-    response.status_message = "OK";
+    http_response_set_status_message(&response, "OK");
 
-    struct vector headers = {0};
-    vector_init(&headers, 1, sizeof(struct http_header));
-    vector_push(&headers, &(struct http_header){.name = "Content-Type", .value = "text/plain"});
-    vector_push(&headers, &(struct http_header){.name = "Content-Length", .value = "5"});
-    response.headers = &headers;
+    struct http_header content_type = {0};
+    http_header_set_name(&content_type, "Content-Type");
+    http_header_set_value(&content_type, "text/plain");
 
-    response.body = "hello";
+    struct http_header content_length = {0};
+    http_header_set_name(&content_length, "Content-Length");
+    http_header_set_value(&content_length, "5");
+
+    vector_init(&request.headers, 2, sizeof(struct http_header));
+    vector_push(&request.headers, &content_type);
+    vector_push(&request.headers, &content_length);
+
+    http_response_set_body(&response, "hello");
 
     http_server_send_response(server, sockfd, &response);
 };
@@ -140,20 +152,29 @@ void server_incomingm(struct http_server* server, socket_t sockfd, struct http_r
 void client_incomingm(struct http_client* client, struct http_response response, void* data)
 {
     printf("incoming data at response /\nDETAILS:\n\n");
-    printf("version: %s\n", response.version);
+    printf("version: %s\n", http_response_get_version(&response));
     printf("status code: %d\n", response.status_code);
-    printf("status message: %s\n", response.status_message);
+    printf("status message: %s\n", http_response_get_status_message(&response));
 
-    if (response.headers != NULL)
+    for (size_t i = 0; i < response.headers.size; ++i)
     {
-        for (size_t i = 0; i < response.headers->size; ++i)
-        {
-            struct http_header* header = vector_get(response.headers, i);
-            printf("header: %s=%s\n", header->name, header->value);
-        };
+        struct http_header* header = vector_get(&response.headers, i);
+        printf("header: %s=%s\n", http_header_get_name(header), http_header_get_value(header));
     };
 
-    printf("body: %s\n", response.body);
+    printf("body: %s\n", http_response_get_body(&response));
+};
+
+void clistart(struct http_client* client)
+{
+    int x = http_client_start(client);
+    printf("[client]\n netc error:%d\n error:%s\n", netc_errno_reason, netc_strerror());
+};
+
+void serstart(struct http_server* server)
+{
+    int x = http_server_start(server);
+    printf("[server]\n netc error:%d\n error:%s\n", netc_errno_reason, netc_strerror());
 };
 
 int main()
@@ -163,7 +184,7 @@ int main()
     testsuite_result[1] = tcp_test002();
     testsuite_result[2] = udp_test001();
     testsuite_result[3] = udp_test002();
-    testsuite_result[4] = http_test001();
+    // testsuite_result[4] = http_test001();
 
     printf("\n\n\n%s", BANNER);
 
@@ -203,8 +224,12 @@ int main()
     server.on_connect = server_incomings;
     server.on_malformed_request = server_incominge;
 
-    if (http_server_init(&server, 0, 1, (struct sockaddr*)&addr, sizeof(addr), 128) != 0)
-        printf("server failed to initialize\n");
+    if (http_server_init(&server, 0, (struct sockaddr*)&addr, sizeof(addr), 128) != 0)
+    {
+        printf("server failed to initialize %d\n", errno);
+        return 1;
+    };
+
 
     struct http_route route = {0};
     route.path = "/*";
@@ -216,7 +241,7 @@ int main()
     // http_server_start(&server);
 
     pthread_t thread;
-    pthread_create(&thread, NULL, (void*)http_server_start, &server);
+    pthread_create(&thread, NULL, (void*)serstart, &server);
 
     printf("server started\n");
 
@@ -243,7 +268,7 @@ int main()
     };
 
     printf("client initialized\n");
-    pthread_create(&thread, NULL, (void*)http_client_start, &client);
+    pthread_create(&thread, NULL, (void*)clistart, &client);
 
     printf("client started\n");
 

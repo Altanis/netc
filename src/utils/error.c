@@ -5,19 +5,27 @@
 
 __thread int netc_errno_reason = 0;
 
-void netc_perror()
+char* netc_strerror()
 {
 #ifdef _WIN32
-    char* error = NULL;
-    FormatMessageA(FORMAT_MESSAGE_ALLOCATE_BUFFER | FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, WSAGetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&error, 0, NULL);
+    char error[512];
+    FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, WSAGetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&error, 0, NULL);
 
-    for (int i = 0; i < strlen(error); ++i)
-        // formatmessage 🤡
-        if (error[i] == '\n' || error[i] == '\r') error[i] = ' ';
+    for (int i = 0; i < error; ++i)
+    {
+        if (error[i] == '\n')
+        {
+            if (error[i + 1] == '\0')
+            {
+                error[i] = '\0';
+                break;
+            }
+            else error[i] = ' ';
+        }
+    }
 
-    fprintf(stderr, "%s\n", error);
-    LocalFree(error);
+    return error;
 #else
-    fprintf(stderr, "%s\n", strerror(errno));
+    return strerror(errno);
 #endif
 };

@@ -43,8 +43,8 @@ struct tcp_server
     /** Whether or not the socket is nonblocking. */
     int non_blocking;
 
-    /** A vector of each client sockfd connected to the server. */
-    struct vector* clients; // <socket_t>
+    /** The number of clients connected to the server. */
+    size_t client_count;
 
     /** The polling file descriptor. */
     int pfd;
@@ -67,7 +67,7 @@ extern __thread int netc_tcp_server_listening;
 int tcp_server_main_loop(struct tcp_server* server);
 
 /** Initializes a TCP server. */
-int tcp_server_init(struct tcp_server* server, int ipv6, int reuse_addr, int non_blocking);
+int tcp_server_init(struct tcp_server* server, int ipv6, int non_blocking);
 /** Binds a TCP server to an address. */
 int tcp_server_bind(struct tcp_server* server, struct sockaddr* addr, socklen_t addrlen);
 /** Starts listening for connections on a TCP server. */

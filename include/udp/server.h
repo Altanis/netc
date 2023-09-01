@@ -37,7 +37,7 @@ int udp_server_main_loop(struct udp_server* server);
 /** Initializes a UDP server. */
 int udp_server_init(struct udp_server* server, int ipv6, int non_blocking);
 /** Binds a UDP server to an address. */
-int udp_server_bind(struct udp_server* server, struct sockaddr* addr, socklen_t addrlen, int reuse_addr);
+int udp_server_bind(struct udp_server* server, struct sockaddr* addr, socklen_t addrlen);
 
 /** Sends a message to a client. Returns the result of the `sendto` syscall. */
 int udp_server_send(struct udp_server* server, char* message, size_t msglen, int flags, struct sockaddr* client_addr, socklen_t client_addrlen);

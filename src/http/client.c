@@ -4,12 +4,6 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void _vector_push_str(struct vector* vec, char* string)
-{
-    for (size_t i = 0; i < strlen(string); ++i)
-        vector_push(vec, &string[i]);
-};
-
 static void _tcp_on_connect(struct tcp_client* client, void* data)
 {
     struct http_client* http_client = (struct http_client*)data;
@@ -25,6 +19,7 @@ static void _tcp_on_data(struct tcp_client* client, void* data)
     int result = 0;
     if ((result = http_client_parse_response(http_client, &response)) != 0)
     {
+        printf("malformed response: %d\n", result);
         if (http_client->on_malformed_response != NULL)
             http_client->on_malformed_response(http_client, result, http_client->data);
         return;
@@ -82,124 +77,130 @@ int http_client_send_chunked_data(struct http_client* client, char* data)
 
 int http_client_send_request(struct http_client* client, struct http_request* request)
 {
-    struct vector request_str = {0};
-    vector_init(&request_str, 128, sizeof(char));
+    string_t request_str = {0};
+    sso_string_init(&request_str, "");
 
-    _vector_push_str(&request_str, request->method);
-    _vector_push_str(&request_str, " ");
-    _vector_push_str(&request_str, request->path);
-    _vector_push_str(&request_str, " ");
-    _vector_push_str(&request_str, request->version);
-    _vector_push_str(&request_str, "\r\n");
+    char encoded[request->path.length * 3 + 1];
+    http_url_percent_encode((char*)sso_string_get(&request->path), encoded);
+
+    sso_string_concat_buffer(&request_str, sso_string_get(&request->method));
+    sso_string_concat_char(&request_str, ' ');
+    sso_string_concat_buffer(&request_str, encoded);
+    sso_string_concat_char(&request_str, ' ');
+    sso_string_concat_buffer(&request_str, sso_string_get(&request->version));
+    sso_string_concat_buffer(&request_str, "\r\n");
+
+    const char* len = sso_string_get(&request_str);
 
     int chunked = 0;
 
-    if (request->headers != NULL)
+    for (size_t i = 0; i < request->headers.size; ++i)
     {
-        for (size_t i = 0; i < request->headers->size; ++i)
-        {
-            struct http_header* header = vector_get(request->headers, i);
-            if (!chunked && strcmp(header->name, "Transfer-Encoding") == 0 && strcmp(header->value, "chunked") == 0)
-                chunked = 1;
+        struct http_header* header = vector_get(&request->headers, i);
+        const char* name = sso_string_get(&header->name);
+        const char* value = sso_string_get(&header->value);
 
-            _vector_push_str(&request_str, header->name);
-            _vector_push_str(&request_str, ": ");
-            _vector_push_str(&request_str, header->value);
-            _vector_push_str(&request_str, "\r\n");
-        };
+        if (!chunked && strcmp(name, "Transfer-Encoding") == 0 && strcmp(value, "chunked") == 0)
+            chunked = 1;
+
+        sso_string_concat_buffer(&request_str, name);
+        sso_string_concat_buffer(&request_str, ": ");
+        sso_string_concat_buffer(&request_str, value);
+        sso_string_concat_buffer(&request_str, "\r\n");
     };
 
-    _vector_push_str(&request_str, "\r\n");
+    sso_string_concat_buffer(&request_str, "\r\n");
 
-    if (!chunked && request->body != NULL)
+    const char* body = sso_string_get(&request->body);
+    if (!chunked && body != NULL)
     {
-        _vector_push_str(&request_str, request->body);
+        sso_string_concat_buffer(&request_str, body);
     };
     
-    char request_str_c[request_str.size];
-    for (size_t i = 0; i < request_str.size; ++i)
-        request_str_c[i] = *(char*)vector_get(&request_str, i);
-    
-    return tcp_client_send(&client->client, request_str_c, request_str.size, 0);
+    printBytes(sso_string_get(&request_str), request_str.length);
+    // printf("%s\n", sso_string_get(&request_str));
+
+    return tcp_client_send(&client->client, (char*)sso_string_get(&request_str), request_str.length, 0);
 };
 
 int http_client_parse_response(struct http_client* client, struct http_response* response)
 {
-    response->headers = malloc(sizeof(struct vector));
-    vector_init(response->headers, 8, sizeof(struct http_header));
+    char buffer[4096];
+    recv(client->client.sockfd, buffer, 4096, MSG_PEEK);
+    printf("%s\n", buffer);
 
-    response->version = malloc(9 * sizeof(char));
-    char status_code_str[4] = {0};
-    response->status_message = malloc(64 * sizeof(char));
+    vector_init(&response->headers, 8, sizeof(struct http_header));
 
-    if (socket_recv_until(client->client.sockfd, response->version, 9, " ", 1) <= 0) return -1;
-    if (socket_recv_until(client->client.sockfd, status_code_str, 3, " ", 1) <= 0) return -1;
-    if (socket_recv_until(client->client.sockfd, response->status_message, 63, "\r\n", 2) <= 0) return -1;
+    string_t version = {0};
+    string_t status_code = {0};
+    string_t status_message = {0};
 
-    response->status_code = atoi(status_code_str);
+    sso_string_init(&version, "");
+    sso_string_init(&status_code, "");
+    sso_string_init(&status_message, "");
+
+    if (socket_recv_until_dynamic(client->client.sockfd, &version, " ", 1, 9) <= 0) return -1;
+    if (socket_recv_until_dynamic(client->client.sockfd, &status_code, " ", 1, 4) <= 0) return -1;
+    if (socket_recv_until_dynamic(client->client.sockfd, &status_message, "\r\n", 1, 63) <= 0) return -1;
+
+    response->version = version;
+    response->status_code = atoi(sso_string_get(&status_code));
+    response->status_message = status_message;
+
+    printf("version: %s\n", sso_string_get(&version));
+    printf("status: %s\n", sso_string_get(&status_code));
+    printf("msg: %s\n", sso_string_get(&status_message));
 
     size_t content_length = 0; // < 0 means chunked
 
-    char* buffer = malloc((256 + 4096 + 2) * sizeof(char));
     while (1)
     {
-        if (socket_recv_until(client->client.sockfd, buffer, 256 + 4096 + 2, "\r\n", 1) <= 0) return -1;
-        
-        if (buffer[0] == '\0') break;
+        struct http_header header = {0};
+        sso_string_init(&header.name, "");
+        sso_string_init(&header.value, "");
 
-        struct http_header* header = malloc(sizeof(struct http_header));
-        header->name = malloc(256 * sizeof(char));
-        header->value = malloc(4096 * sizeof(char));
-
-        char* value = strchr(buffer, ':');
-        if (value == NULL) return -2;
-
-        strncpy(header->name, buffer, value - buffer);
-        strncpy(header->value, value + 2, strlen(value));
-
-        header->name[value - buffer] = '\0';
-        header->value[strlen(value)] = '\0';
-
-        if (content_length == 0 && strcmp(header->name, "Content-Length") == 0)
-            content_length = strtoul(header->value, NULL, 10);
-        else if (content_length == 0 && strcmp(header->name, "Transfer-Encoding") == 0 && strcmp(header->value, "chunked") == 0)
+        if (socket_recv_until_dynamic(client->client.sockfd, &header.name, ": ", 1, 63) <= 0) return -1;
+        if (socket_recv_until_dynamic(client->client.sockfd, &header.value, "\r\n", 1, 8191) <= 0) return -1;
+    
+        if (content_length == 0 && strcmp(sso_string_get(&header.name), "Content-Length") == 0)
+            content_length = strtoul(sso_string_get(&header.value), NULL, 10);
+        else if (content_length == 0 && strcmp(sso_string_get(&header.name), "Transfer-Encoding") == 0 && strcmp(sso_string_get(&header.value), "chunked") == 0)
             content_length = -1;
 
-        vector_push(response->headers, header);
-        memset(buffer, 0, (256 + 4096 + 2) * sizeof(char));
+        vector_push(&response->headers, &header);
+
+        char temp_buffer[2] = {0};
+        if (recv(client->client.sockfd, temp_buffer, 2, MSG_PEEK) <= 0) return -1;
+
+        if (temp_buffer[0] == '\r' && temp_buffer[1] == '\n')
+        {
+            if (recv(client->client.sockfd, temp_buffer, 2, 0) <= 0) return -1;
+            break;
+        };
     };
+
+    sso_string_init(&response->body, "");
 
     if (content_length == -1)
     {
-        struct vector body = {0};
-        vector_init(&body, 4096, sizeof(char));
-
         while (1)
         {
-            if (socket_recv_until(client->client.sockfd, buffer, 256 + 4096 + 2, "\r\n", 1) <= 0) return -1;
+            string_t chunk_length = {0};
+            sso_string_init(&chunk_length, "");
 
-            size_t chunk_length = strtoul(buffer, NULL, 16);
-            if (chunk_length == 0) break;
+            if (socket_recv_until_dynamic(client->client.sockfd, &chunk_length, "\r\n", 1, 64) <= 0) return -1;
 
-            if (socket_recv_until(client->client.sockfd, buffer, chunk_length + 2, "\r\n", 1) <= 0) return -1;
+            size_t chunk_size = strtoul(sso_string_get(&chunk_length), NULL, 16);
+            if (chunk_size == 0) break;
 
-            for (size_t i = 0; i < chunk_length; ++i)
-                vector_push(&body, &buffer[i]);
+            if (socket_recv_until_dynamic(client->client.sockfd, &response->body, "\r\n", 1, chunk_size) <= 0) return -1;
 
-            memset(buffer, 0, (256 + 4096 + 2) * sizeof(char));
+            char temp_buffer[2] = {0};
+            if (socket_recv_until_fixed(client->client.sockfd, temp_buffer, 2, "\r\n", 1) <= 0) return -1;
+            if (temp_buffer[0] != '\r' || temp_buffer[1] != '\n') return -4;
         };
-
-        response->body = malloc(body.size * sizeof(char));
-        for (size_t i = 0; i < body.size; ++i)
-            response->body[i] = *(char*)vector_get(&body, i);
     }
-    else if (content_length > 0)
-    {
-        response->body = malloc(content_length * sizeof(char));
-        if (socket_recv_until(client->client.sockfd, response->body, content_length + 2, "\r\n", 1) <= 0) return -1;
-    };
-
-    free(buffer);
+    else if (socket_recv_until_dynamic(client->client.sockfd, &response->body, "\r\n", 1, content_length) <= 0) return -1;
 
     return 0;
 };

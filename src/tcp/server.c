@@ -30,18 +30,18 @@ int tcp_server_main_loop(struct tcp_server* server)
     {
 #ifdef __linux__
         int pfd = server->pfd;
-        struct epoll_event events[server->clients->size + 1];
-        int nev = epoll_wait(pfd, events, server->clients->size + 1, -1);
+        struct epoll_event events[server->client_count + 1];
+        int nev = epoll_wait(pfd, events, server->client_count + 1, -1);
         if (nev == -1)
             return netc_error(EVCREATE);
 #elif _WIN32
         int pfd = server->pfd;
-        int nev = WSAWaitForMultipleEvents(server->clients->size + 1, &pfd, FALSE, -1, FALSE);
+        int nev = WSAWaitForMultipleEvents(server->client_count + 1, &pfd, FALSE, -1, FALSE);
         if (nev == WSA_WAIT_FAILED) return netc_error(EVCREATE);
 #elif __APPLE__
         int pfd = server->pfd;
-        struct kevent events[server->clients->size + 1];
-        int nev = kevent(pfd, NULL, 0, events, server->clients->size + 1, NULL);
+        struct kevent events[server->client_count + 1];
+        int nev = kevent(pfd, NULL, 0, events, server->client_count + 1, NULL);
         if (nev == -1) return netc_error(EVCREATE);
 #endif
 
@@ -136,7 +136,7 @@ int tcp_server_main_loop(struct tcp_server* server)
     return 0;
 };
 
-int tcp_server_init(struct tcp_server* server, int ipv6, int reuse_addr, int non_blocking)
+int tcp_server_init(struct tcp_server* server, int ipv6, int non_blocking)
 {
     if (server == NULL) return -1;
 
@@ -146,11 +146,7 @@ int tcp_server_init(struct tcp_server* server, int ipv6, int reuse_addr, int non
     server->sockfd = socket(protocol, SOCK_STREAM, 0); // IPv4, TCP, 0
     if (server->sockfd == -1) return netc_error(SOCKET);
 
-    if (reuse_addr && setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, &reuse_addr, sizeof(int)) != 0)
-        return netc_error(SOCKOPT);
-
-    server->clients = malloc(sizeof(struct vector));
-    vector_init(server->clients, 10, sizeof(int));
+    server->client_count = 0;
 
     if (server->non_blocking == 0) return 0;
     if (socket_set_non_blocking(server->sockfd) != 0) return netc_error(FCNTL);
@@ -214,7 +210,7 @@ int tcp_server_accept(struct tcp_server* server, struct tcp_client* client)
     if (result == -1) return netc_error(ACCEPT);
 
     client->sockfd = result;
-    vector_push(server->clients, &result);
+    ++server->client_count;
 
     if (server->non_blocking == 0) return 0;
     if (socket_set_non_blocking(client->sockfd) != 0) return netc_error(FCNTL);
@@ -273,7 +269,7 @@ int tcp_server_close_client(struct tcp_server* server, socket_t sockfd, int is_e
 
     if (result == -1) return netc_error(CLOSE);
 
-    vector_delete(server->clients, sockfd);
+    --server->client_count;
 
     return 0;
 };

@@ -1,6 +1,9 @@
 #ifndef HTTP_COMMON_H
 #define HTTP_COMMON_H
 
+#include "utils/vector.h"
+#include "utils/string.h"
+
 #include <stdint.h>
 
 #define HTTP_STATUS_CODES \
@@ -112,57 +115,109 @@ enum parse_response_error_types
 struct http_request
 {
     /** The HTTP method. */
-    char* method;
+    string_t method;
     /** The HTTP path the request was sent to. */
-    char* path;
+    string_t path;
     /** The HTTP version. */
-    char* version;
+    string_t version;
 
     /** The parsed query in the path. */
-    struct vector* query; // <http_query>
+    struct vector query; // <http_query>
     /** The HTTP headers. */
-    struct vector* headers; // <http_header>
+    struct vector headers; // <http_header>
     /** The HTTP body. */
-    char* body;
+    string_t body;
 };
 
 /** A structure representing the HTTP response. */
 struct http_response
 {
     /** The HTTP version. */
-    char* version;
+    string_t version;
     /** The HTTP status code. */
     int status_code;
     /** The HTTP status message. */
-    char* status_message;
+    string_t status_message;
 
     /** The HTTP headers. */
-    struct vector* headers; // <http_header>
+    struct vector headers; // <http_header>
     /** The HTTP body. */
-    char* body;
+    string_t body;
 };
 
 /** A structure representing the HTTP header. */
 struct http_header
 {
     /** The header's name. */
-    char* name;
+    string_t name;
     /** The header's value. */
-    char* value;
+    string_t value;
 };
 
 /** A structure representing a query key-value pair. */
 struct http_query
 {
     /** The query's key. */
-    char* key;
+    string_t key;
     /** The query's value. */
-    char* value;
+    string_t value;
 };
 
+/** Gets the value of a request's method. */
+const char* http_request_get_method(const struct http_request* request);
+/** Gets the value of a request's path. */
+const char* http_request_get_path(const struct http_request* request);
+/** Gets the value of a request's version. */
+const char* http_request_get_version(const struct http_request* request);
+/** Gets the value of a request's body. */
+const char* http_request_get_body(const struct http_request* request);
+
+/** Sets the value of a request's method. */
+void http_request_set_method(struct http_request* request, const char* method);
+/** Sets the value of a request's path. */
+void http_request_set_path(struct http_request* request, const char* path);
+/** Sets the value of a request's version. */
+void http_request_set_version(struct http_request* request, const char* version);
+/** Sets the value of a request's body. */
+void http_request_set_body(struct http_request* request, const char* body);
+
+/** Gets the value of a response's version. */
+const char* http_response_get_version(const struct http_response* response);
+/** Gets the value of a response's status message. */
+const char* http_response_get_status_message(const struct http_response* response);
+/** Gets the value of a response's body. */
+const char* http_response_get_body(const struct http_response* response);
+
+/** Sets the value of a response's version. */
+void http_response_set_version(struct http_response* response, const char* version);
+/** Sets the value of a response's status message. */
+void http_response_set_status_message(struct http_response* response, const char* status_message);
+/** Sets the value of a response's body. */
+void http_response_set_body(struct http_response* response, const char* body);
+
+/** Gets the value of a header's name. */
+const char* http_header_get_name(const struct http_header* header);
+/** Gets the value of a header's value. */
+const char* http_header_get_value(const struct http_header* header);
+
+/** Sets the value of a header's name. */
+void http_header_set_name(struct http_header* header, const char* name);
+/** Sets the value of a header's value. */
+void http_header_set_value(struct http_header* header, const char* value);
+
+/** Gets the value of a query's key. */
+const char* http_query_get_key(const struct http_query* query);
+/** Gets the value of a query's value. */
+const char* http_query_get_value(const struct http_query* query);
+
+/** Sets the value of a query's key. */
+void http_query_set_key(struct http_query* query, const char* key);
+/** Sets the value of a query's value. */
+void http_query_set_value(struct http_query* query, const char* value);
+
 /** Percent encodes a URL. */
-char* http_url_percent_encode(char* url);
+void http_url_percent_encode(char* url, char* encoded);
 /** Percent decodes a URL. */
-char* http_url_percent_decode(char* url);
+void http_url_percent_decode(char* url, char* decoded);
 
 #endif // HTTP_COMMON_H

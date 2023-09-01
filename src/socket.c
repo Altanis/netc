@@ -1,10 +1,55 @@
 #include "socket.h"
 
+#include <stdio.h>
 #include <stddef.h>
 #include <string.h>
 #include <sys/socket.h>
+#include <sys/time.h>
 
-ssize_t socket_recv_until(socket_t sockfd, char* buffer, size_t buffer_size, char* bytes, int remove_delimiter)
+ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t* string, const char* bytes, int remove_delimiter, size_t max_bytes_received)
+{
+    size_t bytes_len = strlen(bytes);
+    size_t bytes_received = 0;
+
+    while (bytes_received <= max_bytes_received)
+    {
+        char c;
+        ssize_t recv_result = recv(sockfd, &c, sizeof c, 0);
+        if (recv_result <= 0)
+        {
+            if (recv_result == -1) 
+            {
+                if (errno == EAGAIN || errno == EWOULDBLOCK)
+                {
+                    // prevent dos like asap lol
+                    continue;
+                }
+                netc_error(BADRECV);
+            };
+
+            return recv_result;
+        };
+
+        bytes_received += recv_result;
+        sso_string_concat_char(string, c);
+
+        if (bytes_received >= bytes_len && strncmp(sso_string_get(string) + bytes_received - bytes_len, bytes, bytes_len) == 0)
+        {
+            if (remove_delimiter)
+            {
+                sso_string_backspace(string, bytes_len);
+                --bytes_received;
+            };
+
+            break;
+        };
+    };
+
+    if (bytes_received > 0) printf("contents: %s\n", sso_string_get(string));
+    return bytes_received;
+};
+
+ssize_t socket_recv_until_fixed(socket_t sockfd, char* buffer, size_t buffer_size, char* bytes, int remove_delimiter)
 {
     size_t bytes_len = strlen(bytes);
     size_t bytes_received = 0;

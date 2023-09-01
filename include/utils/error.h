@@ -33,12 +33,11 @@ extern __thread int netc_errno_reason;
 #define CLOSE           9     /** close syscall */
 #define FCNTL          10     /** fcntl syscall */
 #define CONNECT        11     /** connect syscall */
-#define SOCKOPT        12     /** socket options */
-#define HANGUP         13     /** unexpected socket hangup */
-#define INETPTON       14     /** inet_pton syscall */
-#define WSASTARTUP     15     /** WSAStartup() */
+#define HANGUP         12     /** unexpected socket hangup */
+#define INETPTON       13     /** inet_pton syscall */
+#define WSASTARTUP     14     /** WSAStartup() */
 
 /** Prints the current error. */
-void netc_perror();
+char* netc_strerror();
 
 #endif // ERROR_H

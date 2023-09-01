@@ -1,14 +1,42 @@
 #include "http/common.h"
 #include "utils/vector.h"
 
-#include <zlib.h>
 #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 
-char* http_url_percent_encode(char* url)
+const char* http_request_get_method(const struct http_request* request) { return sso_string_get(&request->method); };
+const char* http_request_get_path(const struct http_request* request) { return sso_string_get(&request->path); };
+const char* http_request_get_version(const struct http_request* request) { return sso_string_get(&request->version); };
+const char* http_request_get_body(const struct http_request* request) { return sso_string_get(&request->body); };
+
+void http_request_set_method(struct http_request* request, const char* method) { sso_string_set(&request->method, method); };
+void http_request_set_path(struct http_request* request, const char* path) { sso_string_set(&request->path, path); };
+void http_request_set_version(struct http_request* request, const char* version) { sso_string_set(&request->version, version); };
+void http_request_set_body(struct http_request* request, const char* body) { sso_string_set(&request->body, body); };
+
+const char* http_response_get_version(const struct http_response* response) { return sso_string_get(&response->version); };
+const char* http_response_get_status_message(const struct http_response* response) { return sso_string_get(&response->status_message); };
+const char* http_response_get_body(const struct http_response* response) { return sso_string_get(&response->body); };
+
+void http_response_set_version(struct http_response* response, const char* version) { sso_string_set(&response->version, version); };
+void http_response_set_status_message(struct http_response* response, const char* status_message) { sso_string_set(&response->status_message, status_message); };
+void http_response_set_body(struct http_response* response, const char* body) { sso_string_set(&response->body, body); };
+
+const char* http_header_get_name(const struct http_header* header) { return sso_string_get(&header->name); };
+const char* http_header_get_value(const struct http_header* header) { return sso_string_get(&header->value); };
+
+void http_header_set_name(struct http_header* header, const char* name) { sso_string_set(&header->name, name); };
+void http_header_set_value(struct http_header* header, const char* value) { sso_string_set(&header->value, value); };
+
+const char* http_query_get_key(const struct http_query* query) { return sso_string_get(&query->key); };
+const char* http_query_get_value(const struct http_query* query) { return sso_string_get(&query->value); };
+
+void http_query_set_key(struct http_query* query, const char* key) { sso_string_set(&query->key, key); };
+void http_query_set_value(struct http_query* query, const char* value) { sso_string_set(&query->value, value); };
+
+void http_url_percent_encode(char* url, char* encoded)
 {
-    char* encoded = malloc(strlen(url) * 3 + 1);
     char* encoded_ptr = encoded;
 
     for (size_t i = 0; i < strlen(url); ++i)
@@ -17,7 +45,7 @@ char* http_url_percent_encode(char* url)
             (url[i] >= '0' && url[i] <= '9') ||
             (url[i] >= 'a' && url[i] <= 'z') ||
             (url[i] >= 'A' && url[i] <= 'Z') ||
-            url[i] == '-' || url[i] == '_' || url[i] == '.' || url[i] == '~'
+            url[i] == '-' || url[i] == '_' || url[i] == '.' || url[i] == '~' || url[i] == '/'
         )
         {
             *encoded_ptr++ = url[i];
@@ -30,13 +58,10 @@ char* http_url_percent_encode(char* url)
     };
 
     *encoded_ptr = '\0';
-
-    return encoded;
 };
 
-char* http_url_percent_decode(char* url)
+void http_url_percent_decode(char* url, char* decoded)
 {
-    char* decoded = malloc(strlen(url) + 1);
     char* decoded_ptr = decoded;
 
     for (size_t i = 0; i < strlen(url); ++i)
@@ -54,6 +79,4 @@ char* http_url_percent_decode(char* url)
     };
 
     *decoded_ptr = '\0';
-
-    return decoded;
 };
