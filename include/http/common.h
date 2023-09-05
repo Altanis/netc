@@ -6,6 +6,33 @@
 
 #include <stdint.h>
 
+/** Checks the result of `socket_recv_until...` functions. Intended for use in a while loop. */
+#define CHECK_RECV_RESULT(current_state, required_state, sockfd, string, bytes, remove_delimiter, max_bytes_received) \
+{ \
+    switch (current_state) \
+    { \
+        case -1: current_state = REQUEST_PARSING_STATE_METHOD; break; \
+        case REQUEST_PARSING_STATE_METHOD: current_state = REQUEST_PARSING_STATE_PATH; break; \
+        case REQUEST_PARSING_STATE_PATH: current_state = REQUEST_PARSING_STATE_VERSION; break; \
+        case REQUEST_PARSING_STATE_VERSION: current_state = REQUEST_PARSING_STATE_HEADER_NAME; break; \
+        case REQUEST_PARSING_STATE_HEADER_NAME: current_state = REQUEST_PARSING_STATE_HEADER_VALUE; break; \
+        case REQUEST_PARSING_STATE_HEADER_VALUE: current_state = REQUEST_PARSING_STATE_HEADER_NAME; break; \
+        case REQUEST_PARSING_STATE_ATTEMPT_CHUNK_SIZE: current_state = REQUEST_PARSING_STATE_CHUNK_SIZE; break; \
+        case REQUEST_PARSING_STATE_CHUNK_SIZE: current_state = REQUEST_PARSING_STATE_CHUNK_DATA; break; \
+        case REQUEST_PARSING_STATE_CHUNK_DATA: current_state = REQUEST_PARSING_STATE_CHUNK_SIZE; break; \
+        case REQUEST_PARSING_STATE_BODY: break; \
+        default: break; \
+    } \
+    \
+    \
+    if (current_state == required_state) \
+    { \
+        ssize_t result = socket_recv_until_dynamic((sockfd), (string), (bytes), (remove_delimiter), (max_bytes_received)); \
+        if (result == -1) return REQUEST_PARSE_ERROR_RECV; \
+        else if (result == 0) continue; \
+    } \
+}
+
 #define HTTP_STATUS_CODES \
     X(100, "Continue") \
     X(101, "Switching Protocols") \
@@ -87,6 +114,37 @@ static const char* http_status_messages[] =
 };
 #undef X
 
+/** An enum representing the different states during parsing. */
+enum http_request_parsing_states
+{
+    // REQUEST LINE
+    /** The method is being parsed. */
+    REQUEST_PARSING_STATE_METHOD,
+    /** The path is being parsed. */
+    REQUEST_PARSING_STATE_PATH,
+    /** The version is being parsed. */
+    REQUEST_PARSING_STATE_VERSION,
+
+    /** The state after breaking the parsing loop. */
+    REQUEST_PARSING_STATE_ATTEMPT_CHUNK_SIZE,
+
+    // HEADERS
+    /** The header name is being parsed. */
+    REQUEST_PARSING_STATE_HEADER_NAME,
+    /** The header value is being parsed. */
+    REQUEST_PARSING_STATE_HEADER_VALUE,
+
+    // BODY (CHUNKED)
+    /** The chunk size is being parsed. */
+    REQUEST_PARSING_STATE_CHUNK_SIZE,
+    /** The chunk data is being parsed. */
+    REQUEST_PARSING_STATE_CHUNK_DATA,
+
+    // BODY (NOT CHUNKED)
+    /** The body is being parsed. */
+    REQUEST_PARSING_STATE_BODY,
+};
+
 /** An enum representing the failure codes for `http_server_parse_request()`. */
 enum parse_request_error_types
 {
@@ -96,10 +154,6 @@ enum parse_request_error_types
     REQUEST_PARSE_ERROR_TOO_MANY_HEADERS = -2,
     /** The request took too long to process. */
     REQUEST_PARSE_ERROR_TIMEOUT = -3,
-    /** The request contained a malformed header. */
-    REQUEST_PARSE_ERROR_MALFORMED_HEADER = -4,
-    /** The body is too big. */
-    REQUEST_PARSE_ERROR_BODY_TOO_BIG = -5,
 };
 
 /** An enum representing the failure codes for `http_client_parse_response()`. */
@@ -107,8 +161,6 @@ enum parse_response_error_types
 {
     /** The `recv` syscall failed. */
     RESPONSE_PARSE_ERROR_RECV = -1,
-    /** The response contained a malformed header. */
-    RESPONSE_PARSE_ERROR_MALFORMED_HEADER = -2,
 };
 
 /** A structure representing the HTTP request. */
@@ -162,6 +214,8 @@ struct http_query
     /** The query's value. */
     string_t value;
 };
+
+void print_bytes(const char* bytes);
 
 /** Gets the value of a request's method. */
 const char* http_request_get_method(const struct http_request* request);

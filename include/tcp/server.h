@@ -12,7 +12,7 @@ struct tcp_client
     /** The socket file descriptor. */
     socket_t sockfd;
     /** The address of the server to connect to. */
-    struct sockaddr* sockaddr;
+    struct sockaddr sockaddr;
     /** The size of the client's address. */
     socklen_t addrlen;
 
@@ -36,7 +36,7 @@ struct tcp_server
     /** The socket file descriptor. */
     socket_t sockfd;
     /** The server's address. */
-    struct sockaddr* address;
+    struct sockaddr address;
     /** The size of the server's address. */
     socklen_t addrlen;
 
@@ -69,7 +69,7 @@ int tcp_server_main_loop(struct tcp_server* server);
 /** Initializes a TCP server. */
 int tcp_server_init(struct tcp_server* server, int ipv6, int non_blocking);
 /** Binds a TCP server to an address. */
-int tcp_server_bind(struct tcp_server* server, struct sockaddr* addr, socklen_t addrlen);
+int tcp_server_bind(struct tcp_server* server, struct sockaddr address, socklen_t addrlen);
 /** Starts listening for connections on a TCP server. */
 int tcp_server_listen(struct tcp_server* server, int backlog);
 /** Accepts a connection on the TCP server. */

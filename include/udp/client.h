@@ -11,7 +11,7 @@ struct udp_client
     /** The socket file descriptor. */
     socket_t sockfd;
         /** The client's address. */
-    struct sockaddr* sockaddr;
+    struct sockaddr sockaddr;
     /** The size of the client's address. */
     socklen_t addrlen;
 
@@ -34,7 +34,7 @@ int udp_client_main_loop(struct udp_client* client);
 /** Initializes a UDP client. */
 int udp_client_init(struct udp_client* client, int ipv6, int non_blocking);
 /** Connects a UDP client to a server. */
-int udp_client_connect(struct udp_client* client, struct sockaddr* addr, socklen_t addrlen);
+int udp_client_connect(struct udp_client* client, struct sockaddr addr, socklen_t addrlen);
 
 /** Sends a message to a server. Returns the result of the `sendto` syscall. */
 int udp_client_send(struct udp_client* client, char* message, size_t msglen, int flags, struct sockaddr* server_addr, socklen_t server_addrlen);

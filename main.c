@@ -9,6 +9,8 @@
 
 #include "tests/http/test001.c"
 
+#include <time.h>
+
 const char* MAPPINGS[] = {
     "[TCP TEST CASE 001]",
     "[TCP TEST CASE 002]",
@@ -42,14 +44,14 @@ void client_outgoings(struct http_client* client, void* data)
     struct http_header content_type = {0};
     http_header_set_name(&content_type, "Content-Type");
     http_header_set_value(&content_type, "text/plain");
-    // sso_string_init(&content_type.name, "Content-Type");
-    // sso_string_init(&content_type.value, "text/plain");
 
     struct http_header content_length = {0};
     http_header_set_name(&content_length, "Content-Length");
     http_header_set_value(&content_length, "5");
-    // sso_string_init(&content_length.name, "Content-Length");
-    // sso_string_init(&content_length.value, "5");
+
+    vector_init(&request.headers, 2, sizeof(struct http_header));
+    vector_push(&request.headers, &content_type);
+    vector_push(&request.headers, &content_length);
 
     http_request_set_body(&request, "hello");
 
@@ -140,9 +142,9 @@ void server_incomingm(struct http_server* server, socket_t sockfd, struct http_r
     http_header_set_name(&content_length, "Content-Length");
     http_header_set_value(&content_length, "5");
 
-    vector_init(&request.headers, 2, sizeof(struct http_header));
-    vector_push(&request.headers, &content_type);
-    vector_push(&request.headers, &content_length);
+    vector_init(&response.headers, 2, sizeof(struct http_header));
+    vector_push(&response.headers, &content_type);
+    vector_push(&response.headers, &content_length);
 
     http_response_set_body(&response, "hello");
 
@@ -184,14 +186,14 @@ int main()
     testsuite_result[1] = tcp_test002();
     testsuite_result[2] = udp_test001();
     testsuite_result[3] = udp_test002();
-    // testsuite_result[4] = http_test001();
+    testsuite_result[4] = http_test001();
 
     printf("\n\n\n%s", BANNER);
 
     printf("\n\n\n---RESULTS---\n");
 
     int testsuite_passed = 1;
-    for (int i = 0; i < 4; ++i)
+    for (int i = 0; i < 5; ++i)
     {
         if (testsuite_result[i] == 1)
         {
@@ -213,66 +215,68 @@ int main()
         printf(ANSI_RED "\n\nTEST SUITE FAILED! fix me.\n%s", ANSI_RESET);
     };
 
-    struct sockaddr_in addr = {
-        .sin_family = AF_INET,
-        .sin_addr.s_addr = INADDR_ANY,
-        .sin_port = htons(3000)
-    };
+    return 0;
 
-    struct http_server server = {0};
+    // struct sockaddr_in addr = {
+    //     .sin_family = AF_INET,
+    //     .sin_addr.s_addr = INADDR_ANY,
+    //     .sin_port = htons(3000)
+    // };
 
-    server.on_connect = server_incomings;
-    server.on_malformed_request = server_incominge;
+    // struct http_server server = {0};
 
-    if (http_server_init(&server, 0, (struct sockaddr*)&addr, sizeof(addr), 128) != 0)
-    {
-        printf("server failed to initialize %d\n", errno);
-        return 1;
-    };
+    // server.on_connect = server_incomings;
+    // server.on_malformed_request = server_incominge;
+
+    // if (http_server_init(&server, 0, (struct sockaddr*)&addr, sizeof(addr), 128) != 0)
+    // {
+    //     printf("server failed to initialize %d\n", errno);
+    //     return 1;
+    // };
 
 
-    struct http_route route = {0};
-    route.path = "/*";
-    route.callback = server_incomingm;
+    // struct http_route route = {0};
+    // route.path = "/*";
+    // route.callback = server_incomingm;
 
-    http_server_create_route(&server, &route);
+    // http_server_create_route(&server, &route);
 
-    printf("server initialized %d\n", server.server.pfd);
-    // http_server_start(&server);
+    // printf("server initialized %d\n", server.server.pfd);
+    // // http_server_start(&server);
 
-    pthread_t thread;
-    pthread_create(&thread, NULL, (void*)serstart, &server);
+    // pthread_t thread;
+    // pthread_create(&thread, NULL, (void*)serstart, &server);
 
-    printf("server started\n");
+    // printf("server started\n");
 
-    struct http_client client = {0};
-    struct sockaddr_in cliaddr = {
-        .sin_family = AF_INET,
-        .sin_port = htons(3000)
-    };
+    // struct http_client client = {0};
+    // struct sockaddr_in cliaddr = {
+    //     .sin_family = AF_INET,
+    //     .sin_port = htons(3000)
+    // };
     
-    client.on_connect = client_outgoings;
-    client.on_malformed_response = client_incominge;
-    client.on_data = client_incomingm;
+    // client.on_connect = client_outgoings;
+    // client.on_malformed_response = client_incominge;
+    // client.on_data = client_incomingm;
 
-    if (inet_pton(AF_INET, "127.0.0.1", &(addr.sin_addr)) <= 0)
-    {
-        printf(ANSI_RED "[TCP TEST CASE 001] client failed to convert ip address\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
-        return 1;
-    };
+    // if (inet_pton(AF_INET, "127.0.0.1", &(addr.sin_addr)) <= 0)
+    // {
+    //     printf(ANSI_RED "[TCP TEST CASE 001] client failed to convert ip address\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
+    //     return 1;
+    // };
 
-    if (http_client_init(&client, 0, (struct sockaddr*)&cliaddr, sizeof(cliaddr)) != 0)
-    {
-        printf(ANSI_RED "[TCP TEST CASE 001] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
-        return 1;
-    };
+    // if (http_client_init(&client, 0, (struct sockaddr*)&cliaddr, sizeof(cliaddr)) != 0)
+    // {
+    //     printf(ANSI_RED "[TCP TEST CASE 001] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
+    //     return 1;
+    // };
 
-    printf("client initialized\n");
-    pthread_create(&thread, NULL, (void*)clistart, &client);
+    // printf("client initialized\n");
+    // pthread_create(&thread, NULL, (void*)clistart, &client);
 
-    printf("client started\n");
+    // printf("client started\n");
 
-    pthread_join(thread, NULL);
+    // pthread_join(thread, NULL);
 
     return 0;
 };

@@ -39,7 +39,7 @@
 #define ANSI_GREEN "\x1b[32m"
 #define ANSI_RESET "\x1b[0m"
 
-/** At the end of this test, all of these values must equal 1. */
+/** At the end of this test, all of these values must equal 1 unless otherwise specified. */
 static int udp_test002_server_data = 0;
 static int udp_test002_client_data = 0;
 
@@ -70,8 +70,6 @@ static void* udp_test002_server_thread_blocking_main(void* arg)
         printf(ANSI_RED "[UDP TEST CASE 002] server send failed:\nerrno: %d\nreason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return NULL;
     };
-
-    udp_server_close(server);
 
     return NULL;
 };
@@ -175,7 +173,7 @@ static int udp_test002()
     };
 
     int bind_result = 0;
-    if ((bind_result = udp_server_bind(server, (struct sockaddr*)&udp_server_addr, sizeof(udp_server_addr))) != 0)
+    if ((bind_result = udp_server_bind(server, *(struct sockaddr*)&udp_server_addr, sizeof(udp_server_addr))) != 0)
     {
         printf(ANSI_RED "[UDP TEST CASE 002] server bind failed:\nerrno: %d\nreason: %d\n%s", bind_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -207,7 +205,7 @@ static int udp_test002()
     };
 
     int client_connect_result = 0;
-    if ((client_connect_result = udp_client_connect(client, (struct sockaddr*)&udp_client_addr, sizeof(udp_client_addr))) != 0)
+    if ((client_connect_result = udp_client_connect(client, *(struct sockaddr*)&udp_client_addr, sizeof(udp_client_addr))) != 0)
     {
         printf(ANSI_RED "[UDP TEST CASE 002] client connect failed:\nerrno: %d\nreason: %d\n%s", client_connect_result, netc_errno_reason, ANSI_RESET);
         return 1;

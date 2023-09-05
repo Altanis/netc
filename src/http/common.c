@@ -5,6 +5,18 @@
 #include <string.h>
 #include <stdio.h>
 
+void print_bytes(const char* bytes)
+{
+    for (size_t i = 0; i < strlen(bytes); ++i)
+    {
+        if (bytes[i] == '\r') printf("\\r");
+        else if (bytes[i] == '\n') printf("\\n");
+        else printf("%c", bytes[i]);
+    };
+
+    printf("\n");
+};
+
 const char* http_request_get_method(const struct http_request* request) { return sso_string_get(&request->method); };
 const char* http_request_get_path(const struct http_request* request) { return sso_string_get(&request->path); };
 const char* http_request_get_version(const struct http_request* request) { return sso_string_get(&request->version); };

@@ -1,7 +1,6 @@
 #include "tcp/server.h"
 #include "utils/error.h"
 
-#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/errno.h>
@@ -177,12 +176,12 @@ int tcp_server_init(struct tcp_server* server, int ipv6, int non_blocking)
     return 0;
 };
 
-int tcp_server_bind(struct tcp_server* server, struct sockaddr* address, socklen_t addrlen)
+int tcp_server_bind(struct tcp_server* server, struct sockaddr address, socklen_t addrlen)
 {
     server->address = address;
 
     socket_t sockfd = server->sockfd;
-    struct sockaddr* addr = server->address;
+    struct sockaddr* addr = &server->address;
 
     int result = bind(sockfd, addr, addrlen);
     if (result == -1) return netc_error(BIND);

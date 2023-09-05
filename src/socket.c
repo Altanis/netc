@@ -19,33 +19,28 @@ ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t* string, const char*
         {
             if (recv_result == -1) 
             {
-                if (errno == EAGAIN || errno == EWOULDBLOCK)
-                {
-                    // prevent dos like asap lol
-                    continue;
-                }
+                if (errno == EAGAIN || errno == EWOULDBLOCK) break;
                 netc_error(BADRECV);
             };
 
             return recv_result;
         };
 
-        bytes_received += recv_result;
+        bytes_received++;
         sso_string_concat_char(string, c);
 
-        if (bytes_received >= bytes_len && strncmp(sso_string_get(string) + bytes_received - bytes_len, bytes, bytes_len) == 0)
+        if (bytes_received >= bytes_len && strcmp(sso_string_get(string) + string->length - bytes_len, bytes) == 0)
         {
             if (remove_delimiter)
             {
                 sso_string_backspace(string, bytes_len);
-                --bytes_received;
+                bytes_received -= bytes_len;
             };
 
             break;
         };
     };
 
-    if (bytes_received > 0) printf("contents: %s\n", sso_string_get(string));
     return bytes_received;
 };
 

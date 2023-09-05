@@ -24,7 +24,7 @@ struct http_client
 };
 
 /** Initializes the HTTP client. */
-int http_client_init(struct http_client* client, int ipv6, struct sockaddr* address, socklen_t addrlen);
+int http_client_init(struct http_client* client, int ipv6, struct sockaddr address, socklen_t addrlen);
 /** Starts a nonblocking event loop for the HTTP client. */
 int http_client_start(struct http_client* client);
 
@@ -34,5 +34,8 @@ int http_client_send_chunked_data(struct http_client* client, char* data);
 int http_client_send_request(struct http_client* client, struct http_request* request);
 /** Parses an HTTP response from the server. */
 int http_client_parse_response(struct http_client* client, struct http_response* response);
+
+/** Closes the HTTP client. */
+int http_client_close(struct http_client* client);
 
 #endif // HTTP_CLIENT_H

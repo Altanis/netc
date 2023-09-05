@@ -103,14 +103,14 @@ int udp_server_init(struct udp_server* server, int ipv6, int non_blocking)
     return 0;
 };
 
-int udp_server_bind(struct udp_server* server, struct sockaddr* addr, socklen_t addrlen)
+int udp_server_bind(struct udp_server* server, struct sockaddr addr, socklen_t addrlen)
 {
     server->sockaddr = addr;
     server->addrlen = addrlen;
 
     socket_t sockfd = server->sockfd;
 
-    int result = bind(sockfd, addr, addrlen);
+    int result = bind(sockfd, &addr, addrlen);
     if (result == -1) return netc_error(BIND);
 
     return 0;

@@ -98,14 +98,14 @@ int udp_client_init(struct udp_client* client, int ipv6, int non_blocking)
     return 0;
 };
 
-int udp_client_connect(struct udp_client* client, struct sockaddr* addr, socklen_t addrlen)
+int udp_client_connect(struct udp_client* client, struct sockaddr addr, socklen_t addrlen)
 {
     client->sockaddr = addr;
     client->addrlen = addrlen;
 
     socket_t sockfd = client->sockfd;
 
-    int result = connect(sockfd, addr, addrlen);
+    int result = connect(sockfd, &addr, addrlen);
     if (result == -1) return netc_error(CONNECT);
 
     return 0;

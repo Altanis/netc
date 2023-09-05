@@ -4,7 +4,6 @@
 #include "http/server.h"
 #include "http/client.h"
 #include "utils/error.h"
-#include "utils/map.h"
 
 #include <string.h>
 #include <stdlib.h>
@@ -24,7 +23,7 @@
 #undef ANSI_RESET
 
 #define IP "127.0.0.1"
-#define PORT 8080
+#define PORT 8081
 #define BACKLOG 3
 #define USE_IPV6 0
 #define SERVER_NON_BLOCKING 1
@@ -34,18 +33,18 @@
 #define ANSI_GREEN "\x1b[32m"
 #define ANSI_RESET "\x1b[0m"
 
-/** At the end of this test, all of these values must equal 1. */
+/** At the end of this test, all of these values must equal 1 unless otherwise specified. */
 static int http_test001_server_connect = 0;
-static int http_test001_server_data = 0;
-static int http_test001_data_chunked = 0;
+static int http_test001_server_data = 0; // 0 = passed /, 1 = passed /wow, 2 = passed /wow?x=1, 3 = passed /?x=1, 4 = passed /test (priority over /*)
 static int http_test001_server_disconnect = 0;
 static int http_test001_client_connect = 0;
-static int http_test001_client_data = 0;
-static int http_test001_client_data_chunked = 0;
+static int http_test001_client_data = 0; // 0 = passed /, 1 = passed /wow, 2 = passed /wow?x=1, 3 = passed /?x=1, 4 = passed /test (priority over /*)
 static int http_test001_client_disconnect = 0;
 
 static void http_test001_server_on_connect(struct http_server* server, struct tcp_client* client, void* data);
 static void http_test001_server_on_data(struct http_server* server, socket_t sockfd, struct http_request request);
+static void http_test001_server_on_data_wrong_route(struct http_server* server, socket_t sockfd, struct http_request request);
+static void http_test001_server_on_data_wildcard_route(struct http_server* server, socket_t sockfd, struct http_request request);
 static void http_test001_server_on_malformed_request(struct http_server* server, socket_t sockfd, enum parse_request_error_types error, void* data);
 static void http_test001_server_on_disconnect(struct http_server* server, socket_t sockfd, int is_error, void* data);
 
@@ -54,62 +53,249 @@ static void http_test001_client_on_data(struct http_client* client, struct http_
 static void http_test001_client_on_malformed_response(struct http_client* client, enum parse_response_error_types error, void* data);
 static void http_test001_client_on_disconnect(struct http_client* client, int is_error, void* data);
 
-/** This maps sockfds to IPs. */
-static struct map connections = {0};
+static void print_request(struct http_request request);
+static void print_response(struct http_response response);
+
+static void print_request(struct http_request request)
+{
+    printf("\n\nmethod: %s\n", http_request_get_method(&request));
+    printf("path: %s\n", http_request_get_path(&request));
+    printf("version: %s\n", http_request_get_version(&request));
+
+    for (size_t i = 0; i < request.query.size; ++i)
+    {
+        struct http_query* query = vector_get(&request.query, i);
+        printf("query: %s=%s\n", http_query_get_key(query), http_query_get_value(query));
+    };
+
+    for (size_t i = 0; i < request.headers.size; ++i)
+    {
+        struct http_header* header = vector_get(&request.headers, i);
+        printf("header: %s=%s\n", http_header_get_name(header), http_header_get_value(header));
+    };
+
+    printf("body: %s\n\n", http_request_get_body(&request));
+};
+
+static void print_response(struct http_response response)
+{
+    printf("\n\nversion: %s\n", http_response_get_version(&response));
+    printf("status code: %d\n", response.status_code);
+    printf("status message: %s\n", http_response_get_status_message(&response));
+
+    for (size_t i = 0; i < response.headers.size; ++i)
+    {
+        struct http_header* header = vector_get(&response.headers, i);
+        printf("header: %s=%s\n", http_header_get_name(header), http_header_get_value(header));
+    };
+
+    printf("body: %s\n\n", http_response_get_body(&response));
+};
 
 static void http_test001_server_on_connect(struct http_server* server, struct tcp_client* client, void* data)
 {
     http_test001_server_connect = 1;
 
     char ip[INET6_ADDRSTRLEN] = {0};
-    if (client->sockaddr->sa_family == AF_INET)
+    if (client->sockaddr.sa_family == AF_INET)
     {
-        struct sockaddr_in* addr = (struct sockaddr_in*)client->sockaddr;
+        struct sockaddr_in* addr = (struct sockaddr_in*)&client->sockaddr;
         inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
     }
     else
     {
-        struct sockaddr_in6* addr = (struct sockaddr_in6*)client->sockaddr;
+        struct sockaddr_in6* addr = (struct sockaddr_in6*)&client->sockaddr;
         inet_ntop(AF_INET6, &addr->sin6_addr, ip, sizeof(ip));
     };
 
-    map_set(&connections, &client->sockfd, ip, strlen(ip) + 1);
+    printf("[HTTP TEST CASE 001] server accepting client. ip: %s\n", ip);
+    /** if need be, make your own map implementation and map sockfd -> ip */
 };
 
 static void http_test001_server_on_data(struct http_server* server, socket_t sockfd, struct http_request request)
 {
-    http_test001_server_data = 1;
+    ++http_test001_server_data;
+    
+    printf("[HTTP TEST CASE 001] server received data from %d at endpoint \"/\"\n", sockfd);
+    print_request(request);
 
-    char* ip = map_get(&connections, &sockfd, sizeof(sockfd));
-    printf(ANSI_GREEN "[HTTP TEST CASE 001] server received data from %s\n%s", ip, ANSI_RESET);
+    int chunked = 0;
+    for (size_t i = 0; i < request.headers.size; ++i)
+    {
+        if (strcmp(http_header_get_name(vector_get(&request.headers, i)), "Transfer-Encoding") == 0)
+        {
+            chunked = 1;
+            break;
+        };
+    };
+
+    struct http_response response = {0};
+    http_response_set_version(&response, "HTTP/1.1");
+    response.status_code = 200;
+    http_response_set_status_message(&response, "OK");
+
+    struct http_header content_type = {0};
+    http_header_set_name(&content_type, "Content-Type");
+    http_header_set_value(&content_type, "text/plain");
+
+
+    vector_init(&response.headers, 2, sizeof(struct http_header));
+    vector_push(&response.headers, &content_type);
+
+    if (chunked)
+    {
+        struct http_header transfer_encoding = {0};
+        http_header_set_name(&transfer_encoding, "Transfer-Encoding");
+        http_header_set_value(&transfer_encoding, "chunked");
+
+        vector_push(&response.headers, &transfer_encoding);
+
+        http_server_send_response(server, sockfd, &response);
+        http_server_send_chunked_data(server, sockfd, "he");
+        http_server_send_chunked_data(server, sockfd, "llo");
+        http_server_send_chunked_data(server, sockfd, "world");
+        http_server_send_chunked_data(server, sockfd, NULL);
+
+        http_server_close(server);
+    }
+    else 
+    {
+        struct http_header content_length = {0};
+        http_header_set_name(&content_length, "Content-Length");
+        http_header_set_value(&content_length, "5");
+
+        vector_push(&response.headers, &content_length);
+        
+        http_response_set_body(&response, "hello");
+        http_server_send_response(server, sockfd, &response);
+    }
 };
+
+static void http_test001_server_on_data_wrong_route(struct http_server* server, socket_t sockfd, struct http_request request)
+{
+    ++http_test001_server_data;
+    
+    printf("[HTTP TEST CASE 001] server received data from %d at endpoint \"/test\"\n", sockfd);
+    print_request(request);
+
+    struct http_response response = {0};
+    http_response_set_version(&response, "HTTP/1.1");
+    response.status_code = 200;
+    http_response_set_status_message(&response, "OK");
+
+    struct http_header content_type = {0};
+    http_header_set_name(&content_type, "Content-Type");
+    http_header_set_value(&content_type, "text/plain");
+
+    struct http_header content_length = {0};
+    http_header_set_name(&content_length, "Content-Length");
+    http_header_set_value(&content_length, "5");
+
+    vector_init(&response.headers, 2, sizeof(struct http_header));
+    vector_push(&response.headers, &content_type);
+    vector_push(&response.headers, &content_length);
+
+    http_response_set_body(&response, "later");
+
+    http_server_send_response(server, sockfd, &response);
+};
+
+static void http_test001_server_on_data_wildcard_route(struct http_server* server, socket_t sockfd, struct http_request request) { printf("[HTTP TEST CASE 001] defaulted to /* ... failure...\n"); };
 
 static void http_test001_server_on_malformed_request(struct http_server* server, socket_t sockfd, enum parse_request_error_types error, void* data)
 {
-    char* ip = map_get(&connections, &sockfd, sizeof(sockfd));
-    printf(ANSI_RED "[HTTP TEST CASE 001] server received malformed request from %s\n%s", ip, ANSI_RESET);
+    printf("[HTTP TEST CASE 001] server could not process request from %d\n", sockfd);
 };
 
 static void http_test001_server_on_disconnect(struct http_server* server, socket_t sockfd, int is_error, void* data)
 {
     http_test001_server_disconnect = 1;
 
-    char* ip = map_get(&connections, &sockfd, sizeof(sockfd));
-    printf(ANSI_GREEN "[HTTP TEST CASE 001] server disconnected from %s\n%s", ip, ANSI_RESET);
+    printf("[HTTP TEST CASE 001] server disconnected from from %d\n", sockfd);
 };
 
 static void http_test001_client_on_connect(struct http_client* client, void* data)
 {
     http_test001_client_connect = 1;
 
-    printf(ANSI_GREEN "[HTTP TEST CASE 001] client connected\n%s", ANSI_RESET);
+    printf("[HTTP TEST CASE 001] client connected\n");
+
+    struct http_request request = {0};
+    http_request_set_method(&request, "GET");
+    http_request_set_path(&request, "/");
+    http_request_set_version(&request, "HTTP/1.1");
+
+    struct http_header content_type = {0};
+    http_header_set_name(&content_type, "Content-Type");
+    http_header_set_value(&content_type, "text/plain");
+
+    struct http_header content_length = {0};
+    http_header_set_name(&content_length, "Content-Length");
+    http_header_set_value(&content_length, "5");
+
+    struct http_header accept_encoding = {0};
+    http_header_set_name(&accept_encoding, "Accept-Encoding");
+    http_header_set_value(&accept_encoding, "gzip, deflate, br");
+
+    vector_init(&request.headers, 3, sizeof(struct http_header));
+    vector_push(&request.headers, &accept_encoding);
+    vector_push(&request.headers, &content_type);
+    vector_push(&request.headers, &content_length);
+    
+    http_request_set_body(&request, "hello");
+
+    http_client_send_request(client, &request);
 };
 
 static void http_test001_client_on_data(struct http_client* client, struct http_response response, void* data)
 {
-    http_test001_client_data = 1;
+    printf("[HTTP TEST CASE 001] client received data\n");
+    print_response(response);
 
-    printf(ANSI_GREEN "[HTTP TEST CASE 001] client received data\n%s", ANSI_RESET);
+    if (++http_test001_client_data <= 6)
+    {
+        const char* path = (http_test001_client_data == 1 ? "/" : (http_test001_client_data == 2 ? "/wow" : (http_test001_client_data == 3 ? "/wow?x=1" : (http_test001_client_data == 4 ? "/?x=1" : 
+        (http_test001_client_data == 5 ? "/test" : "/")))));
+
+        struct http_request request = {0};
+        http_request_set_method(&request, "GET");
+        http_request_set_path(&request, path);
+        http_request_set_version(&request, "HTTP/1.1");
+
+        struct http_header content_type = {0};
+        http_header_set_name(&content_type, "Content-Type");
+        http_header_set_value(&content_type, "text/plain");
+
+        vector_init(&request.headers, 2, sizeof(struct http_header));
+        vector_push(&request.headers, &content_type);
+
+        if (http_test001_client_data != 6)
+        {
+            struct http_header content_length = {0};
+            http_header_set_name(&content_length, "Content-Length");
+            http_header_set_value(&content_length, "5");
+
+            vector_push(&request.headers, &content_length);
+            http_request_set_body(&request, "hello");
+
+            http_client_send_request(client, &request);
+        }
+        else
+        {
+            // transfer encoding
+            struct http_header transfer_encoding = {0};
+            http_header_set_name(&transfer_encoding, "Transfer-Encoding");
+            http_header_set_value(&transfer_encoding, "chunked");
+
+            vector_push(&request.headers, &transfer_encoding);
+
+            http_client_send_request(client, &request);
+            http_client_send_chunked_data(client, "he");
+            http_client_send_chunked_data(client, "llo");
+            http_client_send_chunked_data(client, "world");
+            http_client_send_chunked_data(client, NULL);
+        };
+    } else http_client_close(client);
 };
 
 static void http_test001_client_on_malformed_response(struct http_client* client, enum parse_response_error_types error, void* data)
@@ -121,13 +307,11 @@ static void http_test001_client_on_disconnect(struct http_client* client, int is
 {
     http_test001_client_disconnect = 1;
 
-    printf(ANSI_GREEN "[HTTP TEST CASE 001] client disconnected\n%s", ANSI_RESET);
+    printf("[HTTP TEST CASE 001] client disconnected\n");
 };
 
 static int http_test001()
 {
-    map_init(&connections, 2);
-
     struct http_server server = {0};
     server.on_connect = http_test001_server_on_connect;
     server.on_malformed_request = http_test001_server_on_malformed_request;
@@ -139,17 +323,21 @@ static int http_test001()
         .sin_port = htons(PORT)
     };
 
-    if (http_server_init(&server, USE_IPV6, (struct sockaddr*)&addr, sizeof(addr), BACKLOG) != 0)
+    if (http_server_init(&server, USE_IPV6, *(struct sockaddr*)&addr, sizeof(addr), BACKLOG) != 0)
     {
         printf(ANSI_RED "[HTTP TEST CASE 001] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 
-    struct http_route route = {0};
-    route.path = "/*";
-    route.callback = http_test001_server_on_data;
+    struct http_route test_route = { .path = "/test", .callback = http_test001_server_on_data_wrong_route };
+    struct http_route wildcard_route = { .path = "/*", .callback = http_test001_server_on_data };
 
-    http_server_create_route(&server, &route);
+    /** 
+     * Please note hierarchy matters. If a path matches two routes,
+     * it will use the callback initialized first. 
+     */
+    http_server_create_route(&server, &test_route);
+    http_server_create_route(&server, &wildcard_route);
 
     pthread_t servt;
     pthread_create(&servt, NULL, (void*)http_server_start, &server);
@@ -171,7 +359,7 @@ static int http_test001()
         return 1;
     };
 
-    if (http_client_init(&client, USE_IPV6, (struct sockaddr*)&cliaddr, sizeof(cliaddr)) != 0)
+    if (http_client_init(&client, USE_IPV6, *(struct sockaddr*)&cliaddr, sizeof(cliaddr)) != 0)
     {
         printf(ANSI_RED "[HTTP TEST CASE 001] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;

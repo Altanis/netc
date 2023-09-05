@@ -39,7 +39,7 @@
 #define ANSI_GREEN "\x1b[32m"
 #define ANSI_RESET "\x1b[0m"
 
-/** At the end of this test, all of these values must equal 1. */
+/** At the end of this test, all of these values must equal 1 unless otherwise specified. */
 static int udp_test001_server_data = 0;
 static int udp_test001_client_data = 0;
 
@@ -140,7 +140,7 @@ static int udp_test001()
     };
 
     int bind_result = 0;
-    if ((bind_result = udp_server_bind(server, (struct sockaddr*)&udp_server_addr, sizeof(udp_server_addr))) != 0)
+    if ((bind_result = udp_server_bind(server, *(struct sockaddr*)&udp_server_addr, sizeof(udp_server_addr))) != 0)
     {
         printf(ANSI_RED "[UDP TEST CASE 001] server bind failed:\nerrno: %d\nreason: %d\n%s", bind_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -172,7 +172,7 @@ static int udp_test001()
     };
 
     int client_connect_result = 0;
-    if ((client_connect_result = udp_client_connect(client, (struct sockaddr*)&udp_client_addr, sizeof(udp_client_addr))) != 0)
+    if ((client_connect_result = udp_client_connect(client, *(struct sockaddr*)&udp_client_addr, sizeof(udp_client_addr))) != 0)
     {
         printf(ANSI_RED "[UDP TEST CASE 001] client connect failed:\nerrno: %d\nreason: %d\n%s", client_connect_result, netc_errno_reason, ANSI_RESET);
         return 1;

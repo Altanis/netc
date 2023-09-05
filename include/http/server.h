@@ -18,25 +18,25 @@ struct http_server
     /** A structure representing the configuration for the HTTP server. */
     struct netc_http_server_config
     {
-        /** The maximum length of the HTTP method (excluding the null terminator). Defaults to `8`. */
+        /** The maximum length of the HTTP method. Defaults to `7`. */
         size_t max_method_len;
-        /** The maximum length of the HTTP path (excluding the null terminator). */
+        /** The maximum length of the HTTP path. Defaults to `2000`. */
         size_t max_path_len;
-        /** The maximum length of the HTTP version (excluding the null terminator). */
+        /** The maximum length of the HTTP version. Defaults to `8`. */
         size_t max_version_len;
-        /** The maximum length of the HTTP header name (excluding the null terminator). */
+        /** The maximum length of the HTTP header name. Defaults to `256`. */
         size_t max_header_name_len;
-        /** The maximum length of the HTTP header value (excluding the null terminator). */
+        /** The maximum length of the HTTP header value. Defaults to `4096`. */
         size_t max_header_value_len;
-        /** The maximum length of the HTTP header (excluding the null terminator). */
-        size_t max_header_len;
-        /** The maximum number of HTTP headers. */
+        /** The maximum number of HTTP headers. Defaults to `24`. */
         size_t max_header_count;
-        /** The maximum length of the body (excluding the null terminator). */
+        /** The maximum length of the body. Defaults to `65536`. */
         size_t max_body_len;
-        /** The amount of time for waiting on the completion of parsing HTTP headers. */
+        /** The amount of time for waiitng on the completion of parsing method, path, and version. Defaults to `10`. */
+        size_t request_line_timeout_seconds;
+        /** The amount of time for waiting on the completion of parsing HTTP headers. Defaults to `10`. */
         size_t headers_timeout_seconds;
-        /** The amount of time for waiting on the completion of parsing the HTTP body. */
+        /** The amount of time for waiting on the completion of parsing the HTTP body. Defaults to `10`. */
         size_t body_timeout_seconds;
     } config;
     
@@ -61,11 +61,11 @@ struct http_route
 extern __thread int netc_http_server_listening;
 
 /** Initializes the HTTP server. */
-int http_server_init(struct http_server* server, int ipv6, struct sockaddr* address, socklen_t addrlen, int backlog);
+int http_server_init(struct http_server* http_server, int ipv6, struct sockaddr address, socklen_t addrlen, int backlog);
 /** Starts a nonblocking event loop for the HTTP server. */
 int http_server_start(struct http_server* server);
 
-/** Creates a route for a path. */
+/** Creates a route for a path. Note that precedence works by whichever route is created first. */
 void http_server_create_route(struct http_server* server, struct http_route* route);
 /** Finds a route given a path. */
 void (*http_server_find_route(struct http_server* server, const char* path))(struct http_server* server, socket_t sockfd, struct http_request request);
@@ -81,5 +81,7 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
 
 /** Closes the HTTP server. */
 int http_server_close(struct http_server* server);
+/** Closes a HTTP client connection. */
+int http_server_close_client(struct http_server* server, socket_t sockfd);
 
 #endif // HTTP_SERVER_H
