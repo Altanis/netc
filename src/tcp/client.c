@@ -125,11 +125,12 @@ int tcp_client_main_loop(struct tcp_client* client)
     return 0;
 };
 
-int tcp_client_init(struct tcp_client* client, int ipv6, int non_blocking)
+int tcp_client_init(struct tcp_client* client, struct sockaddr addr, int non_blocking)
 {
     if (client == NULL) return -1; 
     
-    int protocol = ipv6 ? AF_INET6 : AF_INET;
+    client->sockaddr = addr;
+    int protocol = addr.sa_family;
 
     client->sockfd = socket(protocol, SOCK_STREAM, 0); // IPv4, TCP, 0
     if (client->sockfd == -1) return netc_error(SOCKET);
@@ -165,12 +166,11 @@ int tcp_client_init(struct tcp_client* client, int ipv6, int non_blocking)
     return 0;
 };
 
-int tcp_client_connect(struct tcp_client* client, struct sockaddr addr, socklen_t addrlen)
+int tcp_client_connect(struct tcp_client* client)
 {
-    client->sockaddr = addr;
-    client->addrlen = addrlen;
-
     socket_t sockfd = client->sockfd;
+    struct sockaddr addr = client->sockaddr;
+    socklen_t addrlen = sizeof(addr);
 
     int result = connect(sockfd, &addr, addrlen);
     if (result == -1 && errno != EINPROGRESS) return netc_error(CONNECT);

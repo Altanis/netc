@@ -36,7 +36,7 @@ struct sockaddr_in addr =
     .sin_port = htons(8080)
 };
 
-int r = http_server_init(&server, 0 /** use ipv6 or not */, *(struct sockaddr*)&addr, sizeof(addr), 10 /** the max number of connections in backlog */);
+int r = http_server_init(&server, *(struct sockaddr*)&addr, 10 /** the max number of connections in backlog */);
 if (r != 0) printf(netc_strerror()); /** Handle error. */
 
 /** Start the main loop. */
@@ -101,9 +101,12 @@ void on_malformed_request(struct http_server* server, socket_t sockfd, enum pars
     }
 };
 
-void on_disconnect(struct http_server* server, struct tcp_client* client)
+static void on_disconnect(struct http_server* server, socket_t sockfd, int is_error, void* data)
 {
-    printf("A connection has been closed.\n");
+    if (sockfd == server->sockfd)
+        printf("The server has been closed.\n");
+    else
+        printf("A client has disconnected.\n");
 };
 
 /** The callback for the /echo route (in the example above). */
@@ -256,7 +259,7 @@ struct sockaddr_in sockaddr =
 if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to convert address.\n"); /** Handle error. */
 
 /** Create the HTTP client. */
-int init_result = http_client_init(&client, 0 /** use ipv6 or not */, 1 /** use non-blocking mode or not */);
+int init_result = http_client_init(&client, *(struct sockaddr*)&sockaddr);
 if (init_result != 0) printf(netc_strerror()); /** Handle error. */
 
 /** Start the main loop. */
@@ -310,7 +313,7 @@ void on_data(struct http_client* client, struct http_response response, void* da
     printf("BODY: %s", body);
 };
 
-void on_disconnect(struct http_client* client, void* data)
+void on_disconnect(struct http_client* client, int is_error, void* data)
 {
     printf("Disconnected from the server.\n");
 };

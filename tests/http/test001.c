@@ -209,9 +209,11 @@ static void http_test001_server_on_malformed_request(struct http_server* server,
 
 static void http_test001_server_on_disconnect(struct http_server* server, socket_t sockfd, int is_error, void* data)
 {
-    http_test001_server_disconnect = 1;
-
-    printf("[HTTP TEST CASE 001] server disconnected from from %d\n", sockfd);
+    if (sockfd == server->server.sockfd)
+    {
+        http_test001_server_disconnect = 1;
+        printf("[HTTP TEST CASE 001] server disconnected from from %d\n", sockfd);
+    };
 };
 
 static void http_test001_client_on_connect(struct http_client* client, void* data)
@@ -323,7 +325,7 @@ static int http_test001()
         .sin_port = htons(PORT)
     };
 
-    if (http_server_init(&server, USE_IPV6, *(struct sockaddr*)&addr, sizeof(addr), BACKLOG) != 0)
+    if (http_server_init(&server, *(struct sockaddr*)&addr, BACKLOG) != 0)
     {
         printf(ANSI_RED "[HTTP TEST CASE 001] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -359,7 +361,7 @@ static int http_test001()
         return 1;
     };
 
-    if (http_client_init(&client, USE_IPV6, *(struct sockaddr*)&cliaddr, sizeof(cliaddr)) != 0)
+    if (http_client_init(&client, *(struct sockaddr*)&cliaddr) != 0)
     {
         printf(ANSI_RED "[HTTP TEST CASE 001] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -370,6 +372,44 @@ static int http_test001()
 
     pthread_join(clit, NULL);
     pthread_join(servt, NULL);
+
+    if (http_test001_server_connect == 1) {
+        printf(ANSI_GREEN "[HTTP TEST 001] server received connection correctly\n" ANSI_RESET);
+    } else {
+        printf(ANSI_RED "[HTTP TEST CASE 001] server received connection incorrectly\n" ANSI_RESET);
+    }
+
+    if (http_test001_server_data == 7) {
+        printf(ANSI_GREEN "[HTTP TEST 001] server handled data correctly\n" ANSI_RESET);
+    } else {
+        printf(ANSI_RED "[HTTP TEST CASE 001] server handled data incorrectly\n" ANSI_RESET);
+    }
+
+    if (http_test001_server_disconnect == 1) {
+        printf(ANSI_GREEN "[HTTP TEST 001] server disconnected correctly\n" ANSI_RESET);
+    } else {
+        printf(ANSI_RED "[HTTP TEST CASE 001] server disconnected incorrectly\n" ANSI_RESET);
+    }
+
+    if (http_test001_client_connect == 1) {
+        printf(ANSI_GREEN "[HTTP TEST 001] client connected correctly\n" ANSI_RESET);
+    } else {
+        printf(ANSI_RED "[HTTP TEST CASE 001] client connected incorrectly\n" ANSI_RESET);
+    }
+
+    if (http_test001_client_data == 7) {
+        printf(ANSI_GREEN "[HTTP TEST 001] client handled data correctly\n" ANSI_RESET);
+    } else {
+        printf(ANSI_RED "[HTTP TEST CASE 001] client handled data incorrectly\n" ANSI_RESET);
+    }
+
+    if (http_test001_client_disconnect == 1) {
+        printf(ANSI_GREEN "[HTTP TEST 001] client disconnected correctly\n" ANSI_RESET);
+    } else {
+        printf(ANSI_RED "[HTTP TEST CASE 001] client disconnected incorrectly\n" ANSI_RESET);
+    }
+
+    return (int)(http_test001_server_connect == 1 && http_test001_server_data == 7 && http_test001_server_disconnect == 1 && http_test001_client_connect == 1 && http_test001_client_data == 7 && http_test001_client_disconnect == 1 ? 0 : 1);
 };
 
 #endif // HTTP_TEST_001

@@ -24,7 +24,7 @@ struct http_client
 };
 
 /** Initializes the HTTP client. */
-int http_client_init(struct http_client* client, int ipv6, struct sockaddr address, socklen_t addrlen);
+int http_client_init(struct http_client* client, struct sockaddr address);
 /** Starts a nonblocking event loop for the HTTP client. */
 int http_client_start(struct http_client* client);
 

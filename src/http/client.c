@@ -35,12 +35,12 @@ static void _tcp_on_disconnect(struct tcp_client* client, int is_error, void* da
         http_client->on_disconnect(http_client, is_error, http_client->data);
 };
 
-int http_client_init(struct http_client* client, int ipv6, struct sockaddr address, socklen_t addrlen)
+int http_client_init(struct http_client* client, struct sockaddr address)
 {
     struct tcp_client tcp_client = {0};
     tcp_client.data = client;
 
-    int init_result = tcp_client_init(&tcp_client, ipv6, 1);
+    int init_result = tcp_client_init(&tcp_client, address, 1);
     if (init_result != 0) return init_result;
 
     if (setsockopt(client->client.sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
@@ -48,7 +48,7 @@ int http_client_init(struct http_client* client, int ipv6, struct sockaddr addre
         /** Not essential. Do not return -1. */
     };
 
-    int connect_result = tcp_client_connect(&tcp_client, address, addrlen);
+    int connect_result = tcp_client_connect(&tcp_client);
     if (connect_result != 0) return connect_result;
 
     tcp_client.on_connect = _tcp_on_connect;
@@ -195,11 +195,6 @@ int http_client_parse_response(struct http_client* client, struct http_response*
                 if (recv(client->client.sockfd, temp_buffer, 2, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
                 break;
             };
-
-            char buff[4096] = {0};
-            recv(client->client.sockfd, buff, 4096, MSG_PEEK);
-            printf("the rest of the stream [a]:\n");
-            print_bytes(buff);
 
             if (socket_recv_until_dynamic(client->client.sockfd, &response->body, "\r\n", 1, chunk_size + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
         };

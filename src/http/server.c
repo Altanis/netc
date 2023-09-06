@@ -142,14 +142,14 @@ static void _tcp_on_disconnect(struct tcp_server* server, socket_t sockfd, int i
         http_server->on_disconnect(http_server, sockfd, is_error, http_server->data);
 };
 
-int http_server_init(struct http_server* http_server, int ipv6, struct sockaddr address, socklen_t addrlen, int backlog)
+int http_server_init(struct http_server* http_server, struct sockaddr address, int backlog)
 {
     vector_init(&http_server->routes, 8, sizeof(struct http_route));
 
     struct tcp_server tcp_server = {0};
     tcp_server.data = http_server;
     
-    int init_result = tcp_server_init(&tcp_server, ipv6, 1);
+    int init_result = tcp_server_init(&tcp_server, address, 1);
     if (init_result != 0) return init_result;
 
     if (setsockopt(tcp_server.sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
@@ -157,7 +157,7 @@ int http_server_init(struct http_server* http_server, int ipv6, struct sockaddr 
         /** Not essential. Do not return -1. */
     };
 
-    int bind_result = tcp_server_bind(&tcp_server, address, addrlen);
+    int bind_result = tcp_server_bind(&tcp_server);
     if (bind_result != 0) return bind_result;
 
     int listen_result = tcp_server_listen(&tcp_server, backlog);
@@ -251,8 +251,6 @@ int http_server_send_response(struct http_server* server, socket_t sockfd, struc
         struct http_header* header = vector_get(&response->headers, i);
         const char* name = sso_string_get(&header->name);
         const char* value = sso_string_get(&header->value);
-
-        printf("name: %s\n", name);
 
         if (!chunked && strcmp(name, "Transfer-Encoding") == 0 && strcmp(value, "chunked") == 0)
             chunked = 1;
@@ -437,8 +435,6 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
             sso_string_init(&chunk_length, "");
 
             CHECK_RECV_RESULT(state, REQUEST_PARSING_STATE_CHUNK_SIZE, sockfd, &chunk_length, "\r\n", 1, 16 + 2);
-
-            printf("chunk_length: %s\n", sso_string_get(&chunk_length));
 
             size_t chunk_size = strtoul(sso_string_get(&chunk_length), NULL, 16);
             if (chunk_size == 0)

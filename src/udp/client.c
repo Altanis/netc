@@ -60,11 +60,12 @@ int udp_client_main_loop(struct udp_client* client)
     return 0;
 };
 
-int udp_client_init(struct udp_client* client, int ipv6, int non_blocking)
+int udp_client_init(struct udp_client* client, struct sockaddr addr, int non_blocking)
 {
     if (client == NULL) return -1;
 
-    int protocol = ipv6 ? AF_INET6 : AF_INET;
+    client->sockaddr = addr;
+    int protocol = addr.sa_family;
 
     client->sockfd = socket(protocol, SOCK_DGRAM, 0);
     if (client->sockfd == -1) return netc_error(SOCKET);
@@ -98,12 +99,11 @@ int udp_client_init(struct udp_client* client, int ipv6, int non_blocking)
     return 0;
 };
 
-int udp_client_connect(struct udp_client* client, struct sockaddr addr, socklen_t addrlen)
+int udp_client_connect(struct udp_client* client)
 {
-    client->sockaddr = addr;
-    client->addrlen = addrlen;
-
     socket_t sockfd = client->sockfd;
+    struct sockaddr addr = client->sockaddr;
+    socklen_t addrlen = sizeof(addr);
 
     int result = connect(sockfd, &addr, addrlen);
     if (result == -1) return netc_error(CONNECT);

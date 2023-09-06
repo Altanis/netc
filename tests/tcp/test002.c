@@ -101,19 +101,8 @@ static void* tcp_test002_client_thread_blocking_main(void* arg)
 {
     struct tcp_client* client = (struct tcp_client*)arg;
 
-    struct sockaddr_in addr = {
-        .sin_family = AF_INET,
-        .sin_port = htons(PORT)
-    };
-
-    if (inet_pton(AF_INET, IP, &(addr.sin_addr)) <= 0)
-    {
-        printf(ANSI_RED "[TCP TEST CASE 002] client failed to convert ip address\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
-        return NULL;
-    };
-
     int client_connect_result = 0;
-    if ((client_connect_result = tcp_client_connect(client, *(struct sockaddr*)&addr, (socklen_t)sizeof(addr))) != 0)
+    if ((client_connect_result = tcp_client_connect(client)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] client failed to connect\nerrno: %d\nerrno reason: %d\n%s", client_connect_result, netc_errno_reason, ANSI_RESET);
         return NULL;
@@ -169,8 +158,19 @@ static int tcp_test002()
         .sin_port = htons(PORT)
     };
 
+    struct sockaddr_in addr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(PORT)
+    };
+
+    if (inet_pton(AF_INET, IP, &(addr.sin_addr)) <= 0)
+    {
+        printf(ANSI_RED "[TCP TEST CASE 002] client failed to convert ip address\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
+        return NULL;
+    };
+
     int init_result = 0;
-    if ((init_result = tcp_server_init(server, USE_IPV6, SERVER_NON_BLOCKING)) != 0)
+    if ((init_result = tcp_server_init(server, *(struct sockaddr*)&saddr, SERVER_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", init_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -184,7 +184,7 @@ static int tcp_test002()
     };
 
     int bind_result = 0;
-    if ((bind_result = tcp_server_bind(server, *(struct sockaddr*)&saddr, (socklen_t)sizeof(saddr))) != 0)
+    if ((bind_result = tcp_server_bind(server)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] server failed to bind\nerrno: %d\nerrno reason: %d\n%s", bind_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -204,7 +204,7 @@ static int tcp_test002()
     struct tcp_client* client = malloc(sizeof(struct tcp_client));
 
     int client_init_result = 0;
-    if ((client_init_result = tcp_client_init(client, USE_IPV6, CLIENT_NON_BLOCKING)) != 0)
+    if ((client_init_result = tcp_client_init(client, *(struct sockaddr*)&addr, CLIENT_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", client_init_result, netc_errno_reason, ANSI_RESET);
         return 1;

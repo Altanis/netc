@@ -33,11 +33,11 @@ struct sockaddr_in sockaddr =
 };
 
 /** Create the UDP server. */
-int init_result = udp_server_init(&server, 0 /** use ipv6 or not */, 1 /** use non-blocking mode or not */);
+int init_result = udp_server_init(&server, *(struct sockaddr*)&sockaddr, 1 /** use non-blocking mode or not */);
 if (init_result != 0) printf(netc_strerror()); /** Handle error. */
 
 /** Bind the UDP server to the address. */
-int bind_result = udp_server_bind(&server, *(struct sockaddr*)&sockaddr, sizeof(sockaddr));
+int bind_result = udp_server_bind(&server);
 if (bind_result != 0) printf(netc_strerror()); /** Handle error. */
 
 /** Start the event loop. */
@@ -121,11 +121,11 @@ struct sockaddr_in sockaddr =
 if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to convert address.\n"); /** Handle error. */
 
 /** Create the UDP client. */
-int init_result = udp_client_init(&client, 0 /** use ipv6 or not */, 1 /** use non-blocking mode or not */);
+int init_result = udp_client_init(&client, 0 *(struct sockaddr*)&sockaddr, 1 /** use non-blocking mode or not */);
 if (init_result != 0) printf(netc_strerror()); /** Handle error. */
 
 /** Connect to the server. */
-int connect_result = udp_client_connect(&client, *(struct sockaddr*)&sockaddr, sizeof(sockaddr));
+int connect_result = udp_client_connect(&client);
 if (connect_result != 0) printf(netc_strerror()); /** Handle error. */
 ```
 

@@ -66,10 +66,12 @@ int udp_server_main_loop(struct udp_server* server)
     return 0;
 };
 
-int udp_server_init(struct udp_server* server, int ipv6, int non_blocking)
+int udp_server_init(struct udp_server* server, struct sockaddr addr, int non_blocking)
 {
     if (server == NULL) return -1;
-    int protocol = ipv6 ? AF_INET6 : AF_INET;
+
+    server->sockaddr = addr;
+    int protocol = addr.sa_family;
 
     server->sockfd = socket(protocol, SOCK_DGRAM, 0); // IPv4, UDP, 0
     if (server->sockfd == -1) return netc_error(SOCKET);
@@ -103,12 +105,11 @@ int udp_server_init(struct udp_server* server, int ipv6, int non_blocking)
     return 0;
 };
 
-int udp_server_bind(struct udp_server* server, struct sockaddr addr, socklen_t addrlen)
+int udp_server_bind(struct udp_server* server)
 {
-    server->sockaddr = addr;
-    server->addrlen = addrlen;
-
     socket_t sockfd = server->sockfd;
+    struct sockaddr addr = server->sockaddr;
+    socklen_t addrlen = sizeof(addr);
 
     int result = bind(sockfd, &addr, addrlen);
     if (result == -1) return netc_error(BIND);

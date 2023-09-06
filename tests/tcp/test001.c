@@ -96,7 +96,7 @@ static void tcp_test001_server_on_data(struct tcp_server* server, socket_t sockf
 
 static void tcp_test001_on_disconnect(struct tcp_server* server, socket_t sockfd, int is_error, void* data)
 {
-    printf("[TCP TEST CASE 001] socket disconnected. this was %s\n", is_error ? "closed disgracefully" : "closed gracefully");
+    printf("[TCP TEST CASE 001] %s disconnected. this was %s\n", sockfd == server->sockfd ? "server" : "client", is_error ? "closed disgracefully" : "closed gracefully");
     tcp_test001_server_disconnect++;
     tcp_server_close_self(server);
 };
@@ -165,7 +165,7 @@ static int tcp_test001()
     };
 
     int init_result = 0;
-    if ((init_result = tcp_server_init(server, USE_IPV6, SERVER_NON_BLOCKING)) != 0)
+    if ((init_result = tcp_server_init(server, *(struct sockaddr*)&saddr, SERVER_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 001] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", init_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -179,7 +179,7 @@ static int tcp_test001()
     };
 
     int bind_result = 0;
-    if ((bind_result = tcp_server_bind(server, *(struct sockaddr*)&saddr, sizeof(saddr))) != 0)
+    if ((bind_result = tcp_server_bind(server)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 001] server failed to bind\nerrno: %d\nerrno reason: %d\n%s", bind_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -201,16 +201,6 @@ static int tcp_test001()
     client->on_data = tcp_test001_client_on_data;
     client->on_disconnect = tcp_test001_client_on_disconnect;
 
-    int client_init_result = 0;
-    if ((client_init_result = tcp_client_init(client, USE_IPV6, CLIENT_NON_BLOCKING)) != 0)
-    {
-        printf(ANSI_RED "[TCP TEST CASE 001] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", client_init_result, netc_errno_reason, ANSI_RESET);
-        return 1;
-    };
-
-    pthread_t client_thread;
-    pthread_create(&client_thread, NULL, tcp_test001_client_thread_nonblocking_main, client);
-
     struct sockaddr_in addr = {
         .sin_family = AF_INET,
         .sin_port = htons(PORT)
@@ -222,8 +212,19 @@ static int tcp_test001()
         return 1;
     };
 
+    int client_init_result = 0;
+    if ((client_init_result = tcp_client_init(client, *(struct sockaddr*)&addr, CLIENT_NON_BLOCKING)) != 0)
+    {
+        printf(ANSI_RED "[TCP TEST CASE 001] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", client_init_result, netc_errno_reason, ANSI_RESET);
+        return 1;
+    };
+
+    pthread_t client_thread;
+    pthread_create(&client_thread, NULL, tcp_test001_client_thread_nonblocking_main, client);
+
+
     int client_connect_result = 0;
-    if ((client_connect_result = tcp_client_connect(client, *(struct sockaddr*)&addr, (socklen_t)sizeof(addr))) != 0)
+    if ((client_connect_result = tcp_client_connect(client)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 001] client failed to connect\nerrno: %d\nerrno reason: %d\n%s", client_connect_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -238,7 +239,7 @@ static int tcp_test001()
     if (tcp_test001_server_data != 1) printf(ANSI_RED "[SERVER_DATA] server failed to receive data from client\n" ANSI_RESET);
     else printf(ANSI_GREEN "[SERVER_DATA] server received data from client\n" ANSI_RESET);
 
-    if (tcp_test001_server_disconnect != 1) printf(ANSI_RED "[SERVER_DISCONNECT] server failed to disconnect from client\n" ANSI_RESET);
+    if (tcp_test001_server_disconnect != 2) printf(ANSI_RED "[SERVER_DISCONNECT] server failed to disconnect from client\n" ANSI_RESET);
     else printf(ANSI_GREEN "[SERVER_DISCONNECT] server disconnected from client\n" ANSI_RESET);
 
     if (tcp_test001_client_connect != 1) printf(ANSI_RED "[CLIENT_CONNECT] client failed to connect to server\n" ANSI_RESET);
@@ -251,7 +252,7 @@ static int tcp_test001()
     else printf(ANSI_GREEN "[CLIENT_DISCONNECT] client disconnected from server\n\n\n" ANSI_RESET);
 
     return 
-        (int)(!(tcp_test001_server_connect == 1 && tcp_test001_server_data == 1 && tcp_test001_server_disconnect == 1 && tcp_test001_client_connect == 1 && tcp_test001_client_data == 1 && tcp_test001_client_disconnect == 1));
+        (int)(!(tcp_test001_server_connect == 1 && tcp_test001_server_data == 1 && tcp_test001_server_disconnect == 2 && tcp_test001_client_connect == 1 && tcp_test001_client_data == 1 && tcp_test001_client_disconnect == 1));
 };
 
 #endif // TCP_TEST_001

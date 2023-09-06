@@ -135,12 +135,13 @@ int tcp_server_main_loop(struct tcp_server* server)
     return 0;
 };
 
-int tcp_server_init(struct tcp_server* server, int ipv6, int non_blocking)
+int tcp_server_init(struct tcp_server* server, struct sockaddr address, int non_blocking)
 {
     if (server == NULL) return -1;
 
     server->non_blocking = non_blocking;
-    int protocol = ipv6 ? AF_INET6 : AF_INET;
+    server->address = address;
+    int protocol = address.sa_family;
 
     server->sockfd = socket(protocol, SOCK_STREAM, 0); // IPv4, TCP, 0
     if (server->sockfd == -1) return netc_error(SOCKET);
@@ -176,14 +177,13 @@ int tcp_server_init(struct tcp_server* server, int ipv6, int non_blocking)
     return 0;
 };
 
-int tcp_server_bind(struct tcp_server* server, struct sockaddr address, socklen_t addrlen)
+int tcp_server_bind(struct tcp_server* server)
 {
-    server->address = address;
-
     socket_t sockfd = server->sockfd;
-    struct sockaddr* addr = &server->address;
+    struct sockaddr addr = server->address;
+    socklen_t addrlen = sizeof(addr);
 
-    int result = bind(sockfd, addr, addrlen);
+    int result = bind(sockfd, &addr, addrlen);
     if (result == -1) return netc_error(BIND);
 
     return 0;
@@ -203,9 +203,9 @@ int tcp_server_accept(struct tcp_server* server, struct tcp_client* client)
 {
     socket_t sockfd = server->sockfd;
     struct sockaddr* addr = (struct sockaddr*)&client->sockaddr;
-    socklen_t* addrlen = &client->addrlen;
+    socklen_t addrlen = sizeof(client->sockaddr);
 
-    int result = accept(sockfd, addr, addrlen);
+    int result = accept(sockfd, addr, &addrlen);
     if (result == -1) return netc_error(ACCEPT);
 
     client->sockfd = result;
@@ -252,6 +252,9 @@ int tcp_server_close_self(struct tcp_server* server)
     if (result == -1) return netc_error(CLOSE);
 
     netc_tcp_server_listening = 0;
+
+    if (server->on_disconnect != NULL) 
+        server->on_disconnect(server, server->sockfd, 0, server->data);
 
     return 0;
 };

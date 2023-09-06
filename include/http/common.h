@@ -215,8 +215,6 @@ struct http_query
     string_t value;
 };
 
-void print_bytes(const char* bytes);
-
 /** Gets the value of a request's method. */
 const char* http_request_get_method(const struct http_request* request);
 /** Gets the value of a request's path. */

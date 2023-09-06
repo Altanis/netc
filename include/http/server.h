@@ -61,7 +61,7 @@ struct http_route
 extern __thread int netc_http_server_listening;
 
 /** Initializes the HTTP server. */
-int http_server_init(struct http_server* http_server, int ipv6, struct sockaddr address, socklen_t addrlen, int backlog);
+int http_server_init(struct http_server* http_server, struct sockaddr address, int backlog);
 /** Starts a nonblocking event loop for the HTTP server. */
 int http_server_start(struct http_server* server);
 

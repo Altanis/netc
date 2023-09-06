@@ -159,7 +159,7 @@ static int udp_test002()
     };
 
     int init_result = 0;
-    if ((init_result = udp_server_init(server, USE_IPV6, SERVER_NON_BLOCKING)) != 0)
+    if ((init_result = udp_server_init(server, *(struct sockaddr*)&udp_server_addr, SERVER_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[UDP TEST CASE 002] server init failed:\nerrno: %d\nreason: %d\n%s", init_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -173,7 +173,7 @@ static int udp_test002()
     };
 
     int bind_result = 0;
-    if ((bind_result = udp_server_bind(server, *(struct sockaddr*)&udp_server_addr, sizeof(udp_server_addr))) != 0)
+    if ((bind_result = udp_server_bind(server)) != 0)
     {
         printf(ANSI_RED "[UDP TEST CASE 002] server bind failed:\nerrno: %d\nreason: %d\n%s", bind_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -198,14 +198,14 @@ static int udp_test002()
     };
 
     int client_init_result = 0;
-    if ((client_init_result = udp_client_init(client, USE_IPV6, CLIENT_NON_BLOCKING)) != 0)
+    if ((client_init_result = udp_client_init(client, *(struct sockaddr*)&udp_client_addr, CLIENT_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[UDP TEST CASE 002] client init failed:\nerrno: %d\nreason: %d\n%s", init_result, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 
     int client_connect_result = 0;
-    if ((client_connect_result = udp_client_connect(client, *(struct sockaddr*)&udp_client_addr, sizeof(udp_client_addr))) != 0)
+    if ((client_connect_result = udp_client_connect(client)) != 0)
     {
         printf(ANSI_RED "[UDP TEST CASE 002] client connect failed:\nerrno: %d\nreason: %d\n%s", client_connect_result, netc_errno_reason, ANSI_RESET);
         return 1;

@@ -13,8 +13,6 @@ struct tcp_client
     socket_t sockfd;
     /** The address of the server to connect to. */
     struct sockaddr sockaddr;
-    /** The size of the client's address. */
-    socklen_t addrlen;
 
     /** The polling file descriptor. */
     int pfd;
@@ -37,9 +35,7 @@ struct tcp_server
     socket_t sockfd;
     /** The server's address. */
     struct sockaddr address;
-    /** The size of the server's address. */
-    socklen_t addrlen;
-
+    
     /** Whether or not the socket is nonblocking. */
     int non_blocking;
 
@@ -67,9 +63,9 @@ extern __thread int netc_tcp_server_listening;
 int tcp_server_main_loop(struct tcp_server* server);
 
 /** Initializes a TCP server. */
-int tcp_server_init(struct tcp_server* server, int ipv6, int non_blocking);
+int tcp_server_init(struct tcp_server* server, struct sockaddr address, int non_blocking);
 /** Binds a TCP server to an address. */
-int tcp_server_bind(struct tcp_server* server, struct sockaddr address, socklen_t addrlen);
+int tcp_server_bind(struct tcp_server* server);
 /** Starts listening for connections on a TCP server. */
 int tcp_server_listen(struct tcp_server* server, int backlog);
 /** Accepts a connection on the TCP server. */
