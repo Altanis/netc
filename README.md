@@ -27,4 +27,4 @@ A cross-platform networking library for TCP, UDP, HTTP, and WS sockets. Written 
 
 ## Usage:
 
-For usage and documentations, please [refer to this folder for documentation and usage guide](https://google.com/).
+For usage and documentations, please [refer to this folder for documentation and usage guide](https://github.com/Altanis/netc/tree/main/docs).
