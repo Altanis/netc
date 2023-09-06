@@ -10,7 +10,6 @@
     1. [Creating a HTTP Client](#creating-a-http-client)
     2. [Handling Asynchronous Events](#handling-asynchronous-events-client)
     3. [Sending Requests](#sending-requests)
-    4. [Receiving Responses](#receiving-responses)
 
 ## HTTP Server <a name="http-server"/>
 The HTTP component of this library is purely asynchronous, and the underlying TCP mechanism will only be nonblocking.
@@ -38,6 +37,10 @@ struct sockaddr_in addr =
 };
 
 int r = http_server_init(&server, 0 /** use ipv6 or not */, *(struct sockaddr*)&addr, sizeof(addr), 10 /** the max number of connections in backlog */);
+if (r != 0) printf(netc_strerror()); /** Handle error. */
+
+/** Start the main loop. */
+r = http_server_start(&server); // This will block until the server is closed.
 if (r != 0) printf(netc_strerror()); /** Handle error. */
 ```
 
@@ -233,3 +236,118 @@ The HTTP component of this library is purely asynchronous, and the underlying TC
 
 ### Creating a HTTP Client <a name="creating-a-http-client"/>
 Creating a HTTP client is a straightforward process. The following code snippet shows how to create a HTTP client that connects to localhost:8080.
+
+```c
+#include <stdio.h>
+#include <netc/http/client.h>
+
+struct http_client client = {0};
+client.on_connect = on_connect;
+client.on_malformed_response = on_malformed_response;
+client.on_data = on_data;
+client.on_disconnect = on_disconnect;
+
+struct sockaddr_in sockaddr = 
+{
+    .sin_family = AF_INET,
+    .sin_port = htons(8080),
+};
+
+if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to convert address.\n"); /** Handle error. */
+
+/** Create the HTTP client. */
+int init_result = http_client_init(&client, 0 /** use ipv6 or not */, 1 /** use non-blocking mode or not */);
+if (init_result != 0) printf(netc_strerror()); /** Handle error. */
+
+/** Start the main loop. */
+int r = http_client_start(&client); // This will block until the client is closed.
+if (r != 0) printf(netc_strerror()); /** Handle error. */
+```
+
+### Handling Asynchronous Events <a name="handling-asynchronous-events-client"/>
+You must use asynchronous events to be notified of when incoming connections, responses, and disconnections occur. The following code snippet shows how the event callbacks work.
+
+```c
+#include <stdio.h>
+#include <netc/http/client.h>
+
+void on_connect(struct http_client* client, void* data)
+{
+    printf("A connection has been established.\n");
+};
+
+void on_malformed_response(struct http_client* client, enum parse_response_error_types error, void* data)
+{
+    /** An incoming response was unable to be parsed. */
+    /** This (usually) should NOT happen. If it ever happens errnoeously, please report an issue! */
+    printf("A malformed response has been received.\n");
+
+    switch (error)
+    {
+        case RESPONSE_PARSE_ERROR_RECV: printf("the recv syscall failed.\n"); break;
+    };
+};
+
+void on_data(struct http_client* client, struct http_response response, void* data)
+{
+    /** Returns a response to a request. */
+
+    printf("An incoming response has come!\n");
+    /** The library has its own string implementation for optimizations. You need to use a getter for the data in a string_t struct. */
+    printf("VERSION: %s", http_response_get_version(&response));
+    printf("STATUS CODE: %d", response.status_code);
+    printf("STATUS MESSAGE: %s", http_response_get_status_message(&response));
+
+    /** response.headers is a vector. */
+
+    for (size_t i = 0; i < response.headers.size; ++i)
+    {
+        struct http_header* header = vector_get(&response.headers, i);
+        printf("HEADER: %s=%s", http_header_get_name(header), http_header_get_value(header));
+    };
+
+    char* body = http_response_get_body(&response);
+    printf("BODY: %s", body);
+};
+
+void on_disconnect(struct http_client* client, void* data)
+{
+    printf("Disconnected from the server.\n");
+};
+```
+
+### Sending Requests <a name="sending-requests"/>
+Sending a request to a server is a straightforward process. The following code snippet shows how to send a request (based off our previous examples).
+
+```c
+// assume that the client is already initialized as `client`
+
+struct http_request request = {0};
+/** Similar to before, you can't use raw strings. You need to use a setter. */
+http_request_set_method(&request, "GET");
+http_request_set_path(&request, "/echo");
+http_request_set_version(&request, "HTTP/1.1");
+
+/** Create headers to send to the server. */
+struct http_header content_type_header = {0};
+http_header_set_name(&content_type_header, "Content-Type");
+http_header_set_value(&content_type_header, "text/plain");
+
+struct http_header content_length_header = {0};
+http_header_set_name(&content_length_header, "Content-Length");
+http_header_set_value(&content_length_header, "13");
+
+/** Initialize a vector to hold each header. */
+/** request.headers is already an initialized vector. */
+vector_init(&request.headers, 2 /** capacity, gets resized if need be */, sizeof(struct http_header));
+vector_push(&request.headers, &content_type_header);
+vector_push(&request.headers, &content_length_header);
+
+/** Set the body. */
+http_request_set_body(&request, "Hello, World!");
+/** Send the request. */
+http_client_send_request(client, &request);
+
+/** Free the request.headers vector. */
+vector_free(&request.headers);
+```
