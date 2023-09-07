@@ -177,8 +177,6 @@ struct http_request
     struct vector query; // <http_query>
     /** The HTTP headers. */
     struct vector headers; // <http_header>
-    /** The HTTP body. */
-    string_t body;
 };
 
 /** A structure representing the HTTP response. */
@@ -193,8 +191,6 @@ struct http_response
 
     /** The HTTP headers. */
     struct vector headers; // <http_header>
-    /** The HTTP body. */
-    string_t body;
 };
 
 /** A structure representing the HTTP header. */

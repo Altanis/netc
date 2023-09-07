@@ -107,29 +107,14 @@ static void _tcp_on_data(struct tcp_server* server, socket_t sockfd, void* data)
     if (callback != NULL) callback(http_server, sockfd, request);
     else 
     {
-        struct http_response response = {0};
-        sso_string_init(&response.version, "HTTP/1.1");
-        response.status_code = 404;
-        sso_string_init(&response.status_message, http_status_messages[HTTP_STATUS_CODE_404]);
+        const char* notfound_message = "\
+        HTTP/1.1 404 Not Found\r\n\
+        Content-Type: text/plain\r\n\
+        Content-Length: 9\r\n\
+        \r\n\
+        Not Found";
 
-        char content_length[16] = {0};
-        sprintf(content_length, "%lu", strlen(http_status_messages[HTTP_STATUS_CODE_404]));
-
-        struct http_header content_type = {0};
-        sso_string_init(&content_type.name, "Content-Type");
-        sso_string_init(&content_type.value, "text/plain");
-
-        struct http_header content_length_h = {0};
-        sso_string_init(&content_length_h.name, "Content-Length");
-        sso_string_init(&content_length_h.value, content_length);
-
-        vector_init(&response.headers, 2, sizeof(struct http_header));
-        vector_push(&response.headers, &content_type);
-        vector_push(&response.headers, &content_length_h);
-
-        sso_string_init(&response.body, http_status_messages[HTTP_STATUS_CODE_404]);
-
-        http_server_send_response(http_server, sockfd, &response, NULL, 0);
+        tcp_server_send(sockfd, notfound_message, strlen(notfound_message), 0);
     };
 
     free(path);
@@ -226,7 +211,7 @@ int http_server_send_chunked_data(struct http_server* server, socket_t sockfd, c
     return 0;
 };
 
-int http_server_send_response(struct http_server* server, socket_t sockfd, struct http_response* response, const char* binary_data, size_t data_length)
+int http_server_send_response(struct http_server* server, socket_t sockfd, struct http_response* response, const char* data, size_t data_length)
 {
     string_t response_str = {0};
     sso_string_init(&response_str, "");
@@ -264,7 +249,7 @@ int http_server_send_response(struct http_server* server, socket_t sockfd, struc
     if (chunked == 0)
     {
         char length_str[16] = {0};
-        sprintf(length_str, "%zu", response->body.length + data_length);
+        sprintf(length_str, "%zu", data_length);
 
         sso_string_concat_buffer(&response_str, "Content-Length: ");
         sso_string_concat_buffer(&response_str, length_str);
@@ -273,16 +258,10 @@ int http_server_send_response(struct http_server* server, socket_t sockfd, struc
 
     sso_string_concat_buffer(&response_str, "\r\n");
 
-    const char* body = sso_string_get(&response->body);
-    if (!chunked && body != NULL)
-    {
-        sso_string_concat_buffer(&response_str, body);
-    };
-
-    ssize_t first_send = tcp_server_send(sockfd, (char*)sso_string_get(&response_str), response_str.length, 0);;
+    ssize_t first_send = tcp_server_send(sockfd, (char*)sso_string_get(&response_str), response_str.length, 0);
     if (first_send <= 0) return first_send;
 
-    ssize_t second_send = tcp_server_send(sockfd, (char*)binary_data, data_length, 0);
+    ssize_t second_send = tcp_server_send(sockfd, (char*)data, data_length, 0);
     if (second_send <= 0) return second_send;
 
     return first_send + second_send;
@@ -436,19 +415,18 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
 
     if (content_length == 0)
     {
-        sso_string_init(&request->body, "");
         return 0;
     }
     else if (content_length == -1)
     {
-        sso_string_init(&request->body, "");
-
         while (1)
         {
             if (time(NULL) - start_time > HTTP_BODY_TIMEOUT_SECONDS) return REQUEST_PARSE_ERROR_TIMEOUT;
 
             string_t chunk_length = {0};
             sso_string_init(&chunk_length, "");
+
+            // TODO: implement a `socket_recv_until_fixed()`
 
             CHECK_RECV_RESULT(state, REQUEST_PARSING_STATE_CHUNK_SIZE, sockfd, &chunk_length, "\r\n", 1, 16 + 2);
 
