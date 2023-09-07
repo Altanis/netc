@@ -29,9 +29,9 @@ int http_client_init(struct http_client* client, struct sockaddr address);
 int http_client_start(struct http_client* client);
 
 /** Sends chunked data to the server. */
-int http_client_send_chunked_data(struct http_client* client, char* data);
+int http_client_send_chunked_data(struct http_client* client, char* data, size_t length);
 /** Sends an HTTP request to the server. */
-int http_client_send_request(struct http_client* client, struct http_request* request);
+int http_client_send_request(struct http_client* client, struct http_request* request, const char* binary_data, size_t data_length);
 /** Parses an HTTP response from the server. */
 int http_client_parse_response(struct http_client* client, struct http_response* response);
 

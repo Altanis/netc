@@ -34,15 +34,30 @@ struct sockaddr_in sockaddr =
 
 /** Create the UDP server. */
 int init_result = udp_server_init(&server, *(struct sockaddr*)&sockaddr, 1 /** use non-blocking mode or not */);
-if (init_result != 0) printf(netc_strerror()); /** Handle error. */
+if (init_result != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
 /** Bind the UDP server to the address. */
 int bind_result = udp_server_bind(&server);
-if (bind_result != 0) printf(netc_strerror()); /** Handle error. */
+if (bind_result != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
 /** Start the event loop. */
 int r = udp_server_main_loop(&server); /** This function will block. */
-if (r != 0) printf(netc_strerror()); /** Handle error. */
+if (r != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 ```
 
 ### Handling Asynchronous Events <a name="handling-asynchronous-events-server"/>
@@ -62,12 +77,22 @@ void on_data(struct udp_server* server, void* data)
 
     /** Receive the data. */
     int r = udp_server_receive(server, buffer, 1024 /** sizeof buffer */, 0 /** flags */, &addr, &addr_len);
-    if (r == -1) printf(netc_strerror()); /** Handle error. */
+    if (r == -1) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
     else
     {
         /** Send the data back. */
         r = udp_server_send(server, buffer, 1024 /** sizeof buffer */, 0 /** flags */, &addr, addr_len);
-        if (r == -1) printf(netc_strerror()); /** Handle error. */
+        if (r == -1) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
         else
         {
             /** Print the data. */
@@ -92,7 +117,12 @@ socklen_t addrlen = sizeof(addr);
 
 /** Receive the data. */
 int r = udp_server_receive(server, buffer, 1024 /** sizeof buffer */, 0 /** flags */, &addr, &addrlen); // This will block until data is received.
-if (r == -1) printf(netc_strerror()); /** Handle error. */
+if (r == -1) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
 /** Send the data. */
 r = udp_server_send(server, buffer, 1024 /** sizeof buffer */, 0 /** flags */, &addr, addrlen); // This will block until the data is sent.
@@ -122,11 +152,21 @@ if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to 
 
 /** Create the UDP client. */
 int init_result = udp_client_init(&client, 0 *(struct sockaddr*)&sockaddr, 1 /** use non-blocking mode or not */);
-if (init_result != 0) printf(netc_strerror()); /** Handle error. */
+if (init_result != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
 /** Connect to the server. */
 int connect_result = udp_client_connect(&client);
-if (connect_result != 0) printf(netc_strerror()); /** Handle error. */
+if (connect_result != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 ```
 
 ### Handling Asynchronous Events <a name="handling-asynchronous-events-client"/>
@@ -147,12 +187,22 @@ void on_data(struct udp_client* client, void* data)
 
     /** Receive the data. */
     int r = udp_client_receive(client, buffer, 1024 /** sizeof buffer */, 0 /** flags */, &addr, &addr_len);
-    if (r == -1) printf(netc_strerror()); /** Handle error. */
+    if (r == -1) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
     else
     {
         /** Send the data back. */
         r = udp_client_send(client, buffer, 1024 /** sizeof buffer */, 0 /** flags */, &addr, addr_len);
-        if (r == -1) printf(netc_strerror()); /** Handle error. */
+        if (r == -1) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
         else
         {
             /** Print the data. */

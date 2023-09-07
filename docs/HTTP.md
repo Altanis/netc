@@ -6,10 +6,12 @@
     2. [Setting Up Routes](#setting-up-routes)
     3. [Handling Asynchronous Events](#handling-asynchronous-events-server)
     4. [Sending Responses](#sending-data)
+    5. [Sending Files](#sending-files-server)
 2. [HTTP Client](#http-client)
     1. [Creating a HTTP Client](#creating-a-http-client)
     2. [Handling Asynchronous Events](#handling-asynchronous-events-client)
     3. [Sending Requests](#sending-requests)
+    4. [Sending Files](#sending-files-client)
 
 ## HTTP Server <a name="http-server"/>
 The HTTP component of this library is purely asynchronous, and the underlying TCP mechanism will only be nonblocking.
@@ -37,11 +39,21 @@ struct sockaddr_in addr =
 };
 
 int r = http_server_init(&server, *(struct sockaddr*)&addr, 10 /** the max number of connections in backlog */);
-if (r != 0) printf(netc_strerror()); /** Handle error. */
+if (r != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
 /** Start the main loop. */
 r = http_server_start(&server); // This will block until the server is closed.
-if (r != 0) printf(netc_strerror()); /** Handle error. */
+if (r != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 ```
 
 ### Setting Up Routes <a name="setting-up-routes"/>
@@ -158,9 +170,14 @@ void callback_404(struct http_server* server, socket_t sockfd, struct http_reque
     http_header_set_name(&content_type_header, "Content-Type");
     http_header_set_value(&content_type_header, "text/plain");
 
-    struct http_header content_length_header = {0};
-    http_header_set_name(&content_length_header, "Content-Length");
-    http_header_set_value(&content_length_header, "9");
+    // struct http_header content_length_header = {0};
+    // http_header_set_name(&content_length_header, "Content-Length");
+    // http_header_set_value(&content_length_header, "9");
+
+    // The Content-Length header is filled in automatically by the library.
+    // Note if there are more than 15 digits in the Content-Length header, 
+    // it will cause undefined behavior. Put your own Content-Length header
+    // in that case.
 
     /** Initialize a vector to hold each header. */
     /** response.headers is already an initialized vector. */
@@ -171,7 +188,12 @@ void callback_404(struct http_server* server, socket_t sockfd, struct http_reque
     /** Set the body. */
     http_response_set_body(&response, "Not Found");
     /** Send the response. */
-    http_server_send_response(server, sockfd, &response);
+    http_server_send_response(server, sockfd, &response, NULL, 0);
+
+    // NOTE: You are able to send binary data.
+    // Replace NULL with your binary data, and 0
+    // with the length. Ensure you set the correct
+    // Content-Type header.
 
     /** Free the response.headers vector. */
     vector_free(&response.headers);
@@ -214,9 +236,14 @@ void callback_echo(struct http_server* server, socket_t sockfd, struct http_requ
     http_header_set_name(&content_type_header, "Content-Type");
     http_header_set_value(&content_type_header, "text/plain");
 
-    struct http_header content_length_header = {0};
-    http_header_set_name(&content_length_header, "Content-Length");
-    http_header_set_value(&content_length_header, strlen(body));
+    // struct http_header content_length_header = {0};
+    // http_header_set_name(&content_length_header, "Content-Length");
+    // http_header_set_value(&content_length_header, strlen(body));
+
+    // The Content-Length header is filled in automatically by the library.
+    // Note if there are more than 15 digits in the Content-Length header, 
+    // it will cause undefined behavior. Put your own Content-Length header
+    // in that case.
 
     /** Initialize a vector to hold each header. */
     /** response.headers is already an initialized vector. */
@@ -227,12 +254,21 @@ void callback_echo(struct http_server* server, socket_t sockfd, struct http_requ
     /** Set the body. */
     http_response_set_body(&response, body);
     /** Send the response. */
-    http_server_send_response(server, sockfd, &response);
+    http_server_send_response(server, sockfd, &response, NULL, 0);
+
+    // NOTE: You are able to send binary data.
+    // Replace NULL with your binary data, and 0
+    // with the length. Ensure you set the correct
+    // Content-Type header.
 
     /** Free the response.headers vector. */
     vector_free(&response.headers);    
 };
 ```
+
+### Sending Files <a name="sending-files-server"/>
+
+TBD.
 
 ## HTTP Client <a name="http-server"/>
 The HTTP component of this library is purely asynchronous, and the underlying TCP mechanism will only be nonblocking.
@@ -260,11 +296,21 @@ if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to 
 
 /** Create the HTTP client. */
 int init_result = http_client_init(&client, *(struct sockaddr*)&sockaddr);
-if (init_result != 0) printf(netc_strerror()); /** Handle error. */
+if (init_result != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
 /** Start the main loop. */
 int r = http_client_start(&client); // This will block until the client is closed.
-if (r != 0) printf(netc_strerror()); /** Handle error. */
+if (r != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 ```
 
 ### Handling Asynchronous Events <a name="handling-asynchronous-events-client"/>
@@ -336,9 +382,14 @@ struct http_header content_type_header = {0};
 http_header_set_name(&content_type_header, "Content-Type");
 http_header_set_value(&content_type_header, "text/plain");
 
-struct http_header content_length_header = {0};
-http_header_set_name(&content_length_header, "Content-Length");
-http_header_set_value(&content_length_header, "13");
+// struct http_header content_length_header = {0};
+// http_header_set_name(&content_length_header, "Content-Length");
+// http_header_set_value(&content_length_header, "13");
+
+// The Content-Length header is filled in automatically by the library.
+// Note if there are more than 15 digits in the Content-Length header, 
+// it will cause undefined behavior. Put your own Content-Length header
+// in that case.
 
 /** Initialize a vector to hold each header. */
 /** request.headers is already an initialized vector. */
@@ -349,8 +400,17 @@ vector_push(&request.headers, &content_length_header);
 /** Set the body. */
 http_request_set_body(&request, "Hello, World!");
 /** Send the request. */
-http_client_send_request(client, &request);
+http_client_send_request(client, &request, NULL, 0);
+
+// NOTE: You are able to send binary data.
+// Replace NULL with your binary data, and 0
+// with the length. Ensure you set the correct
+// Content-Type header.
 
 /** Free the request.headers vector. */
 vector_free(&request.headers);
 ```
+
+### Sending Files <a name="sending-files-client"/>
+
+TBD.

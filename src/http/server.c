@@ -129,7 +129,7 @@ static void _tcp_on_data(struct tcp_server* server, socket_t sockfd, void* data)
 
         sso_string_init(&response.body, http_status_messages[HTTP_STATUS_CODE_404]);
 
-        http_server_send_response(http_server, sockfd, &response);
+        http_server_send_response(http_server, sockfd, &response, NULL, 0);
     };
 
     free(path);
@@ -212,10 +212,8 @@ void http_server_remove_route(struct http_server* server, const char* path)
     };
 };
 
-int http_server_send_chunked_data(struct http_server* server, socket_t sockfd, char* data)
+int http_server_send_chunked_data(struct http_server* server, socket_t sockfd, char* data, size_t length)
 {
-    size_t length = data == NULL ? 0 : strlen(data);
-
     char length_str[16] = {0};
     sprintf(length_str, "%zx\r\n", length);
 
@@ -228,7 +226,7 @@ int http_server_send_chunked_data(struct http_server* server, socket_t sockfd, c
     return 0;
 };
 
-int http_server_send_response(struct http_server* server, socket_t sockfd, struct http_response* response)
+int http_server_send_response(struct http_server* server, socket_t sockfd, struct http_response* response, const char* binary_data, size_t data_length)
 {
     string_t response_str = {0};
     sso_string_init(&response_str, "");
@@ -254,10 +252,22 @@ int http_server_send_response(struct http_server* server, socket_t sockfd, struc
 
         if (!chunked && strcmp(name, "Transfer-Encoding") == 0 && strcmp(value, "chunked") == 0)
             chunked = 1;
+        else if (!chunked && strcmp(name, "Content-Length") == 0)
+            chunked = -1;
 
         sso_string_concat_buffer(&response_str, name);
         sso_string_concat_buffer(&response_str, ": ");
         sso_string_concat_buffer(&response_str, value);
+        sso_string_concat_buffer(&response_str, "\r\n");
+    };
+
+    if (chunked == 0)
+    {
+        char length_str[16] = {0};
+        sprintf(length_str, "%zu", response->body.length + data_length);
+
+        sso_string_concat_buffer(&response_str, "Content-Length: ");
+        sso_string_concat_buffer(&response_str, length_str);
         sso_string_concat_buffer(&response_str, "\r\n");
     };
 
@@ -269,7 +279,13 @@ int http_server_send_response(struct http_server* server, socket_t sockfd, struc
         sso_string_concat_buffer(&response_str, body);
     };
 
-    return tcp_server_send(sockfd, (char*)sso_string_get(&response_str), response_str.length, 0);
+    ssize_t first_send = tcp_server_send(sockfd, (char*)sso_string_get(&response_str), response_str.length, 0);;
+    if (first_send <= 0) return first_send;
+
+    ssize_t second_send = tcp_server_send(sockfd, (char*)binary_data, data_length, 0);
+    if (second_send <= 0) return second_send;
+
+    return first_send + second_send;
 };
 
 // int http_server_send_response(struct http_server* server, socket_t sockfd, struct http_response* response)

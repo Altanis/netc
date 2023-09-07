@@ -115,6 +115,7 @@ static void http_test001_server_on_connect(struct http_server* server, struct tc
 static void http_test001_server_on_data(struct http_server* server, socket_t sockfd, struct http_request request)
 {
     ++http_test001_server_data;
+    printf("exhausted. %d\n", http_test001_server_data);
     
     printf("[HTTP TEST CASE 001] server received data from %d at endpoint \"/\"\n", sockfd);
     print_request(request);
@@ -150,24 +151,43 @@ static void http_test001_server_on_data(struct http_server* server, socket_t soc
 
         vector_push(&response.headers, &transfer_encoding);
 
-        http_server_send_response(server, sockfd, &response);
-        http_server_send_chunked_data(server, sockfd, "he");
-        http_server_send_chunked_data(server, sockfd, "llo");
-        http_server_send_chunked_data(server, sockfd, "world");
-        http_server_send_chunked_data(server, sockfd, NULL);
+        http_server_send_response(server, sockfd, &response, NULL, 0);
+        http_server_send_chunked_data(server, sockfd, "he", 2);
+        http_server_send_chunked_data(server, sockfd, "llo", 3);
+        http_server_send_chunked_data(server, sockfd, "world", 5);
+        http_server_send_chunked_data(server, sockfd, NULL, 0);
+    }
+    else if (http_test001_server_data == 8)
+    {
+        struct http_header transfer_encoding = {0};
+        http_header_set_name(&transfer_encoding, "Transfer-Encoding");
+        http_header_set_value(&transfer_encoding, "chunked");
 
+        vector_push(&response.headers, &transfer_encoding);
+
+        printf("found?\n");
+        FILE* file = fopen("./tests/http/image.png", "rb");
+        fseek(file, 0, SEEK_END);
+        size_t file_size = ftell(file);
+        fseek(file, 0, SEEK_SET);
+
+        http_server_send_response(server, sockfd, &response, NULL, 0);
+
+        char buffer[8192];
+        size_t bytes_read;
+        while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+            http_server_send_chunked_data(server, sockfd, buffer, bytes_read);
+        };
+
+        http_server_send_chunked_data(server, sockfd, NULL, 0);
+
+        fclose(file);
         http_server_close(server);
     }
     else 
     {
-        struct http_header content_length = {0};
-        http_header_set_name(&content_length, "Content-Length");
-        http_header_set_value(&content_length, "5");
-
-        vector_push(&response.headers, &content_length);
-        
         http_response_set_body(&response, "hello");
-        http_server_send_response(server, sockfd, &response);
+        http_server_send_response(server, sockfd, &response, NULL, 0);
     }
 };
 
@@ -187,17 +207,12 @@ static void http_test001_server_on_data_wrong_route(struct http_server* server, 
     http_header_set_name(&content_type, "Content-Type");
     http_header_set_value(&content_type, "text/plain");
 
-    struct http_header content_length = {0};
-    http_header_set_name(&content_length, "Content-Length");
-    http_header_set_value(&content_length, "5");
-
-    vector_init(&response.headers, 2, sizeof(struct http_header));
+    vector_init(&response.headers, 1, sizeof(struct http_header));
     vector_push(&response.headers, &content_type);
-    vector_push(&response.headers, &content_length);
 
     http_response_set_body(&response, "later");
 
-    http_server_send_response(server, sockfd, &response);
+    http_server_send_response(server, sockfd, &response, NULL, 0);
 };
 
 static void http_test001_server_on_data_wildcard_route(struct http_server* server, socket_t sockfd, struct http_request request) { printf("[HTTP TEST CASE 001] defaulted to /* ... failure...\n"); };
@@ -231,22 +246,12 @@ static void http_test001_client_on_connect(struct http_client* client, void* dat
     http_header_set_name(&content_type, "Content-Type");
     http_header_set_value(&content_type, "text/plain");
 
-    struct http_header content_length = {0};
-    http_header_set_name(&content_length, "Content-Length");
-    http_header_set_value(&content_length, "5");
-
-    struct http_header accept_encoding = {0};
-    http_header_set_name(&accept_encoding, "Accept-Encoding");
-    http_header_set_value(&accept_encoding, "gzip, deflate, br");
-
-    vector_init(&request.headers, 3, sizeof(struct http_header));
-    vector_push(&request.headers, &accept_encoding);
+    vector_init(&request.headers, 1, sizeof(struct http_header));
     vector_push(&request.headers, &content_type);
-    vector_push(&request.headers, &content_length);
     
     http_request_set_body(&request, "hello");
 
-    http_client_send_request(client, &request);
+    http_client_send_request(client, &request, NULL, 0);
 };
 
 static void http_test001_client_on_data(struct http_client* client, struct http_response response, void* data)
@@ -254,7 +259,7 @@ static void http_test001_client_on_data(struct http_client* client, struct http_
     printf("[HTTP TEST CASE 001] client received data\n");
     print_response(response);
 
-    if (++http_test001_client_data <= 6)
+    if (++http_test001_client_data <= 7)
     {
         const char* path = (http_test001_client_data == 1 ? "/" : (http_test001_client_data == 2 ? "/wow" : (http_test001_client_data == 3 ? "/wow?x=1" : (http_test001_client_data == 4 ? "/?x=1" : 
         (http_test001_client_data == 5 ? "/test" : "/")))));
@@ -271,18 +276,12 @@ static void http_test001_client_on_data(struct http_client* client, struct http_
         vector_init(&request.headers, 2, sizeof(struct http_header));
         vector_push(&request.headers, &content_type);
 
-        if (http_test001_client_data != 6)
+        if (http_test001_client_data < 6)
         {
-            struct http_header content_length = {0};
-            http_header_set_name(&content_length, "Content-Length");
-            http_header_set_value(&content_length, "5");
-
-            vector_push(&request.headers, &content_length);
             http_request_set_body(&request, "hello");
-
-            http_client_send_request(client, &request);
+            http_client_send_request(client, &request, NULL, 0);
         }
-        else
+        else if (http_test001_client_data == 6)
         {
             // transfer encoding
             struct http_header transfer_encoding = {0};
@@ -291,11 +290,38 @@ static void http_test001_client_on_data(struct http_client* client, struct http_
 
             vector_push(&request.headers, &transfer_encoding);
 
-            http_client_send_request(client, &request);
-            http_client_send_chunked_data(client, "he");
-            http_client_send_chunked_data(client, "llo");
-            http_client_send_chunked_data(client, "world");
-            http_client_send_chunked_data(client, NULL);
+            http_client_send_request(client, &request, NULL, 0);
+            http_client_send_chunked_data(client, "he", 2);
+            http_client_send_chunked_data(client, "llo", 3);
+            http_client_send_chunked_data(client, "world", 5);
+            http_client_send_chunked_data(client, NULL, 0);
+        }
+        else if (http_test001_client_data == 7)
+        {
+            // transfer encoding
+            struct http_header transfer_encoding = {0};
+            http_header_set_name(&transfer_encoding, "Transfer-Encoding");
+            http_header_set_value(&transfer_encoding, "chunked");
+
+            vector_push(&request.headers, &transfer_encoding);
+
+            FILE* file = fopen("./tests/http/image.png", "rb");
+            if (file == NULL) perror("file is null\n");
+            fseek(file, 0, SEEK_END);
+            size_t file_size = ftell(file);
+            fseek(file, 0, SEEK_SET);
+
+            http_client_send_request(client, &request, NULL, 0);
+
+            char buffer[8192];
+            size_t bytes_read;
+            while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+                http_client_send_chunked_data(client, buffer, bytes_read);
+            };
+
+            http_client_send_chunked_data(client, NULL, 0);
+
+            fclose(file);
         };
     } else http_client_close(client);
 };
@@ -379,7 +405,7 @@ static int http_test001()
         printf(ANSI_RED "[HTTP TEST CASE 001] server received connection incorrectly\n" ANSI_RESET);
     }
 
-    if (http_test001_server_data == 7) {
+    if (http_test001_server_data == 8) {
         printf(ANSI_GREEN "[HTTP TEST 001] server handled data correctly\n" ANSI_RESET);
     } else {
         printf(ANSI_RED "[HTTP TEST CASE 001] server handled data incorrectly\n" ANSI_RESET);
@@ -397,7 +423,7 @@ static int http_test001()
         printf(ANSI_RED "[HTTP TEST CASE 001] client connected incorrectly\n" ANSI_RESET);
     }
 
-    if (http_test001_client_data == 7) {
+    if (http_test001_client_data == 8) {
         printf(ANSI_GREEN "[HTTP TEST 001] client handled data correctly\n" ANSI_RESET);
     } else {
         printf(ANSI_RED "[HTTP TEST CASE 001] client handled data incorrectly\n" ANSI_RESET);
@@ -409,7 +435,7 @@ static int http_test001()
         printf(ANSI_RED "[HTTP TEST CASE 001] client disconnected incorrectly\n" ANSI_RESET);
     }
 
-    return (int)(http_test001_server_connect == 1 && http_test001_server_data == 7 && http_test001_server_disconnect == 1 && http_test001_client_connect == 1 && http_test001_client_data == 7 && http_test001_client_disconnect == 1 ? 0 : 1);
+    return (int)(http_test001_server_connect == 1 && http_test001_server_data == 8 && http_test001_server_disconnect == 1 && http_test001_client_connect == 1 && http_test001_client_data == 8 && http_test001_client_disconnect == 1 ? 0 : 1);
 };
 
 #endif // HTTP_TEST_001

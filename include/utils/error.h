@@ -8,6 +8,8 @@
 #include <sys/errno.h>
 #endif
 
+#include <stdio.h>
+
 #ifdef _WIN32
 /** Sets the error code for netc, and returns the current errno. */
 #define netc_error(reason) (netc_errno_reason = reason, WSAGetLastError())
@@ -37,7 +39,9 @@ extern __thread int netc_errno_reason;
 #define INETPTON       13     /** inet_pton syscall */
 #define WSASTARTUP     14     /** WSAStartup() */
 
-/** Prints the current error. */
-char* netc_strerror();
+/** Writes the error to a buffer. */
+void netc_strerror(char* buffer);
+/** Prints the error to a file stream. */
+void netc_perror(const char* message, FILE* stream);
 
 #endif // ERROR_H

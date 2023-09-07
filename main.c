@@ -1,5 +1,4 @@
 #include "http/server.h"
-#include "http/client.h"
 
 #include "tests/tcp/test001.c"
 #include "tests/tcp/test002.c"
@@ -26,6 +25,50 @@ const char* BANNER = "\
 ██║╚██╗██║██╔══╝     ██║   ██║     \n\
 ██║ ╚████║███████╗   ██║   ╚██████╗\n\
 ╚═╝  ╚═══╝╚══════╝   ╚═╝    ╚═════╝\n";
+
+static void http_server_handler(struct http_server* server, socket_t sockfd, struct http_request request)
+{
+    printf("request.\n");
+
+    struct http_response response = {0};
+    http_response_set_version(&response, "HTTP/1.1");
+    response.status_code = 200;
+    http_response_set_status_message(&response, "OK");
+
+    struct http_header header = {0};
+    http_header_set_name(&header, "Content-Type");
+    http_header_set_value(&header, "image/png");
+
+    struct http_header header2 = {0};
+    http_header_set_name(&header2, "Transfer-Encoding");
+    http_header_set_value(&header2, "chunked");
+
+    vector_init(&response.headers, 2, sizeof(struct http_header));
+    vector_push(&response.headers, &header);
+    vector_push(&response.headers, &header2);
+
+    // read ./tests/http/image.png (an image)
+    FILE* file = fopen("./tests/http/image.png", "rb");
+    fseek(file, 0, SEEK_END);
+    size_t file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    http_server_send_response(server, sockfd, &response, NULL, 0);
+
+    // Send the file data in chunks
+    char buffer[8192];  // You can adjust the chunk size as needed
+    size_t bytes_read;
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+        http_server_send_chunked_data(server, sockfd, buffer, bytes_read);
+    };
+
+    http_server_send_chunked_data(server, sockfd, NULL, 0);
+
+    // Close the file
+    fclose(file);
+
+    printf("response.\n");
+};
 
 int main()
 {
@@ -62,6 +105,24 @@ int main()
     {
         printf(ANSI_RED "\n\nTEST SUITE FAILED! fix me.\n%s", ANSI_RESET);
     };
+
+    struct http_server server = {0};
+    struct sockaddr_in server_address = {
+        .sin_family = AF_INET,
+        .sin_port = htons(5001),
+        .sin_addr.s_addr = INADDR_ANY,
+    };
+
+    if (http_server_init(&server, *(struct sockaddr*)&server_address, BACKLOG) != 0) 
+    {
+        netc_perror("http_server_init", stderr);
+        return 1;
+    };
+
+    struct http_route main = { .path = "/", .callback = http_server_handler };
+
+    http_server_create_route(&server, &main);
+    http_server_start(&server);
 
     return 0;
 };

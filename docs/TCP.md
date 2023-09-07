@@ -37,19 +37,39 @@ struct sockaddr_in sockaddr =
 
 /** Create the TCP server. */
 int init_result = tcp_server_init(&server, *(struct sockaddr*)&sockaddr, 1 /** use non-blocking mode or not */);
-if (init_result != 0) printf(netc_strerror()); /** Handle error. */
+if (init_result != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
 /** Bind the TCP server to the address. */
 int bind_result = tcp_server_bind(&server);
-if (bind_result != 0) printf(netc_strerror()); /** Handle error. */
+if (bind_result != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
 /** Start listening for incoming connections. */
 int listen_result = tcp_server_listen(&server, 10 /** backlog */);
-if (listen_result != 0) printf(netc_strerror()); /** Handle error. */
+if (listen_result != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
 /** Start the event loop. */
 int r = tcp_server_main_loop(&server); /** This function will block. */
-if (r != 0) printf(netc_strerror()); /** Handle error. */
+if (r != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 ```
 
 ### Handling Asynchronous Events <a name="handling-asynchronous-events-server"/>
@@ -64,7 +84,12 @@ void on_connect(struct tcp_server* server, void* data)
 {
     struct tcp_client client = {0};
     int r = tcp_server_accept(server, &client);
-    if (r != 0) printf(netc_strerror()); /** Handle error. */
+    if (r != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
     /** Do something with the client. */
     printf("Client connected. Their sockfd: %d\n", client.sockfd);
@@ -80,13 +105,23 @@ void on_data(struct tcp_server* server, socket_t sockfd, void* data)
 
     uint32_t recv_amt = 0;
 
-    if (r == -1) printf(netc_strerror()); /** Handle error. */
+    if (r == -1) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
     else
     {
         recv_amt = *(uint32_t*)data_size;
         char buffer[recv_amt];
         r = tcp_server_receive(sockfd, buffer, recv_amt, 0 /** flags */);
-        if (r == -1) printf(netc_strerror()); /** Handle error. */
+        if (r == -1) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
         else
         {
             /** Do something with the data. */
@@ -158,15 +193,30 @@ if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to 
 
 /** Create the TCP client. */
 int init_result = tcp_client_init(&client, *(struct sockaddr*)&sockaddr, 1 /** use non-blocking mode or not */);
-if (init_result != 0) printf(netc_strerror()); /** Handle error. */
+if (init_result != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
 /** Connect to the server. */
 int connect_result = tcp_client_connect(&client);
-if (connect_result != 0) printf(netc_strerror()); /** Handle error. */
+if (connect_result != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 
 /** Start the event loop. */
 int r = tcp_client_main_loop(&client); /** This function will block. */
-if (r != 0) printf(netc_strerror()); /** Handle error. */
+if (r != 0) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
 ```
 
 ### Handling Asynchronous Events <a name="handling-asynchronous-events-client"/>
@@ -191,13 +241,23 @@ void on_data(struct tcp_client* client, void* data)
 
     uint32_t recv_amt = 0;
 
-    if (r == -1) printf(netc_strerror()); /** Handle error. */
+    if (r == -1) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
     else
     {
         recv_amt = *(uint32_t*)data_size;
         char buffer[recv_amt];
         r = tcp_client_receive(client, buffer, recv_amt, 0 /** flags */);
-        if (r == -1) printf(netc_strerror()); /** Handle error. */
+        if (r == -1) 
+{
+    /** Handle error. */
+    netc_perror("failure", NULL);
+    return 1;
+}
         else
         {
             /** Do something with the data. */

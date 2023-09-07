@@ -73,9 +73,9 @@ void (*http_server_find_route(struct http_server* server, const char* path))(str
 void http_server_remove_route(struct http_server* server, const char* path);
 
 /** Sends chunked data to the client. */
-int http_server_send_chunked_data(struct http_server* server, socket_t sockfd, char* data);
+int http_server_send_chunked_data(struct http_server* server, socket_t sockfd, char* data, size_t data_length);
 /** Sends the HTTP response. */
-int http_server_send_response(struct http_server* server, socket_t sockfd, struct http_response* response);
+int http_server_send_response(struct http_server* server, socket_t sockfd, struct http_response* response, const char* binary_data, size_t length);
 /** Parses the HTTP request. */
 int http_server_parse_request(struct http_server* server, socket_t sockfd, struct http_request* request);
 

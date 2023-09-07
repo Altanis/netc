@@ -65,10 +65,8 @@ int http_client_start(struct http_client* client)
     return tcp_client_main_loop(&client->client);
 };
 
-int http_client_send_chunked_data(struct http_client* client, char* data)
+int http_client_send_chunked_data(struct http_client* client, char* data, size_t length)
 {
-    size_t length = data == NULL ? 0 : strlen(data);
-
     char length_str[16] = {0};
     sprintf(length_str, "%zx\r\n", length);
 
@@ -81,7 +79,7 @@ int http_client_send_chunked_data(struct http_client* client, char* data)
     return 0;
 };
 
-int http_client_send_request(struct http_client* client, struct http_request* request)
+int http_client_send_request(struct http_client* client, struct http_request* request, const char* binary_data, size_t data_length)
 {
     string_t request_str = {0};
     sso_string_init(&request_str, "");
@@ -106,10 +104,22 @@ int http_client_send_request(struct http_client* client, struct http_request* re
 
         if (!chunked && strcmp(name, "Transfer-Encoding") == 0 && strcmp(value, "chunked") == 0)
             chunked = 1;
+        else if (!chunked && strcmp(name, "Content-Length") == 0)
+            chunked = -1;
 
         sso_string_concat_buffer(&request_str, name);
         sso_string_concat_buffer(&request_str, ": ");
         sso_string_concat_buffer(&request_str, value);
+        sso_string_concat_buffer(&request_str, "\r\n");
+    };
+
+    if (chunked == 0)
+    {
+        char length_str[16] = {0};
+        sprintf(length_str, "%zu", request->body.length + data_length);
+
+        sso_string_concat_buffer(&request_str, "Content-Length: ");
+        sso_string_concat_buffer(&request_str, length_str);
         sso_string_concat_buffer(&request_str, "\r\n");
     };
 
@@ -121,7 +131,13 @@ int http_client_send_request(struct http_client* client, struct http_request* re
         sso_string_concat_buffer(&request_str, body);
     };
 
-    return tcp_client_send(&client->client, (char*)sso_string_get(&request_str), request_str.length, 0);
+    ssize_t first_send = tcp_client_send(&client->client, (char*)sso_string_get(&request_str), request_str.length, 0);
+    if (first_send <= 0) return first_send;
+
+    ssize_t second_send = tcp_client_send(&client->client, (char*)binary_data, data_length, 0);
+    if (second_send <= 0) return second_send;
+
+    return first_send + second_send;
 };
 
 int http_client_parse_response(struct http_client* client, struct http_response* response)
