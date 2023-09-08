@@ -150,7 +150,11 @@ void callback_echo(struct http_server* server, socket_t sockfd, struct http_requ
     };
 
     char* body = http_request_get_body(&request);
-    printf("BODY: %s", body);
+    // Printing this will cause undefined behavior if the body is binary data.
+    // Instrad, do this:
+    printf("BODY:");
+    for (size_t i = 0; i < request.body_size; ++i) printf("%c", body[i]);
+    printf("\n"); 
 };
 ```
 
@@ -182,19 +186,18 @@ void callback_404(struct http_server* server, socket_t sockfd, struct http_reque
 
     /** Initialize a vector to hold each header. */
     /** response.headers is already an initialized vector. */
-    vector_init(&response.headers, 2 /** capacity, gets resized if need be */, sizeof(struct http_header));
+    vector_init(&response.headers, 1 /** capacity, gets resized if need be */, sizeof(struct http_header));
     vector_push(&response.headers, &content_type_header);
-    vector_push(&response.headers, &content_length_header);
+    // vector_push(&response.headers, &content_length_header);
 
-    /** Set the body. */
-    http_response_set_body(&response, "Not Found");
+    // Keep in mind there is no setter for the response body.
+    // You should directly provide the data to the send function.
+
     /** Send the response. */
-    http_server_send_response(server, sockfd, &response, NULL, 0);
+    http_server_send_response(server, sockfd, &response, "Not Found" /** the buffer to send */, 9 /** the length of the buffer */);
 
     // NOTE: You are able to send binary data.
-    // Replace NULL with your binary data, and 0
-    // with the length. Ensure you set the correct
-    // Content-Type header.
+    // Ensure you set the correct Content-Type header.
 
     /** Free the response.headers vector. */
     vector_free(&response.headers);
@@ -224,7 +227,11 @@ void callback_echo(struct http_server* server, socket_t sockfd, struct http_requ
     };
 
     char* body = http_request_get_body(&request);
-    printf("BODY: %s", body);
+    // Printing this will cause undefined behavior if the body is binary data.
+    // Instrad, do this:
+    printf("BODY:");
+    for (size_t i = 0; i < request.body_size; ++i) printf("%c", body[i]);
+    printf("\n"); 
 
     struct http_response response = {0};
     /** Similar to before, you can't use raw strings. You need to use a setter. */
@@ -248,14 +255,15 @@ void callback_echo(struct http_server* server, socket_t sockfd, struct http_requ
 
     /** Initialize a vector to hold each header. */
     /** response.headers is already an initialized vector. */
-    vector_init(&response.headers, 2 /** capacity, gets resized if need be */, sizeof(struct http_header));
+    vector_init(&response.headers, 1 /** capacity, gets resized if need be */, sizeof(struct http_header));
     vector_push(&response.headers, &content_type_header);
-    vector_push(&response.headers, &content_length_header);
+    // vector_push(&response.headers, &content_length_header);
 
-    /** Set the body. */
-    http_response_set_body(&response, body);
+    // Keep in mind there is no setter for the response body.
+    // You should directly provide the data to the send function.
+
     /** Send the response. */
-    http_server_send_response(server, sockfd, &response, NULL, 0);
+    http_server_send_response(server, sockfd, &response, body, request.body_size);
 
     // NOTE: You are able to send binary data.
     // Replace NULL with your binary data, and 0
@@ -357,7 +365,11 @@ void on_data(struct http_client* client, struct http_response response, void* da
     };
 
     char* body = http_response_get_body(&response);
-    printf("BODY: %s", body);
+    // Printing this will cause undefined behavior if the body is binary data.
+    // Instrad, do this:
+    printf("BODY:");
+    for (size_t i = 0; i < response.body_size; ++i) printf("%c", body[i]);
+    printf("\n");
 };
 
 void on_disconnect(struct http_client* client, int is_error, void* data)
@@ -394,14 +406,15 @@ http_header_set_value(&content_type_header, "text/plain");
 
 /** Initialize a vector to hold each header. */
 /** request.headers is already an initialized vector. */
-vector_init(&request.headers, 2 /** capacity, gets resized if need be */, sizeof(struct http_header));
+vector_init(&request.headers, 1 /** capacity, gets resized if need be */, sizeof(struct http_header));
 vector_push(&request.headers, &content_type_header);
-vector_push(&request.headers, &content_length_header);
+// vector_push(&request.headers, &content_length_header);
 
-/** Set the body. */
-http_request_set_body(&request, "Hello, World!");
+// Keep in mind there is no setter for the request body.
+// You should directly provide the data to the send function.
+
 /** Send the request. */
-http_client_send_request(client, &request, NULL, 0);
+http_client_send_request(client, &request, "hello" /** the buffer to send */, 5 /** the length of the buffer */);
 
 // NOTE: You are able to send binary data.
 // Replace NULL with your binary data, and 0

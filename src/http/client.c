@@ -128,10 +128,16 @@ int http_client_send_request(struct http_client* client, struct http_request* re
     ssize_t first_send = tcp_client_send(&client->client, (char*)sso_string_get(&request_str), request_str.length, 0);
     if (first_send <= 0) return first_send;
 
-    ssize_t second_send = tcp_client_send(&client->client, (char*)data, data_length, 0);
-    if (second_send <= 0) return second_send;
+    printf("data 2besent: %s\n", data);
+    printf("data length: %zu\n", data_length);
+    
+    if (data_length > 0)
+    {
+        ssize_t second_send = tcp_client_send(&client->client, (char*)data, data_length, 0);
+        if (second_send <= 0) return second_send;
+    };
 
-    return first_send + second_send;
+    return 0;
 };
 
 int http_client_parse_response(struct http_client* client, struct http_response* response)
@@ -218,8 +224,14 @@ int http_client_parse_response(struct http_client* client, struct http_response*
     {
         size_t bytes_left = content_length;
 
-        while (bytes_left > 0)
+        while (1)
         {
+            if (bytes_left <= 0)
+            {
+                buffer_length = content_length;
+                break;
+            };
+            
             ssize_t result = tcp_client_receive(&client->client, buffer, bytes_left, 0);
             if (result == -1) return RESPONSE_PARSE_ERROR_RECV;
             else if (result == 0)

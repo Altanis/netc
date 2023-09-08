@@ -397,8 +397,14 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
     {
         size_t bytes_left = MAX_HTTP_BODY_LEN;
         
-        while (bytes_left > 0)
+        while (1)
         {
+            if (bytes_left <= 0)
+            {
+                buffer_length = MAX_HTTP_BODY_LEN;
+                break;
+            };
+
             if (time(NULL) - start_time > HTTP_BODY_TIMEOUT_SECONDS) return REQUEST_PARSE_ERROR_TIMEOUT;
             
             ssize_t result = tcp_server_receive(sockfd, buffer, bytes_left, 0);

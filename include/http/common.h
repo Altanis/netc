@@ -242,8 +242,6 @@ void http_request_set_method(struct http_request* request, const char* method);
 void http_request_set_path(struct http_request* request, const char* path);
 /** Sets the value of a request's version. */
 void http_request_set_version(struct http_request* request, const char* version);
-/** Sets the value of a request's body. */
-void http_request_set_body(struct http_request* request, const char* body);
 
 /** Gets the value of a response's version. */
 const char* http_response_get_version(const struct http_response* response);
@@ -256,8 +254,6 @@ const char* http_response_get_body(const struct http_response* response);
 void http_response_set_version(struct http_response* response, const char* version);
 /** Sets the value of a response's status message. */
 void http_response_set_status_message(struct http_response* response, const char* status_message);
-/** Sets the value of a response's body. */
-void http_response_set_body(struct http_response* response, const char* body);
 
 /** Gets the value of a header's name. */
 const char* http_header_get_name(const struct http_header* header);

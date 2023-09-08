@@ -275,7 +275,7 @@ static void http_test001_client_on_data(struct http_client* client, struct http_
 
         if (http_test001_client_data < 6)
         {
-            http_client_send_request(client, &request, "hello", "5");
+            http_client_send_request(client, &request, "hello", 5);
         }
         else if (http_test001_client_data == 6)
         {
