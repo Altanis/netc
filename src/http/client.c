@@ -202,7 +202,7 @@ int http_client_parse_response(struct http_client* client, struct http_response*
             // if (socket_recv_until_dynamic(client->client.sockfd, &chunk_length, "\r\n", 1, 16 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
             if (socket_recv_until_fixed(client->client.sockfd, chunk_length, 16 + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
 
-            size_t chunk_size = strtoul(sso_string_get(&chunk_length), NULL, 16);
+            size_t chunk_size = strtoul(sso_string_get(chunk_length), NULL, 16);
             if (chunk_size == 0)
             {
                 char temp_buffer[2] = {0};
