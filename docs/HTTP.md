@@ -103,6 +103,7 @@ void on_malformed_request(struct http_server* server, socket_t sockfd, enum pars
     switch (error)
     {
         case REQUEST_PARSE_ERROR_RECV: printf("the recv syscall failed.\n"); break;
+        case REQUEST_PARSE_ERROR_BODY_TOO_BIG: printf("the body was too big.\n"); break;
         case REQUEST_PARSE_ERROR_TOO_MANY_HEADERS: printf("too many headers were sent.\n"); break;
         case REQUEST_PARSE_ERROR_TIMEOUT:
         {

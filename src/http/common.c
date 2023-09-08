@@ -8,20 +8,20 @@
 const char* http_request_get_method(const struct http_request* request) { return sso_string_get(&request->method); };
 const char* http_request_get_path(const struct http_request* request) { return sso_string_get(&request->path); };
 const char* http_request_get_version(const struct http_request* request) { return sso_string_get(&request->version); };
-const char* http_request_get_body(const struct http_request* request) { return sso_string_get(&request->body); };
+const char* http_request_get_body(const struct http_request* request) { return request->body; };
 
 void http_request_set_method(struct http_request* request, const char* method) { sso_string_set(&request->method, method); };
 void http_request_set_path(struct http_request* request, const char* path) { sso_string_set(&request->path, path); };
 void http_request_set_version(struct http_request* request, const char* version) { sso_string_set(&request->version, version); };
-void http_request_set_body(struct http_request* request, const char* body) { sso_string_set(&request->body, body); };
+void http_request_set_body(struct http_request* request, const char* body) { request->body = body; };
 
 const char* http_response_get_version(const struct http_response* response) { return sso_string_get(&response->version); };
 const char* http_response_get_status_message(const struct http_response* response) { return sso_string_get(&response->status_message); };
-const char* http_response_get_body(const struct http_response* response) { return sso_string_get(&response->body); };
+const char* http_response_get_body(const struct http_response* response) { return response->body; };
 
 void http_response_set_version(struct http_response* response, const char* version) { sso_string_set(&response->version, version); };
 void http_response_set_status_message(struct http_response* response, const char* status_message) { sso_string_set(&response->status_message, status_message); };
-void http_response_set_body(struct http_response* response, const char* body) { sso_string_set(&response->body, body); };
+void http_response_set_body(struct http_response* response, const char* body) { response->body = body; };
 
 const char* http_header_get_name(const struct http_header* header) { return sso_string_get(&header->name); };
 const char* http_header_get_value(const struct http_header* header) { return sso_string_get(&header->value); };

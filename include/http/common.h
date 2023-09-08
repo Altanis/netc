@@ -7,7 +7,7 @@
 #include <stdint.h>
 
 /** Checks the result of `socket_recv_until...` functions. Intended for use in a while loop. */
-#define CHECK_RECV_RESULT(current_state, required_state, sockfd, string, bytes, remove_delimiter, max_bytes_received) \
+#define CHECK_RECV_RESULT(current_state, required_state, sockfd, string, bytes, remove_delimiter, max_bytes_received, is_fixed) \
 { \
     switch (current_state) \
     { \
@@ -27,7 +27,11 @@
     \
     if (current_state == required_state) \
     { \
-        ssize_t result = socket_recv_until_dynamic((sockfd), (string), (bytes), (remove_delimiter), (max_bytes_received)); \
+        ssize_t result = 0; \
+        if (is_fixed) \
+            result = socket_recv_until_fixed((sockfd), (string), (max_bytes_received), (bytes), (remove_delimiter)); \
+        else \
+            result = socket_recv_until_dynamic((sockfd), (string), (bytes), (remove_delimiter), (max_bytes_received)); \
         if (result == -1) return REQUEST_PARSE_ERROR_RECV; \
         else if (result == 0) continue; \
     } \
@@ -150,6 +154,8 @@ enum parse_request_error_types
 {
     /** The `recv` syscall failed. */
     REQUEST_PARSE_ERROR_RECV = -1,
+    /** The body was too big. */
+    REQUEST_PARSE_ERROR_BODY_TOO_BIG = -2,
     /** The request contained too many headers. */
     REQUEST_PARSE_ERROR_TOO_MANY_HEADERS = -2,
     /** The request took too long to process. */
@@ -177,6 +183,11 @@ struct http_request
     struct vector query; // <http_query>
     /** The HTTP headers. */
     struct vector headers; // <http_header>
+
+    /** The HTTP body. */
+    char* body;
+    /** The size of the HTTP body. */
+    size_t body_size;
 };
 
 /** A structure representing the HTTP response. */
@@ -191,6 +202,11 @@ struct http_response
 
     /** The HTTP headers. */
     struct vector headers; // <http_header>
+
+    /** The HTTP body. */
+    char* body;
+    /** The size of the HTTP body. */
+    size_t body_size;
 };
 
 /** A structure representing the HTTP header. */

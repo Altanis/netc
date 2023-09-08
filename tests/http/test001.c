@@ -74,6 +74,8 @@ static void print_request(struct http_request request)
         printf("header: %s=%s\n", http_header_get_name(header), http_header_get_value(header));
     };
 
+    printf("request body? %s\n", request.body);
+
     printf("body: %s\n\n", http_request_get_body(&request));
 };
 
@@ -186,8 +188,7 @@ static void http_test001_server_on_data(struct http_server* server, socket_t soc
     }
     else 
     {
-        http_response_set_body(&response, "hello");
-        http_server_send_response(server, sockfd, &response, NULL, 0);
+        http_server_send_response(server, sockfd, &response, "hello", 5);
     }
 };
 
@@ -210,9 +211,7 @@ static void http_test001_server_on_data_wrong_route(struct http_server* server, 
     vector_init(&response.headers, 1, sizeof(struct http_header));
     vector_push(&response.headers, &content_type);
 
-    http_response_set_body(&response, "later");
-
-    http_server_send_response(server, sockfd, &response, NULL, 0);
+    http_server_send_response(server, sockfd, &response, "later", 5);
 };
 
 static void http_test001_server_on_data_wildcard_route(struct http_server* server, socket_t sockfd, struct http_request request) { printf("[HTTP TEST CASE 001] defaulted to /* ... failure...\n"); };
@@ -249,9 +248,7 @@ static void http_test001_client_on_connect(struct http_client* client, void* dat
     vector_init(&request.headers, 1, sizeof(struct http_header));
     vector_push(&request.headers, &content_type);
     
-    http_request_set_body(&request, "hello");
-
-    http_client_send_request(client, &request, NULL, 0);
+    http_client_send_request(client, &request, "hello", 5);
 };
 
 static void http_test001_client_on_data(struct http_client* client, struct http_response response, void* data)
@@ -278,8 +275,7 @@ static void http_test001_client_on_data(struct http_client* client, struct http_
 
         if (http_test001_client_data < 6)
         {
-            http_request_set_body(&request, "hello");
-            http_client_send_request(client, &request, NULL, 0);
+            http_client_send_request(client, &request, "hello", "5");
         }
         else if (http_test001_client_data == 6)
         {

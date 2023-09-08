@@ -79,7 +79,7 @@ int http_client_send_chunked_data(struct http_client* client, char* data, size_t
     return 0;
 };
 
-int http_client_send_request(struct http_client* client, struct http_request* request, const char* binary_data, size_t data_length)
+int http_client_send_request(struct http_client* client, struct http_request* request, const char* data, size_t data_length)
 {
     string_t request_str = {0};
     sso_string_init(&request_str, "");
@@ -116,7 +116,7 @@ int http_client_send_request(struct http_client* client, struct http_request* re
     if (chunked == 0)
     {
         char length_str[16] = {0};
-        sprintf(length_str, "%zu", request->body.length + data_length);
+        sprintf(length_str, "%zu", data_length);
 
         sso_string_concat_buffer(&request_str, "Content-Length: ");
         sso_string_concat_buffer(&request_str, length_str);
@@ -125,16 +125,10 @@ int http_client_send_request(struct http_client* client, struct http_request* re
 
     sso_string_concat_buffer(&request_str, "\r\n");
 
-    const char* body = sso_string_get(&request->body);
-    if (!chunked && body != NULL)
-    {
-        sso_string_concat_buffer(&request_str, body);
-    };
-
     ssize_t first_send = tcp_client_send(&client->client, (char*)sso_string_get(&request_str), request_str.length, 0);
     if (first_send <= 0) return first_send;
 
-    ssize_t second_send = tcp_client_send(&client->client, (char*)binary_data, data_length, 0);
+    ssize_t second_send = tcp_client_send(&client->client, (char*)data, data_length, 0);
     if (second_send <= 0) return second_send;
 
     return first_send + second_send;
@@ -188,21 +182,19 @@ int http_client_parse_response(struct http_client* client, struct http_response*
         vector_push(&response->headers, &header);
     };
 
-    if (content_length == 0)
-    {
-        sso_string_init(&response->body, "");
-        return 0;
-    }
+    char buffer[content_length + 1];
+    size_t buffer_length = 0;
+
+    /** The server is required to send content length. */
+    if (content_length == 0) return 0;
     else if (content_length == -1)
     {
-        sso_string_init(&response->body, "");
-
         while (1)
         {
-            string_t chunk_length = {0};
-            sso_string_init(&chunk_length, "");
+            char chunk_length[18] = {0};
 
-            if (socket_recv_until_dynamic(client->client.sockfd, &chunk_length, "\r\n", 1, 16 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            // if (socket_recv_until_dynamic(client->client.sockfd, &chunk_length, "\r\n", 1, 16 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            if (socket_recv_until_fixed(client->client.sockfd, chunk_length, 16 + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
 
             size_t chunk_size = strtoul(sso_string_get(&chunk_length), NULL, 16);
             if (chunk_size == 0)
@@ -212,29 +204,38 @@ int http_client_parse_response(struct http_client* client, struct http_response*
                 break;
             };
 
-            if (socket_recv_until_dynamic(client->client.sockfd, &response->body, "\r\n", 1, chunk_size + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            buffer_length += chunk_size;
+            
+            char chunk_data[chunk_size + 2];
+            // if (socket_recv_until_dynamic(client->client.sockfd, &response->body, "\r\n", 1, chunk_size + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            if (socket_recv_until_fixed(client->client.sockfd, chunk_data, chunk_size + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            chunk_data[chunk_size] = '\0';
+
+            strcat(buffer, chunk_data);
         };
     }
     else
     {
         size_t bytes_left = content_length;
-        char buffer[bytes_left + 1];
 
-        while (1)
+        while (bytes_left > 0)
         {
             ssize_t result = tcp_client_receive(&client->client, buffer, bytes_left, 0);
             if (result == -1) return RESPONSE_PARSE_ERROR_RECV;
             else if (result == 0)
             {
-                buffer[content_length - bytes_left] = '\0';
+                buffer_length = content_length - bytes_left;
                 break;                
             };
 
             bytes_left -= result;
         };
-
-        sso_string_init(&response->body, buffer);
     };
+
+    response->body = malloc(sizeof(buffer) + 1);
+    memcpy(response->body, buffer, sizeof(buffer) + 1);
+    response->body[buffer_length] = '\0';
+    response->body_size = buffer_length;
 
     return 0;
 };
