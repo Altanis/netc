@@ -3,10 +3,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/errno.h>
 #include <unistd.h>
 #include <sys/fcntl.h>
-#include <sys/socket.h>
 
 #ifdef __linux__
 #include <sys/epoll.h>
@@ -15,6 +13,11 @@
 #include <winsock2.h>
 #elif __APPLE__
 #include <sys/event.h>
+#endif
+
+#ifndef _WIN32
+#include <sys/socket.h>
+#include <sys/errno.h>
 #endif
 
 __thread int netc_udp_server_listening = 0;
@@ -74,7 +77,7 @@ int udp_server_init(struct udp_server* server, struct sockaddr addr, int non_blo
     int protocol = addr.sa_family;
 
     server->sockfd = socket(protocol, SOCK_DGRAM, 0); // IPv4, UDP, 0
-    if (server->sockfd == -1) return netc_error(SOCKET);
+    if (server->sockfd == -1) return netc_error(SOCKET_C);
 
     if (non_blocking == 0) return 0;
     if (socket_set_non_blocking(server->sockfd) == -1) return netc_error(FCNTL);

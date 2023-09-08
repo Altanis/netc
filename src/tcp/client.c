@@ -2,9 +2,7 @@
 #include "utils/error.h"
 
 #include <stdlib.h>
-#include <sys/errno.h>
 #include <unistd.h>
-#include <sys/socket.h>
 
 #ifdef __linux__
 #include <sys/epoll.h>
@@ -13,6 +11,11 @@
 #include <winsock2.h>
 #elif __APPLE__
 #include <sys/event.h>
+#endif
+
+#ifndef _WIN32
+#include <sys/socket.h>
+#include <sys/errno.h>
 #endif
 
 __thread int netc_tcp_client_listening = 0;
@@ -31,9 +34,10 @@ int tcp_client_main_loop(struct tcp_client* client)
         int nev = epoll_wait(pfd, events, 1, -1);
         if (nev == -1) return netc_error(EVCREATE);
 #elif _WIN32
-        int pfd = client->pfd;
-        int nev = WSAWaitForMultipleEvents(1, &pfd, FALSE, -1, FALSE);
-        if (nev == WSA_WAIT_FAILED) return netc_error(EVCREATE);
+        HANDLE pfd = client->pfd;
+        WSANETWORKEVENTS events;
+        int nev = WSAEnumNetworkEvents(client->sockfd, pfd, &events);
+        if (nev == SOCKET_ERROR) return netc_error(EVCREATE);
 #elif __APPLE__
         int pfd = client->pfd;
         struct kevent events[1];
@@ -72,11 +76,11 @@ int tcp_client_main_loop(struct tcp_client* client)
 #elif _WIN32
             SOCKET sockfd = client->sockfd;
 
-            if (WSAEnumNetworkEvents(sockfd, pfd, &client->events) == SOCKET_ERROR) return netc_error(POLL_FD);
+            if (WSAEnumNetworkEvents(sockfd, pfd, &events) == SOCKET_ERROR) return netc_error(POLL_FD);
 
-            if (client->events.lNetworkEvents & FD_READ && client->on_data != NULL)
+            if (events.lNetworkEvents & FD_READ && client->on_data != NULL)
                  client->on_data(client, client->data);
-            else if (client->events.lNetworkEvents & FD_WRITE)
+            else if (events.lNetworkEvents & FD_WRITE)
             {
                 int error = 0;
                 socklen_t len = sizeof(error);
@@ -89,9 +93,9 @@ int tcp_client_main_loop(struct tcp_client* client)
 
                 if (WSAResetEvent(pfd) == FALSE) return netc_error(POLL_FD);
             }
-            else if (client->events.lNetworkEvents & FD_CLOSE)
+            else if (events.lNetworkEvents & FD_CLOSE)
             {
-                if (tcp_client_close(client, client->events.iErrorCode[FD_CLOSE_BIT]) != 0) return netc_error(CLOSE);
+                if (tcp_client_close(client, events.iErrorCode[FD_CLOSE_BIT]) != 0) return netc_error(CLOSE);
             }
 #elif __APPLE__
             struct kevent ev = events[i];
@@ -133,7 +137,7 @@ int tcp_client_init(struct tcp_client* client, struct sockaddr addr, int non_blo
     int protocol = addr.sa_family;
 
     client->sockfd = socket(protocol, SOCK_STREAM, 0); // IPv4, TCP, 0
-    if (client->sockfd == -1) return netc_error(SOCKET);
+    if (client->sockfd == -1) return netc_error(SOCKET_C);
 
     if (non_blocking == 0) return 0; 
     if (socket_set_non_blocking(client->sockfd) != 0) return netc_error(FCNTL);

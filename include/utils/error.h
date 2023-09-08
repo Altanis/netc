@@ -25,7 +25,7 @@ extern __thread int netc_errno_reason;
 
 /** syscalls */
 #define EVCREATE        1     /** kqueue and epoll_create1 syscalls */
-#define SOCKET          2     /** socket syscall */
+#define SOCKET_C          2   /** socket creation syscall */
 #define POLL_FD         3     /** kevent, epoll_wait, and epoll_ctl syscalls */
 #define BIND            4     /** bind syscall */
 #define LISTEN          5     /** listen syscall */

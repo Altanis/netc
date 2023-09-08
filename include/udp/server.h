@@ -5,7 +5,12 @@
 #include "tcp/server.h"
 #include "socket.h"
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <arpa/inet.h>
+#endif
+
 #include <stdlib.h>
 
 /** A structure representing a UDP server. */
@@ -16,8 +21,13 @@ struct udp_server
     /** The server's address. */
     struct sockaddr sockaddr;
 
+#ifdef _WIN32
+    /** The polling file descriptor. */
+    HANDLE pfd;
+#else
     /** The polling file descriptor. */
     int pfd;
+#endif 
 
     /** User defined data to be passed to the event callbacks. */
     void* data;

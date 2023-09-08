@@ -13,8 +13,13 @@ struct udp_client
         /** The client's address. */
     struct sockaddr sockaddr;
 
+#ifdef _WIN32
+    /** The polling file descriptor. */
+    HANDLE pfd;
+#else
     /** The polling file descriptor. */
     int pfd;
+#endif 
 
     /** User defined data to be passed to the event callbacks. */
     void* data;

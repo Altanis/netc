@@ -68,7 +68,7 @@ int udp_client_init(struct udp_client* client, struct sockaddr addr, int non_blo
     int protocol = addr.sa_family;
 
     client->sockfd = socket(protocol, SOCK_DGRAM, 0);
-    if (client->sockfd == -1) return netc_error(SOCKET);
+    if (client->sockfd == -1) return netc_error(SOCKET_C);
 
     if (non_blocking == 0) return 0;
     if (socket_set_non_blocking(client->sockfd) != 0) return netc_error(FCNTL);

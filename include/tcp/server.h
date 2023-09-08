@@ -4,7 +4,11 @@
 #include "utils/vector.h"
 #include "socket.h"
 
+#ifdef _WIN32
+#include <winsock2.h>
+#else
 #include <arpa/inet.h>
+#endif
 
 /** A structure representing a TCP client. */
 struct tcp_client
@@ -14,8 +18,13 @@ struct tcp_client
     /** The address of the server to connect to. */
     struct sockaddr sockaddr;
 
+#ifdef _WIN32
+    /** The polling file descriptor. */
+    HANDLE pfd;
+#else
     /** The polling file descriptor. */
     int pfd;
+#endif 
 
     /** User defined data to be passed to the event callbacks. */
     void* data;
@@ -42,8 +51,13 @@ struct tcp_server
     /** The number of clients connected to the server. */
     size_t client_count;
 
+#ifdef _WIN32
+    /** The polling file descriptor. */
+    HANDLE pfd;
+#else
     /** The polling file descriptor. */
     int pfd;
+#endif 
 
     /** User defined data to be passed to the event callbacks. */
     void* data;

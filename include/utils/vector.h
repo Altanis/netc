@@ -3,8 +3,6 @@
 
 #include <stddef.h>
 
-// continguous vector implementation using memcpy
-
 /** A structure representing a vector. */
 struct vector
 {

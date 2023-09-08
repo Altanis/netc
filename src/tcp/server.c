@@ -3,10 +3,8 @@
 
 #include <stdlib.h>
 #include <string.h>
-#include <sys/errno.h>
 #include <unistd.h>
 #include <sys/fcntl.h>
-#include <sys/socket.h>
 
 #ifdef __linux__
 #include <sys/epoll.h>
@@ -15,6 +13,11 @@
 #include <winsock2.h>
 #elif __APPLE__
 #include <sys/event.h>
+#endif
+
+#ifndef _WIN32
+#include <sys/socket.h>
+#include <sys/errno.h>
 #endif
 
 __thread int netc_tcp_server_listening = 0;
