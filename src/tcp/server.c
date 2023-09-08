@@ -37,9 +37,11 @@ int tcp_server_main_loop(struct tcp_server* server)
         if (nev == -1)
             return netc_error(EVCREATE);
 #elif _WIN32
-        int pfd = server->pfd;
-        int nev = WSAWaitForMultipleEvents(server->client_count + 1, &pfd, FALSE, -1, FALSE);
-        if (nev == WSA_WAIT_FAILED) return netc_error(EVCREATE);
+        HANDLE pfd = server->pfd;
+        // events for the server socket and all client sockets
+        WSANETWORKEVENTS events;
+        int nev = WSAEnumNetworkEvents(server->sockfd, pfd, &events);
+        if (nev == SOCKET_ERROR) return netc_error(EVCREATE);
 #elif __APPLE__
         int pfd = server->pfd;
         struct kevent events[server->client_count + 1];
@@ -77,35 +79,23 @@ int tcp_server_main_loop(struct tcp_server* server)
 #elif _WIN32
             SOCKET sockfd = server->sockfd;
 
-            if (sockfd == server->sockfd)
+            if (events.lNetworkEvents & FD_ACCEPT)
             {
-                if (WSAEnumNetworkEvents(sockfd, server->pfd, &server->events) == SOCKET_ERROR) return netc_error(HANGUP);
+                if (events.iErrorCode[FD_ACCEPT_BIT] != 0) // server socket closed
+                    return netc_error(HANGUP);
 
-                if (server->events.lNetworkEvents & FD_ACCEPT)
-                {
-                    if (server->events.iErrorCode[FD_ACCEPT_BIT] != 0) return netc_error(HANGUP);
-                    if (server->on_connect != NULL) server->on_connect(server, server->data);
-                }
+                if (server->on_connect != NULL) server->on_connect(server, server->data);
             }
             else
             {
-                if (WSAEnumNetworkEvents(sockfd, server->pfd, &client->events) == SOCKET_ERROR) return netc_error(HANGUP);
-
-                if (client->events.lNetworkEvents & FD_READ)
+                if (events.lNetworkEvents & FD_CLOSE) // client socket closed
                 {
-                    if (client->events.iErrorCode[FD_READ_BIT] != 0) return netc_error(HANGUP);
-                   if (server->on_data != NULL) server->on_data(server, sockfd, server->data);
-                }
-                else if (client->events.lNetworkEvents & FD_WRITE)
-                {
-                    if (client->events.iErrorCode[FD_WRITE_BIT] != 0) return netc_error(HANGUP);
-                }
-                else if (client->events.lNetworkEvents & FD_CLOSE)
-                {
-                    if (client->events.iErrorCode[FD_CLOSE_BIT] != 0) return netc_error(HANGUP);
-
-                    if (tcp_server_close_client(server, sockfd, 0) != 0)
+                    if (tcp_server_close_client(server, sockfd, events.iErrorCode[FD_CLOSE_BIT]) != 0)
                         return netc_error(CLOSE);
+                }
+                else if (events.lNetworkEvents & FD_READ && server->on_data != NULL)
+                {
+                     server->on_data(server, sockfd, server->data);
                 }
             }
 #elif __APPLE__
@@ -147,7 +137,7 @@ int tcp_server_init(struct tcp_server* server, struct sockaddr address, int non_
     int protocol = address.sa_family;
 
     server->sockfd = socket(protocol, SOCK_STREAM, 0); // IPv4, TCP, 0
-    if (server->sockfd == -1) return netc_error(SOCKET);
+    if (server->sockfd == -1) return netc_error(SOCKET_C);
 
     server->client_count = 0;
 

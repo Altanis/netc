@@ -36,9 +36,10 @@ int udp_server_main_loop(struct udp_server* server)
         int nev = epoll_wait(pfd, events, 1, -1);
         if (nev == -1) return netc_error(EVCREATE);
 #elif _WIN32
-        int pfd = server->pfd;
-        int nev = WSAWaitForMultipleEvents(1, &pfd, FALSE, -1, FALSE);
-        if (nev == WSA_WAIT_FAILED) return netc_error(EVCREATE);
+        HANDLE pfd = server->pfd;
+        WSANETWORKEVENTS events;
+        int nev = WSAEnumNetworkEvents(server->sockfd, pfd, &events);
+        if (nev == SOCKET_ERROR) return netc_error(EVCREATE);
 #elif __APPLE__
         int pfd = server->pfd;
         struct kevent events[1];
@@ -56,8 +57,8 @@ int udp_server_main_loop(struct udp_server* server)
             if (ev.events & EPOLLIN && server->on_data != NULL) server->on_data(server, server->data);
 #elif _WIN32
             SOCKET sockfd = server->sockfd;
-            if (WSAEnumNetworkEvents(sockfd, pfd, &server->events) == SOCKET_ERROR) return netc_error(POLL_FD);
-            if (server->events.lNetworkEvents & FD_READ && server->on_data != NULL) server->on_data(server, server->data);
+            if (WSAEnumNetworkEvents(sockfd, pfd, &events) == SOCKET_ERROR) return netc_error(POLL_FD);
+            if (events.lNetworkEvents & FD_READ && server->on_data != NULL) server->on_data(server, server->data);
 #elif __APPLE__
             socket_t sockfd = server->sockfd;
             if (events[i].flags & EVFILT_READ && server->on_data != NULL) server->on_data(server, server->data);
