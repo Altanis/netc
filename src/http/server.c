@@ -69,7 +69,11 @@ static void _tcp_on_data(struct tcp_server* server, socket_t sockfd, void* data)
     if ((result = http_server_parse_request(http_server, sockfd, &request)) != 0 && http_server->on_malformed_request != NULL)
     {
         if (http_server->on_malformed_request)
+        {
+            /** TODO(Altanis): Fix one HTTP request partitioned into two causing two event calls. */
             http_server->on_malformed_request(http_server, sockfd, result, http_server->data);
+        }
+
         return;
     };
 
@@ -114,7 +118,7 @@ static void _tcp_on_data(struct tcp_server* server, socket_t sockfd, void* data)
         \r\n\
         Not Found";
 
-        tcp_server_send(sockfd, notfound_message, strlen(notfound_message), 0);
+        tcp_server_send(sockfd, (char*)notfound_message, strlen(notfound_message), 0);
     };
 
     free(path);
@@ -131,26 +135,26 @@ int http_server_init(struct http_server* http_server, struct sockaddr address, i
 {
     vector_init(&http_server->routes, 8, sizeof(struct http_route));
 
-    struct tcp_server tcp_server = {0};
-    tcp_server.data = http_server;
+    struct tcp_server* tcp_server = malloc(sizeof(struct tcp_server));
+    tcp_server->data = http_server;
     
-    int init_result = tcp_server_init(&tcp_server, address, 1);
+    int init_result = tcp_server_init(tcp_server, address, 1);
     if (init_result != 0) return init_result;
 
-    if (setsockopt(tcp_server.sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+    if (setsockopt(tcp_server->sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
     {
         /** Not essential. Do not return -1. */
     };
 
-    int bind_result = tcp_server_bind(&tcp_server);
+    int bind_result = tcp_server_bind(tcp_server);
     if (bind_result != 0) return bind_result;
 
-    int listen_result = tcp_server_listen(&tcp_server, backlog);
+    int listen_result = tcp_server_listen(tcp_server, backlog);
     if (listen_result != 0) return listen_result;
 
-    tcp_server.on_connect = _tcp_on_connect;
-    tcp_server.on_data = _tcp_on_data;
-    tcp_server.on_disconnect = _tcp_on_disconnect;
+    tcp_server->on_connect = _tcp_on_connect;
+    tcp_server->on_data = _tcp_on_data;
+    tcp_server->on_disconnect = _tcp_on_disconnect;
 
     http_server->server = tcp_server;
 
@@ -159,7 +163,7 @@ int http_server_init(struct http_server* http_server, struct sockaddr address, i
 
 int http_server_start(struct http_server* server)
 {
-    return tcp_server_main_loop(&server->server);
+    return tcp_server_main_loop(server->server);
 };
 
 void http_server_create_route(struct http_server* server, struct http_route* route)
@@ -273,7 +277,7 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
     size_t MAX_HTTP_PATH_LEN = (server->config.max_path_len ? server->config.max_path_len : 2000);
     size_t MAX_HTTP_VERSION_LEN = (server->config.max_version_len ? server->config.max_version_len : 8);
     size_t MAX_HTTP_HEADER_NAME_LEN = (server->config.max_header_name_len ? server->config.max_header_name_len : 256);
-    size_t MAX_HTTP_HEADER_VALUE_LEN = (server->config.max_header_value_len ? server->config.max_header_value_len : 4096);
+    size_t MAX_HTTP_HEADER_VALUE_LEN = (server->config.max_header_value_len ? server->config.max_header_value_len : 8192);
     size_t MAX_HTTP_HEADER_COUNT = server->config.max_header_count ? server->config.max_header_count : 24;
     size_t MAX_HTTP_BODY_LEN = (server->config.max_body_len ? server->config.max_body_len : 65536);
 
@@ -316,7 +320,7 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
     request->path = path;
     request->version = version;
 
-    size_t content_length = 0; // < 0 means chunked
+    int content_length = 0; // < 0 means chunked
     size_t header_count = 0;
 
     start_time = time(NULL);
@@ -345,7 +349,9 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
         {
             size_t len = strtoul(sso_string_get(&header.value), NULL, 10);
             content_length = len;
-            MAX_HTTP_BODY_LEN = MAX_HTTP_BODY_LEN > len ? len : MAX_HTTP_BODY_LEN;
+
+            if (len > MAX_HTTP_BODY_LEN) return REQUEST_PARSE_ERROR_BODY_TOO_BIG;
+            else MAX_HTTP_BODY_LEN = len;
         }
         else if (content_length == 0 && strcmp(sso_string_get(&header.name), "Transfer-Encoding") == 0 && strcmp(sso_string_get(&header.value), "chunked") == 0)
             content_length = -1;
@@ -359,7 +365,7 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
     state = REQUEST_PARSING_STATE_ATTEMPT_CHUNK_SIZE;
 
     start_time = time(NULL);
-
+    
     char buffer[MAX_HTTP_BODY_LEN];
     size_t buffer_length = 0;
 
@@ -384,13 +390,10 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
 
             if (buffer_length + chunk_size > MAX_HTTP_BODY_LEN) return REQUEST_PARSE_ERROR_BODY_TOO_BIG;
 
-            buffer_length += chunk_size;
-
             char chunk_data[chunk_size + 2];
             CHECK_RECV_RESULT(state, REQUEST_PARSING_STATE_CHUNK_DATA, sockfd, chunk_data, "\r\n", 1, chunk_size + 2, 1);
-            chunk_data[chunk_size] = '\0';
-
-            strcat(buffer, chunk_data);
+            memcpy(buffer + buffer_length, chunk_data, chunk_size);
+            buffer_length += chunk_size;
         };
     }
     else
@@ -407,7 +410,7 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
 
             if (time(NULL) - start_time > HTTP_BODY_TIMEOUT_SECONDS) return REQUEST_PARSE_ERROR_TIMEOUT;
             
-            ssize_t result = tcp_server_receive(sockfd, buffer, bytes_left, 0);
+            ssize_t result = tcp_server_receive(sockfd, buffer + buffer_length, bytes_left, 0);
             if (result == -1) return REQUEST_PARSE_ERROR_RECV;
             else if (result == 0)
             {
@@ -422,8 +425,8 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
         if (recv(sockfd, temp_buffer, 2, MSG_PEEK) > 0) return REQUEST_PARSE_ERROR_BODY_TOO_BIG;
     };
 
-    request->body = malloc(sizeof(buffer) + 1);
-    memcpy(request->body, buffer, sizeof(buffer));
+    request->body = malloc(buffer_length + 1);
+    memcpy(request->body, buffer, buffer_length);
     request->body[buffer_length] = '\0';
     request->body_size = buffer_length;
 
@@ -432,10 +435,10 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
 
 int http_server_close(struct http_server* server)
 {
-    return tcp_server_close_self(&server->server);
+    return tcp_server_close_self(server->server);
 };
 
 int http_server_close_client(struct http_server* server, socket_t sockfd)
 {
-    return tcp_server_close_client(&server->server, sockfd, 0);
+    return tcp_server_close_client(server->server, sockfd, 0);
 };

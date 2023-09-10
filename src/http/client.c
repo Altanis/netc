@@ -19,6 +19,7 @@ static void _tcp_on_data(struct tcp_client* client, void* data)
     int result = 0;
     if ((result = http_client_parse_response(http_client, &response)) != 0)
     {
+        printf("malformed response: %d\n", result);
         if (http_client->on_malformed_response != NULL)
             http_client->on_malformed_response(http_client, result, http_client->data);
         return;
@@ -37,23 +38,23 @@ static void _tcp_on_disconnect(struct tcp_client* client, int is_error, void* da
 
 int http_client_init(struct http_client* client, struct sockaddr address)
 {
-    struct tcp_client tcp_client = {0};
-    tcp_client.data = client;
+    struct tcp_client* tcp_client = malloc(sizeof(struct tcp_client));
+    tcp_client->data = client;
 
-    int init_result = tcp_client_init(&tcp_client, address, 1);
+    int init_result = tcp_client_init(tcp_client, address, 1);
     if (init_result != 0) return init_result;
 
-    if (setsockopt(client->client.sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+    if (setsockopt(tcp_client->sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
     {
         /** Not essential. Do not return -1. */
     };
 
-    int connect_result = tcp_client_connect(&tcp_client);
+    int connect_result = tcp_client_connect(tcp_client);
     if (connect_result != 0) return connect_result;
 
-    tcp_client.on_connect = _tcp_on_connect;
-    tcp_client.on_data = _tcp_on_data;
-    tcp_client.on_disconnect = _tcp_on_disconnect;
+    tcp_client->on_connect = _tcp_on_connect;
+    tcp_client->on_data = _tcp_on_data;
+    tcp_client->on_disconnect = _tcp_on_disconnect;
 
     client->client = tcp_client;
 
@@ -62,7 +63,7 @@ int http_client_init(struct http_client* client, struct sockaddr address)
 
 int http_client_start(struct http_client* client)
 {
-    return tcp_client_main_loop(&client->client);
+    return tcp_client_main_loop(client->client);
 };
 
 int http_client_send_chunked_data(struct http_client* client, char* data, size_t length)
@@ -72,9 +73,9 @@ int http_client_send_chunked_data(struct http_client* client, char* data, size_t
 
     int send_result = 0;
 
-    if ((send_result = tcp_client_send(&client->client, length_str, strlen(length_str), 0)) <= 0) return send_result;
-    if (length != 0 && ((send_result = tcp_client_send(&client->client, length == 0 ? "" : data, length, 0)) <= 0)) return send_result;    
-    if ((send_result = tcp_client_send(&client->client, "\r\n", 2, 0)) <= 2) return send_result;
+    if ((send_result = tcp_client_send(client->client, length_str, strlen(length_str), 0)) <= 0) return send_result;
+    if (length != 0 && ((send_result = tcp_client_send(client->client, length == 0 ? "" : data, length, 0)) <= 0)) return send_result;    
+    if ((send_result = tcp_client_send(client->client, "\r\n", 2, 0)) <= 2) return send_result;
 
     return 0;
 };
@@ -125,15 +126,12 @@ int http_client_send_request(struct http_client* client, struct http_request* re
 
     sso_string_concat_buffer(&request_str, "\r\n");
 
-    ssize_t first_send = tcp_client_send(&client->client, (char*)sso_string_get(&request_str), request_str.length, 0);
+    ssize_t first_send = tcp_client_send(client->client, (char*)sso_string_get(&request_str), request_str.length, 0);
     if (first_send <= 0) return first_send;
-
-    printf("data 2besent: %s\n", data);
-    printf("data length: %zu\n", data_length);
     
     if (data_length > 0)
     {
-        ssize_t second_send = tcp_client_send(&client->client, (char*)data, data_length, 0);
+        ssize_t second_send = tcp_client_send(client->client, (char*)data, data_length, 0);
         if (second_send <= 0) return second_send;
     };
 
@@ -152,24 +150,24 @@ int http_client_parse_response(struct http_client* client, struct http_response*
     sso_string_init(&status_code, "");
     sso_string_init(&status_message, "");
 
-    if (socket_recv_until_dynamic(client->client.sockfd, &version, " ", 1, 8 + 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
-    if (socket_recv_until_dynamic(client->client.sockfd, &status_code, " ", 1, 3 + 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
-    if (socket_recv_until_dynamic(client->client.sockfd, &status_message, "\r\n", 1, 64 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+    if (socket_recv_until_dynamic(client->client->sockfd, &version, " ", 1, 8 + 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+    if (socket_recv_until_dynamic(client->client->sockfd, &status_code, " ", 1, 3 + 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+    if (socket_recv_until_dynamic(client->client->sockfd, &status_message, "\r\n", 1, 64 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
 
     response->version = version;
     response->status_code = atoi(sso_string_get(&status_code));
     response->status_message = status_message;
 
-    size_t content_length = 0; // < 0 means chunked
+    int content_length = 0; // < 0 means chunked
 
     while (1)
     {
         char temp_buffer[2] = {0};
-        if (recv(client->client.sockfd, temp_buffer, 2, MSG_PEEK) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+        if (recv(client->client->sockfd, temp_buffer, 2, MSG_PEEK) <= 0) return RESPONSE_PARSE_ERROR_RECV;
 
         if (temp_buffer[0] == '\r' && temp_buffer[1] == '\n')
         {
-            if (recv(client->client.sockfd, temp_buffer, 2, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            if (recv(client->client->sockfd, temp_buffer, 2, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
             break;
         };
 
@@ -177,8 +175,8 @@ int http_client_parse_response(struct http_client* client, struct http_response*
         sso_string_init(&header.name, "");
         sso_string_init(&header.value, "");
 
-        if (socket_recv_until_dynamic(client->client.sockfd, &header.name, ": ", 1, 64 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
-        if (socket_recv_until_dynamic(client->client.sockfd, &header.value, "\r\n", 1, 8192 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+        if (socket_recv_until_dynamic(client->client->sockfd, &header.name, ": ", 1, 64 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+        if (socket_recv_until_dynamic(client->client->sockfd, &header.value, "\r\n", 1, 8192 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
     
         if (content_length == 0 && strcmp(sso_string_get(&header.name), "Content-Length") == 0)
             content_length = strtoul(sso_string_get(&header.value), NULL, 10);
@@ -188,10 +186,9 @@ int http_client_parse_response(struct http_client* client, struct http_response*
         vector_push(&response->headers, &header);
     };
 
-    char buffer[content_length + 1];
-    size_t buffer_length = 0;
+    struct vector buffer = {0};
+    vector_init(&buffer, 8, sizeof(char));
 
-    /** The server is required to send content length. */
     if (content_length == 0) return 0;
     else if (content_length == -1)
     {
@@ -199,25 +196,20 @@ int http_client_parse_response(struct http_client* client, struct http_response*
         {
             char chunk_length[18] = {0};
 
-            // if (socket_recv_until_dynamic(client->client.sockfd, &chunk_length, "\r\n", 1, 16 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
-            if (socket_recv_until_fixed(client->client.sockfd, chunk_length, 16 + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            socket_t sockfd = client->client->sockfd;
+            if (socket_recv_until_fixed(sockfd, chunk_length, 16 + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
 
-            size_t chunk_size = strtoul(sso_string_get(chunk_length), NULL, 16);
+            size_t chunk_size = strtoul(chunk_length, NULL, 16);
             if (chunk_size == 0)
             {
                 char temp_buffer[2] = {0};
-                if (recv(client->client.sockfd, temp_buffer, 2, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+                if (recv(client->client->sockfd, temp_buffer, 2, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
                 break;
             };
-
-            buffer_length += chunk_size;
             
             char chunk_data[chunk_size + 2];
-            // if (socket_recv_until_dynamic(client->client.sockfd, &response->body, "\r\n", 1, chunk_size + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
-            if (socket_recv_until_fixed(client->client.sockfd, chunk_data, chunk_size + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
-            chunk_data[chunk_size] = '\0';
-
-            strcat(buffer, chunk_data);
+            if (socket_recv_until_fixed(client->client->sockfd, chunk_data, chunk_size + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            for (size_t i = 0; i < chunk_size; ++i) vector_push(&buffer, chunk_data + i);
         };
     }
     else
@@ -226,33 +218,30 @@ int http_client_parse_response(struct http_client* client, struct http_response*
 
         while (1)
         {
-            if (bytes_left <= 0)
-            {
-                buffer_length = content_length;
-                break;
-            };
-            
-            ssize_t result = tcp_client_receive(&client->client, buffer, bytes_left, 0);
-            if (result == -1) return RESPONSE_PARSE_ERROR_RECV;
-            else if (result == 0)
-            {
-                buffer_length = content_length - bytes_left;
-                break;                
-            };
+            if (bytes_left <= 0) break;
+
+            char temp_buffer[bytes_left];
+            ssize_t result = tcp_client_receive(client->client, temp_buffer, bytes_left, 0);
+
+            if (result <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            for (size_t i = 0; i < result; ++i) vector_push(&buffer, temp_buffer + i);
+
 
             bytes_left -= result;
         };
     };
 
-    response->body = malloc(sizeof(buffer) + 1);
-    memcpy(response->body, buffer, sizeof(buffer) + 1);
-    response->body[buffer_length] = '\0';
-    response->body_size = buffer_length;
+    response->body = malloc(buffer.size + 1);
+    for (size_t i = 0; i < buffer.size; ++i) response->body[i] = *(char*)vector_get(&buffer, i);
+    response->body[buffer.size] = '\0';
+    response->body_size = buffer.size;
+
+    vector_free(&buffer);
 
     return 0;
 };
 
 int http_client_close(struct http_client* client)
 {
-    return tcp_client_close(&client->client, 0);
+    return tcp_client_close(client->client, 0);
 };

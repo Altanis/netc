@@ -117,7 +117,6 @@ static void http_test001_server_on_connect(struct http_server* server, struct tc
 static void http_test001_server_on_data(struct http_server* server, socket_t sockfd, struct http_request request)
 {
     ++http_test001_server_data;
-    printf("exhausted. %d\n", http_test001_server_data);
     
     printf("[HTTP TEST CASE 001] server received data from %d at endpoint \"/\"\n", sockfd);
     print_request(request);
@@ -145,22 +144,17 @@ static void http_test001_server_on_data(struct http_server* server, socket_t soc
     vector_init(&response.headers, 2, sizeof(struct http_header));
     vector_push(&response.headers, &content_type);
 
-    if (chunked)
+    if (http_test001_server_data == 8)
     {
-        struct http_header transfer_encoding = {0};
-        http_header_set_name(&transfer_encoding, "Transfer-Encoding");
-        http_header_set_value(&transfer_encoding, "chunked");
+        // write image to ./tests/http/tests/server_recv.png
+        FILE* file_w = fopen("./tests/http/tests/server_recv.png", "wb");
+        for (size_t i = 0; i < request.body_size; ++i)
+            fwrite(request.body + i, 1, 1, file_w);
+        fclose(file_w);
+        printf("Wrote image to ./tests/http/tests/server_recv.png\n");
 
-        vector_push(&response.headers, &transfer_encoding);
 
-        http_server_send_response(server, sockfd, &response, NULL, 0);
-        http_server_send_chunked_data(server, sockfd, "he", 2);
-        http_server_send_chunked_data(server, sockfd, "llo", 3);
-        http_server_send_chunked_data(server, sockfd, "world", 5);
-        http_server_send_chunked_data(server, sockfd, NULL, 0);
-    }
-    else if (http_test001_server_data == 8)
-    {
+        printf("sending image\n");
         struct http_header transfer_encoding = {0};
         http_header_set_name(&transfer_encoding, "Transfer-Encoding");
         http_header_set_value(&transfer_encoding, "chunked");
@@ -181,13 +175,36 @@ static void http_test001_server_on_data(struct http_server* server, socket_t soc
             http_server_send_chunked_data(server, sockfd, buffer, bytes_read);
         };
 
+        // write image to ./tests/http/tests/server_send.png
+        FILE* file_w2 = fopen("./tests/http/tests/server_send.png", "wb");
+        for (size_t i = 0; i < file_size; ++i)
+            fwrite(buffer + i, 1, 1, file_w2);
+        fclose(file_w2);
+
         http_server_send_chunked_data(server, sockfd, NULL, 0);
 
         fclose(file);
         http_server_close(server);
     }
+    else if (chunked)
+    {
+        printf("sending \"helloworld\"\n");
+     
+        struct http_header transfer_encoding = {0};
+        http_header_set_name(&transfer_encoding, "Transfer-Encoding");
+        http_header_set_value(&transfer_encoding, "chunked");
+
+        vector_push(&response.headers, &transfer_encoding);
+
+        http_server_send_response(server, sockfd, &response, NULL, 0);
+        http_server_send_chunked_data(server, sockfd, "he", 2);
+        http_server_send_chunked_data(server, sockfd, "llo", 3);
+        http_server_send_chunked_data(server, sockfd, "world", 5);
+        http_server_send_chunked_data(server, sockfd, NULL, 0);
+    }
     else 
     {
+        printf("sending \"hello\"\n");
         http_server_send_response(server, sockfd, &response, "hello", 5);
     }
 };
@@ -195,6 +212,7 @@ static void http_test001_server_on_data(struct http_server* server, socket_t soc
 static void http_test001_server_on_data_wrong_route(struct http_server* server, socket_t sockfd, struct http_request request)
 {
     ++http_test001_server_data;
+    printf("Sending \"later\"\n");
     
     printf("[HTTP TEST CASE 001] server received data from %d at endpoint \"/test\"\n", sockfd);
     print_request(request);
@@ -223,7 +241,7 @@ static void http_test001_server_on_malformed_request(struct http_server* server,
 
 static void http_test001_server_on_disconnect(struct http_server* server, socket_t sockfd, int is_error, void* data)
 {
-    if (sockfd == server->server.sockfd)
+    if (sockfd == server->server->sockfd)
     {
         http_test001_server_disconnect = 1;
         printf("[HTTP TEST CASE 001] server disconnected from from %d\n", sockfd);
@@ -235,6 +253,7 @@ static void http_test001_client_on_connect(struct http_client* client, void* dat
     http_test001_client_connect = 1;
 
     printf("[HTTP TEST CASE 001] client connected\n");
+    printf("sending \"hello\"\n");
 
     struct http_request request = {0};
     http_request_set_method(&request, "GET");
@@ -307,19 +326,35 @@ static void http_test001_client_on_data(struct http_client* client, struct http_
             size_t file_size = ftell(file);
             fseek(file, 0, SEEK_SET);
 
-            http_client_send_request(client, &request, NULL, 0);
-
             char buffer[8192];
             size_t bytes_read;
             while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
                 http_client_send_chunked_data(client, buffer, bytes_read);
             };
 
+            // write image to ./tests/http/tests/client_send.png
+            FILE* file_w = fopen("./tests/http/tests/client_send.png", "wb");
+            for (size_t i = 0; i < file_size; ++i)
+                fwrite(buffer + i, 1, 1, file_w);
+            fclose(file_w);
+
             http_client_send_chunked_data(client, NULL, 0);
 
             fclose(file);
         };
-    } else http_client_close(client);
+    } 
+    else 
+    {
+        // write `request.body` to ./tests/http/tests/client_recv.png
+        FILE* file = fopen("./tests/http/tests/client_recv.png", "wb");
+        for (size_t i = 0; i < response.body_size; ++i)
+            fwrite(response.body + i, 1, 1, file);
+        fclose(file);
+
+        printf("Wrote image to ./tests/http/tests/client_recv.png\n");
+
+        http_client_close(client);
+    }
 };
 
 static void http_test001_client_on_malformed_response(struct http_client* client, enum parse_response_error_types error, void* data)

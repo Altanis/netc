@@ -72,7 +72,7 @@ static void http_server_handler(struct http_server* server, socket_t sockfd, str
 
 int main()
 {
-    int testsuite_result[5];
+    int testsuite_result[5] = {0};
     testsuite_result[0] = tcp_test001();
     testsuite_result[1] = tcp_test002();
     testsuite_result[2] = udp_test001();

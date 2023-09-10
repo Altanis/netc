@@ -166,7 +166,7 @@ static int tcp_test002()
     if (inet_pton(AF_INET, IP, &(addr.sin_addr)) <= 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] client failed to convert ip address\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
-        return NULL;
+        return 1;
     };
 
     int init_result = 0;

@@ -8,7 +8,7 @@
 struct http_client
 {
     /** The TCP client. */
-    struct tcp_client client;
+    struct tcp_client* client;
 
     /** User defined data to be passed to the event callbacks. */
     void* data;

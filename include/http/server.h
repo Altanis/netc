@@ -8,7 +8,7 @@
 struct http_server
 {
     /** The TCP server. */
-    struct tcp_server server;
+    struct tcp_server* server;
     /** A map storing all the routes to their callbacks. */
     struct vector routes; // <http_route>
 
@@ -26,7 +26,7 @@ struct http_server
         size_t max_version_len;
         /** The maximum length of the HTTP header name. Defaults to `256`. */
         size_t max_header_name_len;
-        /** The maximum length of the HTTP header value. Defaults to `4096`. */
+        /** The maximum length of the HTTP header value. Defaults to `8192`. */
         size_t max_header_value_len;
         /** The maximum number of HTTP headers. Defaults to `24`. */
         size_t max_header_count;
