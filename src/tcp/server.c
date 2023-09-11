@@ -142,7 +142,7 @@ int tcp_server_init(struct tcp_server* server, struct sockaddr address, int non_
     server->client_count = 0;
 
     if (server->non_blocking == 0) return 0;
-    if (socket_set_non_blocking(server->sockfd) != 0) return netc_error(FCNTL);
+    if (socket_set_non_blocking(server->sockfd) != 0) return netc_error(FD_CTL);
 
     /** Register event for the server socket. */
 #ifdef __linux__
@@ -205,7 +205,7 @@ int tcp_server_accept(struct tcp_server* server, struct tcp_client* client)
     ++server->client_count;
 
     if (server->non_blocking == 0) return 0;
-    if (socket_set_non_blocking(client->sockfd) != 0) return netc_error(FCNTL);
+    if (socket_set_non_blocking(client->sockfd) != 0) return netc_error(FD_CTL);
 
 #ifdef __linux__
     struct epoll_event ev;

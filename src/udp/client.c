@@ -72,7 +72,7 @@ int udp_client_init(struct udp_client* client, struct sockaddr addr, int non_blo
     if (client->sockfd == -1) return netc_error(SOCKET_C);
 
     if (non_blocking == 0) return 0;
-    if (socket_set_non_blocking(client->sockfd) != 0) return netc_error(FCNTL);
+    if (socket_set_non_blocking(client->sockfd) != 0) return netc_error(FD_CTL);
 
     /** Register events for a nonblocking socket. */
 #ifdef __linux__

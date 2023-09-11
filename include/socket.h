@@ -20,8 +20,6 @@ ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t* string, const char*
 /** Receives from a socket until a certain byte pattern, or until a fixed length has been surpassed. */
 ssize_t socket_recv_until_fixed(socket_t sockfd, char* buffer, size_t buffer_size, char* bytes, int remove_delimiter);
 
-/** Gets a socket's flags. */
-int socket_get_flags(socket_t sockfd);
 /** Sets a socket to nonblocking mode. */
 int socket_set_non_blocking(socket_t sockfd);
 

@@ -9,11 +9,16 @@
 #include "tcp/client.h"
 #include "utils/error.h"
 
-#include <sys/errno.h>
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
+#include <sys/errno.h>
 #include <sys/_endian.h>
+#endif
 
 #undef IP
 #undef PORT
@@ -172,7 +177,7 @@ static int tcp_test001()
     };
 
     int optval = 1;
-    if (setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) != 0)
+    if (setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(optval)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] server failed to setsockopt\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;

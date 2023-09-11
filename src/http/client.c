@@ -45,7 +45,7 @@ int http_client_init(struct http_client* client, struct sockaddr address)
     int init_result = tcp_client_init(tcp_client, address, 1);
     if (init_result != 0) return init_result;
 
-    if (setsockopt(tcp_client->sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+    if (setsockopt(tcp_client->sockfd, SOL_SOCKET, SO_REUSEADDR, &(char){1}, sizeof(int)) < 0)
     {
         /** Not essential. Do not return -1. */
     };

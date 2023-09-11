@@ -10,7 +10,7 @@ void netc_strerror(char* buffer)
     char error[512] = {0};
     FormatMessageA(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, NULL, WSAGetLastError(), MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT), (LPSTR)&error, 0, NULL);
 
-    for (int i = 0; i < error; ++i)
+    for (int i = 0; i < sizeof(error); ++i)
     {
         if (error[i] == '\n')
         {

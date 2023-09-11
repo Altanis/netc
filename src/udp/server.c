@@ -81,7 +81,7 @@ int udp_server_init(struct udp_server* server, struct sockaddr addr, int non_blo
     if (server->sockfd == -1) return netc_error(SOCKET_C);
 
     if (non_blocking == 0) return 0;
-    if (socket_set_non_blocking(server->sockfd) == -1) return netc_error(FCNTL);
+    if (socket_set_non_blocking(server->sockfd) == -1) return netc_error(FD_CTL);
 
     /** Register event for the server socket. */
 #ifdef __linux__

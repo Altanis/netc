@@ -9,8 +9,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <pthread.h>
+
+#ifdef _WIN32
+#include <winsock2.h>
+#include <ws2tcpip.h>
+#else
 #include <sys/errno.h>
 #include <sys/_endian.h>
+#endif
 
 #undef IP
 #undef PORT

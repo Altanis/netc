@@ -3,8 +3,14 @@
 #include <stdio.h>
 #include <stddef.h>
 #include <string.h>
-#include <sys/socket.h>
 #include <sys/time.h>
+
+#ifdef _WIN32
+#define WIN32_LEAN_AND_MEAN
+#include <winsock2.h>
+#else
+#include <sys/socket.h>
+#endif
 
 ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t* string, const char* bytes, int remove_delimiter, size_t max_bytes_received)
 {
@@ -80,22 +86,18 @@ ssize_t socket_recv_until_fixed(socket_t sockfd, char* buffer, size_t buffer_siz
     return bytes_received;
 };
 
-int socket_get_flags(socket_t sockfd)
-{
-    int flags = fcntl(sockfd, F_GETFL, 0);
-    if (flags == -1) return netc_error(FCNTL);
-
-    return flags;
-};
-
 int socket_set_non_blocking(socket_t sockfd)
 {
+#ifdef _WIN32
+    if (ioctlsocket(sockfd, FIONBIO, &(u_long){1}) == SOCKET_ERROR) return netc_error(FD_CTL);
+#else
     int flags = fcntl(sockfd, F_GETFL, 0);
-    if (flags == -1) return netc_error(FCNTL);
-    else if (flags & O_NONBLOCK) return 0; // socket is already non-blocking
+    if (flags == -1) return netc_error(FD_CTL);
+    else if (flags & O_NONBLOCK) return 0;
 
     int result = fcntl(sockfd, F_SETFL, flags | O_NONBLOCK);
-    if (result == -1) return netc_error(FCNTL);
+    if (result == -1) return netc_error(FD_CTL);
 
     return 0;
+#endif
 };

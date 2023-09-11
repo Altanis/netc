@@ -143,7 +143,7 @@ int http_server_init(struct http_server* http_server, struct sockaddr address, i
     int init_result = tcp_server_init(tcp_server, address, 1);
     if (init_result != 0) return init_result;
 
-    if (setsockopt(tcp_server->sockfd, SOL_SOCKET, SO_REUSEADDR, &(int){1}, sizeof(int)) < 0)
+    if (setsockopt(tcp_server->sockfd, SOL_SOCKET, SO_REUSEADDR, &(char){1}, sizeof(int)) < 0)
     {
         /** Not essential. Do not return -1. */
     };
