@@ -33,6 +33,18 @@ const char* http_query_get_value(const struct http_query* query) { return sso_st
 void http_query_set_key(struct http_query* query, const char* key) { sso_string_set(&query->key, key); };
 void http_query_set_value(struct http_query* query, const char* value) { sso_string_set(&query->value, value); };
 
+void print_bytes(const char* bytes, size_t bytes_len)
+{
+    for (size_t i = 0; i < bytes_len; ++i)
+    {
+        if (bytes[i] == '\r') printf("\\r");
+        else if (bytes[i] == '\n') printf("\\n");
+        else printf("%c", bytes[i]);
+    };
+
+    printf("\n");
+};
+
 void http_url_percent_encode(char* url, char* encoded)
 {
     char* encoded_ptr = encoded;

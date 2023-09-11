@@ -184,7 +184,7 @@ static void http_test001_server_on_data(struct http_server* server, socket_t soc
         http_server_send_chunked_data(server, sockfd, NULL, 0);
 
         fclose(file);
-        http_server_close(server);
+        // http_server_close(server);
     }
     else if (chunked)
     {
@@ -281,7 +281,7 @@ static void http_test001_client_on_data(struct http_client* client, struct http_
         (http_test001_client_data == 5 ? "/test" : "/")))));
 
         struct http_request request = {0};
-        http_request_set_method(&request, "GET");
+        http_request_set_method(&request, "POST");
         http_request_set_path(&request, path);
         http_request_set_version(&request, "HTTP/1.1");
 
@@ -326,19 +326,21 @@ static void http_test001_client_on_data(struct http_client* client, struct http_
             size_t file_size = ftell(file);
             fseek(file, 0, SEEK_SET);
 
+            http_client_send_request(client, &request, NULL, 0);
+
             char buffer[8192];
             size_t bytes_read;
             while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
                 http_client_send_chunked_data(client, buffer, bytes_read);
             };
 
+            http_client_send_chunked_data(client, NULL, 0);
+
             // write image to ./tests/http/tests/client_send.png
             FILE* file_w = fopen("./tests/http/tests/client_send.png", "wb");
             for (size_t i = 0; i < file_size; ++i)
                 fwrite(buffer + i, 1, 1, file_w);
             fclose(file_w);
-
-            http_client_send_chunked_data(client, NULL, 0);
 
             fclose(file);
         };
@@ -353,7 +355,7 @@ static void http_test001_client_on_data(struct http_client* client, struct http_
 
         printf("Wrote image to ./tests/http/tests/client_recv.png\n");
 
-        http_client_close(client);
+        // http_client_close(client);
     }
 };
 

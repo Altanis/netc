@@ -1,5 +1,6 @@
 #include "http/client.h"
 
+#include<unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -150,9 +151,18 @@ int http_client_parse_response(struct http_client* client, struct http_response*
     sso_string_init(&status_code, "");
     sso_string_init(&status_message, "");
 
-    if (socket_recv_until_dynamic(client->client->sockfd, &version, " ", 1, 8 + 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
-    if (socket_recv_until_dynamic(client->client->sockfd, &status_code, " ", 1, 3 + 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
-    if (socket_recv_until_dynamic(client->client->sockfd, &status_message, "\r\n", 1, 64 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+    enum http_response_parsing_states state = -1;
+
+    while (1)
+    {
+        // if (socket_recv_until_dynamic(client->client->sockfd, &version, " ", 1, 8 + 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+        // if (socket_recv_until_dynamic(client->client->sockfd, &status_code, " ", 1, 3 + 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+        // if (socket_recv_until_dynamic(client->client->sockfd, &status_message, "\r\n", 1, 64 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+        NETC_HTTP_RESPONSE_PARSE(state, RESPONSE_PARSING_STATE_VERSION, client->client->sockfd, &version, " ", 1, 8 + 1, 0);
+        NETC_HTTP_RESPONSE_PARSE(state, RESPONSE_PARSING_STATE_STATUS_CODE, client->client->sockfd, &status_code, " ", 1, 3 + 1, 0);
+        NETC_HTTP_RESPONSE_PARSE(state, RESPONSE_PARSING_STATE_STATUS_MESSAGE, client->client->sockfd, &status_message, "\r\n", 1, 64 + 2, 0);
+        break;
+    };
 
     response->version = version;
     response->status_code = atoi(sso_string_get(&status_code));
@@ -175,9 +185,11 @@ int http_client_parse_response(struct http_client* client, struct http_response*
         sso_string_init(&header.name, "");
         sso_string_init(&header.value, "");
 
-        if (socket_recv_until_dynamic(client->client->sockfd, &header.name, ": ", 1, 64 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
-        if (socket_recv_until_dynamic(client->client->sockfd, &header.value, "\r\n", 1, 8192 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
-    
+        // if (socket_recv_until_dynamic(client->client->sockfd, &header.name, ": ", 1, 64 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+        // if (socket_recv_until_dynamic(client->client->sockfd, &header.value, "\r\n", 1, 8192 + 2) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+        NETC_HTTP_RESPONSE_PARSE(state, RESPONSE_PARSING_STATE_HEADER_NAME, client->client->sockfd, &header.name, ": ", 1, 64 + 2, 0);
+        NETC_HTTP_RESPONSE_PARSE(state, RESPONSE_PARSING_STATE_HEADER_VALUE, client->client->sockfd, &header.value, "\r\n", 1, 8192 + 2, 0);
+
         if (content_length == 0 && strcmp(sso_string_get(&header.name), "Content-Length") == 0)
             content_length = strtoul(sso_string_get(&header.value), NULL, 10);
         else if (content_length == 0 && strcmp(sso_string_get(&header.name), "Transfer-Encoding") == 0 && strcmp(sso_string_get(&header.value), "chunked") == 0)
@@ -192,28 +204,55 @@ int http_client_parse_response(struct http_client* client, struct http_response*
     if (content_length == 0) return 0;
     else if (content_length == -1)
     {
+        state = RESPONSE_PARSING_STATE_CHUNK_DATA;
+
+        printf("starting loop!\n");
+        char BUFFYWUFFY[8192] = {0};
+        if (recv(client->client->sockfd, BUFFYWUFFY, 8192, MSG_PEEK) <= 0) printf("holy hell?\n");
+        else printf("peeked!\n");
+
         while (1)
         {
             char chunk_length[18] = {0};
 
             socket_t sockfd = client->client->sockfd;
-            if (socket_recv_until_fixed(sockfd, chunk_length, 16 + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            NETC_HTTP_RESPONSE_PARSE(state, RESPONSE_PARSING_STATE_CHUNK_SIZE, sockfd, &chunk_length, "\r\n", 1, 16 + 2, 0);
 
             size_t chunk_size = strtoul(chunk_length, NULL, 16);
             if (chunk_size == 0)
             {
                 char temp_buffer[2] = {0};
-                if (recv(client->client->sockfd, temp_buffer, 2, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+                if (recv(client->client->sockfd, temp_buffer, 2, 0) <= 0)
+                {
+                    printf("[cli] recv failed, errno: \n", errno);
+                    return RESPONSE_PARSE_ERROR_RECV;
+                };
+                printf("[cli] chunk size: %zu\n", chunk_size);
+                print_bytes(temp_buffer, 2);
                 break;
             };
             
             char chunk_data[chunk_size + 2];
-            if (socket_recv_until_fixed(client->client->sockfd, chunk_data, chunk_size + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            if (recv(client->client->sockfd, chunk_data, chunk_size + 2, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
             for (size_t i = 0; i < chunk_size; ++i) vector_push(&buffer, chunk_data + i);
+            printf("received one chunk [size %d]\n", chunk_size);
+
+            if (chunk_size == 4488)
+            {
+                // sleep 5 seconds
+                printf("sleeping for 5 seconds\n");
+                sleep(5);
+                printf("slept for 5 seconds\n");
+            };
+
+            char buffywuffy[4096] = {0};
+            if (recv(client->client->sockfd, buffywuffy, 4096, MSG_PEEK) <= 0) printf("holy hell? [dang]\n");
+            else printf("peeked [dang! %s\n", buffywuffy);
         };
     }
     else
     {
+        state = RESPONSE_PARSING_STATE_BODY;
         size_t bytes_left = content_length;
 
         while (1)
