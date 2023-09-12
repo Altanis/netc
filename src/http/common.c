@@ -37,8 +37,8 @@ void print_bytes(const char* bytes, size_t bytes_len)
 {
     for (size_t i = 0; i < bytes_len; ++i)
     {
-        if (bytes[i] == '\r') printf("\\r");
-        else if (bytes[i] == '\n') printf("\\n");
+        if (bytes[i] == '\r') printf("[r]");
+        else if (bytes[i] == '\n') printf("[n]");
         else printf("%c", bytes[i]);
     };
 

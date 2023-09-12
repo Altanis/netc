@@ -141,6 +141,11 @@ int http_client_send_request(struct http_client* client, struct http_request* re
 
 int http_client_parse_response(struct http_client* client, struct http_response* response)
 {   
+    char floffy[8192] = {0};
+    recv(client->client->sockfd, floffy, 8192, MSG_PEEK);
+    printf("floffy:\n");
+    print_bytes(floffy, 8192);
+
     vector_init(&response->headers, 8, sizeof(struct http_header));
 
     string_t version = {0};
@@ -164,6 +169,10 @@ int http_client_parse_response(struct http_client* client, struct http_response*
         break;
     };
 
+    char yum[8192] = {0};
+    recv(client->client->sockfd, yum, 8192, MSG_PEEK);
+    print_bytes(yum, 8192);
+
     response->version = version;
     response->status_code = atoi(sso_string_get(&status_code));
     response->status_message = status_message;
@@ -172,8 +181,15 @@ int http_client_parse_response(struct http_client* client, struct http_response*
 
     while (1)
     {
+        // char fluffy[8192] = {0};
+        // recv(client->client->sockfd, fluffy, 8192, MSG_PEEK);
+        // printf("fluffy:\n");
+        // print_bytes(fluffy, 8192);
+
         char temp_buffer[2] = {0};
         if (recv(client->client->sockfd, temp_buffer, 2, MSG_PEEK) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+        // for (size_t i = 0; i < 2; ++i) printf("%c ", temp_buffer[i]);
+        // printf("\n");
 
         if (temp_buffer[0] == '\r' && temp_buffer[1] == '\n')
         {
@@ -204,69 +220,42 @@ int http_client_parse_response(struct http_client* client, struct http_response*
     if (content_length == 0) return 0;
     else if (content_length == -1)
     {
-        state = RESPONSE_PARSING_STATE_CHUNK_DATA;
-
-        printf("starting loop!\n");
-        char BUFFYWUFFY[8192] = {0};
-        if (recv(client->client->sockfd, BUFFYWUFFY, 8192, MSG_PEEK) <= 0) printf("holy hell?\n");
-        else printf("peeked!\n");
+        char fluffy[8192] = {0};
+        recv(client->client->sockfd, fluffy, 8192, MSG_PEEK);
+        printf("fluffy:\n");
+        print_bytes(fluffy, 8192);
 
         while (1)
         {
             char chunk_length[18] = {0};
-
-            socket_t sockfd = client->client->sockfd;
-            NETC_HTTP_RESPONSE_PARSE(state, RESPONSE_PARSING_STATE_CHUNK_SIZE, sockfd, &chunk_length, "\r\n", 1, 16 + 2, 0);
-
+            if (socket_recv_until_fixed(client->client->sockfd, chunk_length, 16 + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+            
             size_t chunk_size = strtoul(chunk_length, NULL, 16);
+            printf("chunk_size: %zu\n", chunk_size);
+
             if (chunk_size == 0)
             {
-                char temp_buffer[2] = {0};
-                if (recv(client->client->sockfd, temp_buffer, 2, 0) <= 0)
-                {
-                    printf("[cli] recv failed, errno: \n", errno);
-                    return RESPONSE_PARSE_ERROR_RECV;
-                };
-                printf("[cli] chunk size: %zu\n", chunk_size);
-                print_bytes(temp_buffer, 2);
+                // todo crlf not get absorb proper :(
+                char crlf[4096];
+                if (socket_recv_until_fixed(client->client->sockfd, crlf, 2, "\r\n", 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
                 break;
             };
-            
+
             char chunk_data[chunk_size + 2];
             if (recv(client->client->sockfd, chunk_data, chunk_size + 2, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
             for (size_t i = 0; i < chunk_size; ++i) vector_push(&buffer, chunk_data + i);
-            printf("received one chunk [size %d]\n", chunk_size);
-
-            if (chunk_size == 4488)
-            {
-                // sleep 5 seconds
-                printf("sleeping for 5 seconds\n");
-                sleep(5);
-                printf("slept for 5 seconds\n");
-            };
-
-            char buffywuffy[4096] = {0};
-            if (recv(client->client->sockfd, buffywuffy, 4096, MSG_PEEK) <= 0) printf("holy hell? [dang]\n");
-            else printf("peeked [dang! %s\n", buffywuffy);
         };
     }
     else
     {
         state = RESPONSE_PARSING_STATE_BODY;
-        size_t bytes_left = content_length;
 
-        while (1)
+        char body_data[content_length + 2];
+        if (socket_recv_until_fixed(client->client->sockfd, body_data, content_length + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+        for (size_t i = 0; i < content_length; ++i) 
         {
-            if (bytes_left <= 0) break;
-
-            char temp_buffer[bytes_left];
-            ssize_t result = tcp_client_receive(client->client, temp_buffer, bytes_left, 0);
-
-            if (result <= 0) return RESPONSE_PARSE_ERROR_RECV;
-            for (size_t i = 0; i < result; ++i) vector_push(&buffer, temp_buffer + i);
-
-
-            bytes_left -= result;
+            printf("%c\n", body_data[i]);
+            vector_push(&buffer, body_data + i);
         };
     };
 

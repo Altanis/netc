@@ -14,8 +14,7 @@
 
 ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t* string, const char* bytes, int remove_delimiter, size_t max_bytes_received)
 {
-    size_t bytes_len = strlen(bytes);
-    size_t bytes_received = 0;
+    size_t bytes_len = strlen(bytes), bytes_received = 0;
 
     while (bytes_received <= max_bytes_received)
     {

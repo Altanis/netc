@@ -39,7 +39,6 @@
 /** Parses a component of a response with state management and error handling. */
 #define NETC_HTTP_RESPONSE_PARSE(current_state, required_state, sockfd, string, bytes, remove_delimiter, max_bytes_received, is_fixed) \
 { \
-    printf("current_state: %d\n", current_state); \
     switch (current_state) \
     { \
         case -1: current_state = RESPONSE_PARSING_STATE_VERSION; break; \

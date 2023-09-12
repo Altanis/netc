@@ -214,6 +214,16 @@ int http_server_send_chunked_data(struct http_server* server, socket_t sockfd, c
     if (length != 0 && ((send_result = tcp_server_send(sockfd, length == 0 ? "" : data, length, 0)) <= 0)) return send_result;    
     if ((send_result = tcp_server_send(sockfd, "\r\n", 2, 0)) <= 2) return send_result;
 
+    // combine them all into one char buffer
+    // char buffer[length + strlen(length_str) + 2];
+    // memcpy(buffer, length_str, strlen(length_str));
+    // memcpy(buffer + strlen(length_str), data, length);
+    // memcpy(buffer + strlen(length_str) + length, "\r\n", 2);
+
+    // if ((send_result = tcp_server_send(sockfd, buffer, length + strlen(length_str) + 2, 0)) <= 0) return send_result;
+    // printf("sent ");
+    // print_bytes(buffer, length + strlen(length_str) + 2);
+
     return 0;
 };
 
@@ -267,8 +277,13 @@ int http_server_send_response(struct http_server* server, socket_t sockfd, struc
     ssize_t first_send = tcp_server_send(sockfd, (char*)sso_string_get(&response_str), response_str.length, 0);
     if (first_send <= 0) return first_send;
 
-    ssize_t second_send = tcp_server_send(sockfd, (char*)data, data_length, 0);
-    if (second_send <= 0) return second_send;
+    ssize_t second_send = 0;
+
+    if (data_length > 0)
+    {
+        second_send = tcp_server_send(sockfd, (char*)data, data_length, 0);
+        if (second_send <= 0) return second_send;
+    };
 
     return first_send + second_send;
 };
