@@ -34,18 +34,18 @@ int tcp_server_main_loop(struct tcp_server *server)
         int pfd = server->pfd;
         struct epoll_event events[server->client_count + 1];
         int nev = epoll_wait(pfd, events, server->client_count + 1, -1);
-        if (nev == -1) return netc_error(EVCREATE);
+        if (nev == -1) return netc_error(POLL_FD);
 #elif _WIN32
         WSAPOLLFD events[server->client_count + 1];
         events[0].fd = server->sockfd;
         events[0].events = POLLIN | POLLERR | POLLHUP;
-        int nev = WSAPoll(events, sizeof events, -1);
-        if (nev == -1) return netc_error(EVCREATE);
+        int nev = WSAPoll(events, sizeof(events), -1);
+        if (nev == -1) return netc_error(POLL_FD);
 #elif __APPLE__
         int pfd = server->pfd;
         struct kevent events[server->client_count + 1];
         int nev = kevent(pfd, NULL, 0, events, server->client_count + 1, NULL);
-        if (nev == -1) return netc_error(EVCREATE);
+        if (nev == -1) return netc_error(POLL_FD);
 #endif
 
         if (netc_tcp_server_listening == 0) break;
@@ -77,7 +77,7 @@ int tcp_server_main_loop(struct tcp_server *server)
             }
 #elif _WIN32
             WSAPOLLFD event = events[i];
-            SOCKET sockfd = pollfd.fd;
+            SOCKET sockfd = event.fd;
 
             if (event.revents & POLLERR || event.revents & POLLHUP)
             {
@@ -251,8 +251,8 @@ int tcp_server_close_client(struct tcp_server *server, socket_t sockfd, int is_e
     int result = closesocket(sockfd);
     for (size_t i = 0; i < server->events.size; ++i)
     {
-        WSAPOLLFD event = vector_get(&server->events, i);
-        if (event.fd == sockfd)
+        WSAPOLLFD *event = vector_get(&server->events, i);
+        if (event->fd == sockfd)
         {
             vector_delete(&server->events, i);
             break;

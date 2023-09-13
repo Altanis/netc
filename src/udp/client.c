@@ -26,49 +26,35 @@ int udp_client_main_loop(struct udp_client *client)
         int pfd = client->pfd;
         struct epoll_event events[1];
         int nev = epoll_wait(pfd, events, 1, -1);
-        if (nev == -1) return netc_error(EVCREATE);
+        if (nev == -1) return netc_error(POLL_FD);
 #elif _WIN32
-        SOCKET sockfd = client->sockfd;
-        WSAEVENT event = client->event;
-
-        DWORD dw_result = WSAWaitForMultipleEvents(1, &event, FALSE, WSA_INFINITE, FALSE);
-        if (dw_result == WSA_WAIT_FAILED)
-        {
-            WSACloseEvent(event);
-            WSACleanup();
-            return netc_error(WSA_WAIT);
-        };
-
-        WSANETWORKEVENTS events;
-        if (WSAEnumNetworkEvents(sockfd, event, &events) == SOCKET_ERROR)
-        {
-            WSACloseEvent(event);
-            WSACleanup();
-            return netc_error(NETWORK_EVENT);
-        };
+        WSAPOLLFD events[1];
+        events[0].fd = client->sockfd;
+        events[0].events = POLLIN;
+        int nev = WSAPoll(events, sizeof(events), -1);
+        if (nev == -1) return netc_error(POLL_FD);
 #elif __APPLE__
         int pfd = client->pfd;
         struct kevent events[1];
         int nev = kevent(pfd, NULL, 0, events, 1, NULL);
-        if (nev == -1) return netc_error(EVCREATE);
+        if (nev == -1) return netc_error(POLL_FD);
 #endif
 
         if (netc_udp_client_listening == 0) break;
 
-        for (int i = 0; i < nev; ++i)
-        {
 #ifdef __linux__
-            struct epoll_event ev = events[i];
-            socket_t sockfd = ev.data.fd;
-            if (ev.events & EPOLLIN && client->on_data != NULL) client->on_data(client, client->data);
+        struct epoll_event ev = events[0];
+        socket_t sockfd = ev.data.fd;
+        if (ev.events & EPOLLIN && client->on_data != NULL) client->on_data(client, client->data);
 #elif _WIN32
-            if (events.lNetworkEvents & FD_READ && client->on_data != NULL)
-                client->on_data(client, client->data);
+            WSAPOLLFD event = events[0];
+            SOCKET sockfd = event.fd;
+
+            if (event.revents & POLLIN && client->on_data != NULL) client->on_data(client, client->data);
 #elif __APPLE__
-            socket_t sockfd = client->sockfd;
-            if (events[i].flags & EVFILT_READ && client->on_data != NULL) client->on_data(client, client->data);
+        socket_t sockfd = client->sockfd;
+        if (events[0].flags & EVFILT_READ && client->on_data != NULL) client->on_data(client, client->data);
 #endif
-        };
     };
 
     return 0;
@@ -97,20 +83,6 @@ int udp_client_init(struct udp_client *client, struct sockaddr addr, int non_blo
     ev.data.fd = client->sockfd;
     if (epoll_ctl(client->pfd, EPOLL_CTL_ADD, client->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32
-    client->event = WSACreateEvent();
-    if (client->event == WSA_INVALID_EVENT)
-    {
-        WSACloseEvent(client->event);
-        WSACleanup();
-        return netc_error(EVCREATE);
-    };
-
-    if (WSAEventSelect(client->sockfd, client->pfd, FD_READ) == SOCKET_ERROR)
-    {
-        WSACloseEvent(client->event);
-        WSACleanup();
-        return netc_error(EVENT_SELECT);
-    };
 #elif __APPLE__
     client->pfd = kqueue();
     if (client->pfd == -1) return netc_error(EVCREATE);

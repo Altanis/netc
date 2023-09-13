@@ -22,10 +22,7 @@ struct udp_server
     /** The server's address. */
     struct sockaddr sockaddr;
 
-#ifdef _WIN32
-    /** The event struct. */
-    WSAEVENT event;
-#else
+#ifndef _WIN32
     /** The polling file descriptor. */
     int pfd;
 #endif 

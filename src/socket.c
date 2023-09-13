@@ -19,7 +19,7 @@ ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char 
     while (bytes_received <= max_bytes_received)
     {
         char c;
-        ssize_t recv_result = recv(sockfd, &c, sizeof c, 0);
+        ssize_t recv_result = recv(sockfd, &c, sizeof(c), 0);
         if (recv_result <= 0)
         {
             if (recv_result == -1) 

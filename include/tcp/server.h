@@ -19,10 +19,7 @@ struct tcp_client
     /** The address of the server to connect to. */
     struct sockaddr sockaddr;
 
-#ifdef _WIN32
-    /** The event struct. */
-    WSAEVENT event;
-#else
+#ifndef _WIN32
     /** The polling file descriptor. */
     int pfd;
 #endif 

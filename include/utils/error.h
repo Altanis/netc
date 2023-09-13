@@ -26,9 +26,10 @@ extern __thread int netc_errno_reason;
 /** syscalls */
 #define EVCREATE        1     /** kqueue, epoll_create1, and WSACreateEvent syscalls */
 #define SOCKET_C        2     /** socket creation syscall */
-#define POLL_FD         3     /** kevent, epoll_wait, and epoll_ctl syscalls */
+#define POLL_FD         3     /** kevent, epoll_wait, and WSAPoll syscalls */
 #define EVENT_SELECT    4     /** WSAEventSelect syscall */
 #define NETWORK_EVENT   5     /** WSAEnumNetworkEvents syscall */
+#define WSA_WAIT        6     /** WSAWaitForMultipleEvents syscall */
 #define BIND            6     /** bind syscall */
 #define LISTEN          7     /** listen syscall */
 #define ACCEPT          8     /** accept syscall */
