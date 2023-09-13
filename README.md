@@ -22,6 +22,7 @@ A cross-platform networking library for TCP, UDP, HTTP, and WS sockets. Written 
         - [ ] Binary Data
         - [ ] Keep Alive
 - [ ] WebSocket Abstraction
+- [ ] Threadpool
 - [ ] SSL/TLS Support (for HTTP/1.1 and WS Client)
 <!-- In my opinion, there is no point of providing SSL suport for servers due to reverse proxies providing them. -->
 - [ ] Windows Support

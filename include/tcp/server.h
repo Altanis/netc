@@ -20,22 +20,22 @@ struct tcp_client
     struct sockaddr sockaddr;
 
 #ifdef _WIN32
-    /** The polling file descriptor. */
-    HANDLE pfd;
+    /** The event struct. */
+    WSAEVENT event;
 #else
     /** The polling file descriptor. */
     int pfd;
 #endif 
 
     /** User defined data to be passed to the event callbacks. */
-    void* data;
+    void *data;
 
     /** The callback for when the client has connected to the server. */
-    void (*on_connect)(struct tcp_client* client, void* data);
+    void (*on_connect)(struct tcp_client *client, void *data);
     /** The callback for when the client has received a message from the server. */
-    void (*on_data)(struct tcp_client* client, void* data);
+    void (*on_data)(struct tcp_client *client, void *data);
     /** The callback for when the client has disconnected from the server. */
-    void (*on_disconnect)(struct tcp_client* client, int is_error, void* data);
+    void (*on_disconnect)(struct tcp_client *client, int is_error, void *data);
 };
 
 /** A structure representing a TCP server. */
@@ -53,47 +53,47 @@ struct tcp_server
     size_t client_count;
 
 #ifdef _WIN32
-    /** The polling file descriptor. */
-    HANDLE pfd;
+    /** The events stored by the server. */
+    struct vector events; // <struct pollfd>
 #else
     /** The polling file descriptor. */
     int pfd;
 #endif 
 
     /** User defined data to be passed to the event callbacks. */
-    void* data;
+    void *data;
 
     /** The callback for when an incoming connection occurs. */
-    void (*on_connect)(struct tcp_server* server, void* data);
+    void (*on_connect)(struct tcp_server *server, void *data);
     /** The callback for when a message is received from a client. */
-    void (*on_data)(struct tcp_server* server, socket_t sockfd, void* data);
+    void (*on_data)(struct tcp_server *server, socket_t sockfd, void *data);
     /** The callback for when a client socket disconnects. */
-    void (*on_disconnect)(struct tcp_server* server, socket_t sockfd, int is_error, void* data);
+    void (*on_disconnect)(struct tcp_server *server, socket_t sockfd, int is_error, void *data);
 };
 
 /** Whether or not the server is listening for events. */
 extern __thread int netc_tcp_server_listening;
 
 /** The main loop of a nonblocking TCP server. */
-int tcp_server_main_loop(struct tcp_server* server);
+int tcp_server_main_loop(struct tcp_server *server);
 
 /** Initializes a TCP server. */
-int tcp_server_init(struct tcp_server* server, struct sockaddr address, int non_blocking);
+int tcp_server_init(struct tcp_server *server, struct sockaddr address, int non_blocking);
 /** Binds a TCP server to an address. */
-int tcp_server_bind(struct tcp_server* server);
+int tcp_server_bind(struct tcp_server *server);
 /** Starts listening for connections on a TCP server. */
-int tcp_server_listen(struct tcp_server* server, int backlog);
+int tcp_server_listen(struct tcp_server *server, int backlog);
 /** Accepts a connection on the TCP server. */
-int tcp_server_accept(struct tcp_server* server, struct tcp_client* client);
+int tcp_server_accept(struct tcp_server *server, struct tcp_client *client);
 
 /** Sends a message to the client. Returns the result of the `send` syscall. */
-int tcp_server_send(socket_t sockfd, char* message, size_t msglen, int flags);
+int tcp_server_send(socket_t sockfd, char *message, size_t msglen, int flags);
 /** Receives a message from the client. Returns the result of the `recv` syscall. */
-int tcp_server_receive(socket_t sockfd, char* message, size_t msglen, int flags);
+int tcp_server_receive(socket_t sockfd, char *message, size_t msglen, int flags);
 
 /** Closes the TCP server. */
-int tcp_server_close_self(struct tcp_server* server);
+int tcp_server_close_self(struct tcp_server *server);
 /** Closes a client connection. */
-int tcp_server_close_client(struct tcp_server* server, socket_t sockfd, int is_error);
+int tcp_server_close_client(struct tcp_server *server, socket_t sockfd, int is_error);
 
 #endif // TCP_SERVER_H

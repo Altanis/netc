@@ -50,13 +50,13 @@ static int tcp_test002_client_connect = 0;
 static int tcp_test002_client_data = 0;
 static int tcp_test002_client_disconnect = 0;
 
-static void* tcp_test002_server_thread_blocking_main(void* arg);
-static void* tcp_test002_client_thread_blocking_main(void* arg);
+static void *tcp_test002_server_thread_blocking_main(void *arg);
+static void *tcp_test002_client_thread_blocking_main(void *arg);
 
-static void* tcp_test002_server_thread_blocking_main(void* arg)
+static void *tcp_test002_server_thread_blocking_main(void *arg)
 {
-    struct tcp_server* server = (struct tcp_server*)arg;
-    struct tcp_client* client = malloc(sizeof(struct tcp_client));
+    struct tcp_server *server = (struct tcp_server*)arg;
+    struct tcp_client *client = malloc(sizeof(struct tcp_client));
 
     int accept_result;
     if ((accept_result = tcp_server_accept(server, client)) != 0)
@@ -69,7 +69,7 @@ static void* tcp_test002_server_thread_blocking_main(void* arg)
     }
 
     int recv_result;
-    char* buffer = calloc(18, sizeof(char));
+    char *buffer = calloc(18, sizeof(char));
 
     if ((recv_result = tcp_server_receive(client->sockfd, buffer, 17, 0)) != 17)
     {
@@ -103,9 +103,9 @@ static void* tcp_test002_server_thread_blocking_main(void* arg)
     return NULL;
 };
 
-static void* tcp_test002_client_thread_blocking_main(void* arg)
+static void *tcp_test002_client_thread_blocking_main(void *arg)
 {
-    struct tcp_client* client = (struct tcp_client*)arg;
+    struct tcp_client *client = (struct tcp_client*)arg;
 
     int client_connect_result = 0;
     if ((client_connect_result = tcp_client_connect(client)) != 0)
@@ -131,7 +131,7 @@ static void* tcp_test002_client_thread_blocking_main(void* arg)
     }
 
     int recv_result = 0;
-    char* buffer = calloc(18, sizeof(char));
+    char *buffer = calloc(18, sizeof(char));
 
     if ((recv_result = tcp_client_receive(client, buffer, 17, 0)) != 17)
     {
@@ -157,7 +157,7 @@ static void* tcp_test002_client_thread_blocking_main(void* arg)
 
 static int tcp_test002()
 {
-    struct tcp_server* server = malloc(sizeof(struct tcp_server));
+    struct tcp_server *server = malloc(sizeof(struct tcp_server));
     struct sockaddr_in saddr = {
         .sin_family = AF_INET,
         .sin_addr.s_addr = INADDR_ANY,
@@ -207,7 +207,7 @@ static int tcp_test002()
     pthread_t server_thread;
     pthread_create(&server_thread, NULL, tcp_test002_server_thread_blocking_main, server);
 
-    struct tcp_client* client = malloc(sizeof(struct tcp_client));
+    struct tcp_client *client = malloc(sizeof(struct tcp_client));
 
     int client_init_result = 0;
     if ((client_init_result = tcp_client_init(client, *(struct sockaddr*)&addr, CLIENT_NON_BLOCKING)) != 0)

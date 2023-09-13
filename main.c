@@ -10,7 +10,7 @@
 
 #include <time.h>
 
-const char* MAPPINGS[] = {
+const char *MAPPINGS[] = {
     "[TCP TEST CASE 001]",
     "[TCP TEST CASE 002]",
     "[UDP TEST CASE 001]",
@@ -18,7 +18,7 @@ const char* MAPPINGS[] = {
     "[HTTP TEST CASE 001]",
 };
 
-const char* BANNER = "\
+const char *BANNER = "\
 ███╗   ██╗███████╗████████╗ ██████╗\n\
 ████╗  ██║██╔════╝╚══██╔══╝██╔════╝\n\
 ██╔██╗ ██║█████╗     ██║   ██║     \n\
@@ -26,7 +26,7 @@ const char* BANNER = "\
 ██║ ╚████║███████╗   ██║   ╚██████╗\n\
 ╚═╝  ╚═══╝╚══════╝   ╚═╝    ╚═════╝\n";
 
-static void http_server_handler(struct http_server* server, socket_t sockfd, struct http_request request)
+static void http_server_handler(struct http_server *server, socket_t sockfd, struct http_request request)
 {
     printf("request.\n");
 
@@ -48,7 +48,7 @@ static void http_server_handler(struct http_server* server, socket_t sockfd, str
     vector_push(&response.headers, &header2);
 
     // read ./tests/http/image.png (an image)
-    FILE* file = fopen("./tests/http/image.png", "rb");
+    FILE *file = fopen("./tests/http/image.png", "rb");
     fseek(file, 0, SEEK_END);
     size_t file_size = ftell(file);
     fseek(file, 0, SEEK_SET);

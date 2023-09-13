@@ -14,7 +14,7 @@
 
 __thread int netc_udp_client_listening = 0;
 
-int udp_client_main_loop(struct udp_client* client)
+int udp_client_main_loop(struct udp_client *client)
 {
     /** The client socket should be nonblocking when listening for events. */
     socket_set_non_blocking(client->sockfd);
@@ -28,10 +28,24 @@ int udp_client_main_loop(struct udp_client* client)
         int nev = epoll_wait(pfd, events, 1, -1);
         if (nev == -1) return netc_error(EVCREATE);
 #elif _WIN32
-        HANDLE pfd = client->pfd;
+        SOCKET sockfd = client->sockfd;
+        WSAEVENT event = client->event;
+
+        DWORD dw_result = WSAWaitForMultipleEvents(1, &event, FALSE, WSA_INFINITE, FALSE);
+        if (dw_result == WSA_WAIT_FAILED)
+        {
+            WSACloseEvent(event);
+            WSACleanup();
+            return netc_error(WSA_WAIT);
+        };
+
         WSANETWORKEVENTS events;
-        int nev = WSAEnumNetworkEvents(client->sockfd, pfd, &events);
-        if (nev == SOCKET_ERROR) return netc_error(EVCREATE);
+        if (WSAEnumNetworkEvents(sockfd, event, &events) == SOCKET_ERROR)
+        {
+            WSACloseEvent(event);
+            WSACleanup();
+            return netc_error(NETWORK_EVENT);
+        };
 #elif __APPLE__
         int pfd = client->pfd;
         struct kevent events[1];
@@ -48,9 +62,8 @@ int udp_client_main_loop(struct udp_client* client)
             socket_t sockfd = ev.data.fd;
             if (ev.events & EPOLLIN && client->on_data != NULL) client->on_data(client, client->data);
 #elif _WIN32
-            SOCKET sockfd = client->sockfd;
-            if (WSAEnumNetworkEvents(sockfd, pfd, &events) == SOCKET_ERROR) return netc_error(POLL_FD);
-            if (events.lNetworkEvents & FD_READ && client->on_data != NULL) client->on_data(client, client->data);
+            if (events.lNetworkEvents & FD_READ && client->on_data != NULL)
+                client->on_data(client, client->data);
 #elif __APPLE__
             socket_t sockfd = client->sockfd;
             if (events[i].flags & EVFILT_READ && client->on_data != NULL) client->on_data(client, client->data);
@@ -61,7 +74,7 @@ int udp_client_main_loop(struct udp_client* client)
     return 0;
 };
 
-int udp_client_init(struct udp_client* client, struct sockaddr addr, int non_blocking)
+int udp_client_init(struct udp_client *client, struct sockaddr addr, int non_blocking)
 {
     if (client == NULL) return -1;
 
@@ -84,10 +97,20 @@ int udp_client_init(struct udp_client* client, struct sockaddr addr, int non_blo
     ev.data.fd = client->sockfd;
     if (epoll_ctl(client->pfd, EPOLL_CTL_ADD, client->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32
-    client->pfd = WSACreateEvent();
-    if (client->pfd == WSA_INVALID_EVENT) return netc_error(EVCREATE);
+    client->event = WSACreateEvent();
+    if (client->event == WSA_INVALID_EVENT)
+    {
+        WSACloseEvent(client->event);
+        WSACleanup();
+        return netc_error(EVCREATE);
+    };
 
-    if (WSAEventSelect(client->sockfd, client->pfd, FD_READ) == SOCKET_ERROR) return netc_error(POLL_FD);
+    if (WSAEventSelect(client->sockfd, client->pfd, FD_READ) == SOCKET_ERROR)
+    {
+        WSACloseEvent(client->event);
+        WSACleanup();
+        return netc_error(EVENT_SELECT);
+    };
 #elif __APPLE__
     client->pfd = kqueue();
     if (client->pfd == -1) return netc_error(EVCREATE);
@@ -100,7 +123,7 @@ int udp_client_init(struct udp_client* client, struct sockaddr addr, int non_blo
     return 0;
 };
 
-int udp_client_connect(struct udp_client* client)
+int udp_client_connect(struct udp_client *client)
 {
     socket_t sockfd = client->sockfd;
     struct sockaddr addr = client->sockaddr;
@@ -112,7 +135,7 @@ int udp_client_connect(struct udp_client* client)
     return 0;
 };
 
-int udp_client_send(struct udp_client* client, char* message, size_t msglen, int flags, struct sockaddr* server_addr, socklen_t server_addrlen)
+int udp_client_send(struct udp_client *client, char *message, size_t msglen, int flags, struct sockaddr *server_addr, socklen_t server_addrlen)
 {
     socket_t sockfd = client->sockfd;
 
@@ -122,7 +145,7 @@ int udp_client_send(struct udp_client* client, char* message, size_t msglen, int
     return result;
 };
 
-int udp_client_receive(struct udp_client* client, char* message, size_t msglen, int flags, struct sockaddr* server_addr, socklen_t* server_addrlen)
+int udp_client_receive(struct udp_client *client, char *message, size_t msglen, int flags, struct sockaddr *server_addr, socklen_t *server_addrlen)
 {
     socket_t sockfd = client->sockfd;
 
@@ -132,7 +155,7 @@ int udp_client_receive(struct udp_client* client, char* message, size_t msglen, 
     return result;
 };
 
-int udp_client_close(struct udp_client* client)
+int udp_client_close(struct udp_client *client)
 {
     socket_t sockfd = client->sockfd;
 

@@ -13,22 +13,22 @@ struct vector
     /** The size of each element in the vector. */
     size_t element_size;
     /** The elements in the vector. */
-    void* elements;
+    void *elements;
 };
 
 /** Initializes the vector. */
-void vector_init(struct vector* vec, size_t capacity, size_t element_size);
+void vector_init(struct vector *vec, size_t capacity, size_t element_size);
 /** Resizes the vector. Returns a `0` if a resize is required, or a `-1` if not. */
-int vector_resize(struct vector* vec);
+int vector_resize(struct vector *vec);
 
 /** Pushes an element to the vector. */
-void vector_push(struct vector* vec, void* element);
+void vector_push(struct vector *vec, void *element);
 /** Gets an element from the vector. */
-void* vector_get(struct vector* vec, size_t index);
+void *vector_get(struct vector *vec, size_t index);
 /** Removes an element from the vector. */
-void vector_delete(struct vector* vec, size_t index);
+void vector_delete(struct vector *vec, size_t index);
 
 /** Frees the vector. */
-void vector_free(struct vector* vec);
+void vector_free(struct vector *vec);
 
 #endif // VECTOR_H

@@ -8,12 +8,12 @@
 struct http_server
 {
     /** The TCP server. */
-    struct tcp_server* server;
+    struct tcp_server *server;
     /** A map storing all the routes to their callbacks. */
     struct vector routes; // <http_route>
 
     /** User defined data to be passed to the event callbacks. */
-    void* data;
+    void *data;
 
     /** A structure representing the configuration for the HTTP server. */
     struct netc_http_server_config
@@ -41,47 +41,47 @@ struct http_server
     } config;
     
     /** The callback for when a client connects. */
-    void (*on_connect)(struct http_server* server, struct tcp_client* client, void* data);
+    void (*on_connect)(struct http_server *server, struct tcp_client *client, void *data);
     /** The callback for when a response is malformed. */
-    void (*on_malformed_request)(struct http_server* server, socket_t sockfd, enum parse_request_error_types error, void* data);
+    void (*on_malformed_request)(struct http_server *server, socket_t sockfd, enum parse_request_error_types error, void *data);
     /** The callback for when a client disconnects. */
-    void (*on_disconnect)(struct http_server* server, socket_t sockfd, int is_error, void* data);
+    void (*on_disconnect)(struct http_server *server, socket_t sockfd, int is_error, void *data);
 };
 
 /** A structure representing an entry in the routes map. */
 struct http_route
 {
     /** The callback. */
-    void (*callback)(struct http_server* server, socket_t sockfd, struct http_request request);
+    void (*callback)(struct http_server *server, socket_t sockfd, struct http_request request);
     /** The path. */
-    char* path;
+    char *path;
 };
 
 /** Whether or not the server is listening for events. */
 extern __thread int netc_http_server_listening;
 
 /** Initializes the HTTP server. */
-int http_server_init(struct http_server* http_server, struct sockaddr address, int backlog);
+int http_server_init(struct http_server *http_server, struct sockaddr address, int backlog);
 /** Starts a nonblocking event loop for the HTTP server. */
-int http_server_start(struct http_server* server);
+int http_server_start(struct http_server *server);
 
 /** Creates a route for a path. Note that precedence works by whichever route is created first. */
-void http_server_create_route(struct http_server* server, struct http_route* route);
+void http_server_create_route(struct http_server *server, struct http_route *route);
 /** Finds a route given a path. */
-void (*http_server_find_route(struct http_server* server, const char* path))(struct http_server* server, socket_t sockfd, struct http_request request);
+void (*http_server_find_route(struct http_server *server, const char *path))(struct http_server *server, socket_t sockfd, struct http_request request);
 /** Removes a route for a path. */
-void http_server_remove_route(struct http_server* server, const char* path);
+void http_server_remove_route(struct http_server *server, const char *path);
 
 /** Sends chunked data to the client. */
-int http_server_send_chunked_data(struct http_server* server, socket_t sockfd, char* data, size_t data_length);
+int http_server_send_chunked_data(struct http_server *server, socket_t sockfd, char *data, size_t data_length);
 /** Sends the HTTP response. */
-int http_server_send_response(struct http_server* server, socket_t sockfd, struct http_response* response, const char* binary_data, size_t length);
+int http_server_send_response(struct http_server *server, socket_t sockfd, struct http_response *response, const char *binary_data, size_t length);
 /** Parses the HTTP request. */
-int http_server_parse_request(struct http_server* server, socket_t sockfd, struct http_request* request);
+int http_server_parse_request(struct http_server *server, socket_t sockfd, struct http_request *request);
 
 /** Closes the HTTP server. */
-int http_server_close(struct http_server* server);
+int http_server_close(struct http_server *server);
 /** Closes a HTTP client connection. */
-int http_server_close_client(struct http_server* server, socket_t sockfd);
+int http_server_close_client(struct http_server *server, socket_t sockfd);
 
 #endif // HTTP_SERVER_H

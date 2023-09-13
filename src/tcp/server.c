@@ -22,7 +22,7 @@
 
 __thread int netc_tcp_server_listening = 0;
 
-int tcp_server_main_loop(struct tcp_server* server)
+int tcp_server_main_loop(struct tcp_server *server)
 {
     /** The server socket should be nonblocking when listening for events. */
     socket_set_non_blocking(server->sockfd);
@@ -34,14 +34,13 @@ int tcp_server_main_loop(struct tcp_server* server)
         int pfd = server->pfd;
         struct epoll_event events[server->client_count + 1];
         int nev = epoll_wait(pfd, events, server->client_count + 1, -1);
-        if (nev == -1)
-            return netc_error(EVCREATE);
+        if (nev == -1) return netc_error(EVCREATE);
 #elif _WIN32
-        HANDLE pfd = server->pfd;
-        // events for the server socket and all client sockets
-        WSANETWORKEVENTS events;
-        int nev = WSAEnumNetworkEvents(server->sockfd, pfd, &events);
-        if (nev == SOCKET_ERROR) return netc_error(EVCREATE);
+        WSAPOLLFD events[server->client_count + 1];
+        events[0].fd = server->sockfd;
+        events[0].events = POLLIN | POLLERR | POLLHUP;
+        int nev = WSAPoll(events, sizeof events, -1);
+        if (nev == -1) return netc_error(EVCREATE);
 #elif __APPLE__
         int pfd = server->pfd;
         struct kevent events[server->client_count + 1];
@@ -77,27 +76,19 @@ int tcp_server_main_loop(struct tcp_server* server)
                 }
             }
 #elif _WIN32
-            SOCKET sockfd = server->sockfd;
+            WSAPOLLFD event = events[i];
+            SOCKET sockfd = pollfd.fd;
 
-            if (events.lNetworkEvents & FD_ACCEPT)
+            if (event.revents & POLLERR || event.revents & POLLHUP)
             {
-                if (events.iErrorCode[FD_ACCEPT_BIT] != 0) // server socket closed
-                    return netc_error(HANGUP);
-
-                if (server->on_connect != NULL) server->on_connect(server, server->data);
+                if (i == 0) return netc_error(HANGUP);
+                else if (tcp_server_close_client(server, sockfd, 1) != 0) return netc_error(CLOSE);
             }
-            else
+            else if (event.revents & POLLIN)
             {
-                if (events.lNetworkEvents & FD_CLOSE) // client socket closed
-                {
-                    if (tcp_server_close_client(server, sockfd, events.iErrorCode[FD_CLOSE_BIT]) != 0)
-                        return netc_error(CLOSE);
-                }
-                else if (events.lNetworkEvents & FD_READ && server->on_data != NULL)
-                {
-                     server->on_data(server, sockfd, server->data);
-                }
-            }
+                if (i == 0 && server->on_connect != NULL) server->on_connect(server, server->data);
+                else if (server->on_data != NULL) server->on_data(server, sockfd, server->data);
+            };
 #elif __APPLE__
             struct kevent ev = events[i];
             socket_t sockfd = ev.ident;
@@ -128,7 +119,7 @@ int tcp_server_main_loop(struct tcp_server* server)
     return 0;
 };
 
-int tcp_server_init(struct tcp_server* server, struct sockaddr address, int non_blocking)
+int tcp_server_init(struct tcp_server *server, struct sockaddr address, int non_blocking)
 {
     if (server == NULL) return -1;
 
@@ -154,10 +145,9 @@ int tcp_server_init(struct tcp_server* server, struct sockaddr address, int non_
     ev.data.fd = server->sockfd;
     if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, server->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32
-    server->pfd = WSACreateEvent();
-    if (server->pfd == WSA_INVALID_EVENT) return netc_error(EVCREATE);
-
-    if (WSAEventSelect(server->sockfd, server->pfd, FD_ACCEPT) == SOCKET_ERROR) return netc_error(POLL_FD);
+    vector_init(&server->events, 8, sizeof(WSAPOLLFD));
+    WSAPOLLFD event = { .fd = server->sockfd, .events = POLLIN | POLLERR | POLLHUP };
+    vector_push(&server->events, &event);
 #elif __APPLE__
     server->pfd = kqueue();
     if (server->pfd == -1) return netc_error(EVCREATE);
@@ -170,7 +160,7 @@ int tcp_server_init(struct tcp_server* server, struct sockaddr address, int non_
     return 0;
 };
 
-int tcp_server_bind(struct tcp_server* server)
+int tcp_server_bind(struct tcp_server *server)
 {
     socket_t sockfd = server->sockfd;
     struct sockaddr addr = server->address;
@@ -182,7 +172,7 @@ int tcp_server_bind(struct tcp_server* server)
     return 0;
 };
 
-int tcp_server_listen(struct tcp_server* server, int backlog)
+int tcp_server_listen(struct tcp_server *server, int backlog)
 {
     socket_t sockfd = server->sockfd;
 
@@ -192,10 +182,10 @@ int tcp_server_listen(struct tcp_server* server, int backlog)
     return 0;
 };
 
-int tcp_server_accept(struct tcp_server* server, struct tcp_client* client)
+int tcp_server_accept(struct tcp_server *server, struct tcp_client *client)
 {
     socket_t sockfd = server->sockfd;
-    struct sockaddr* addr = (struct sockaddr*)&client->sockaddr;
+    struct sockaddr *addr = (struct sockaddr*)&client->sockaddr;
     socklen_t addrlen = sizeof(client->sockaddr);
 
     int result = accept(sockfd, addr, &addrlen);
@@ -213,7 +203,8 @@ int tcp_server_accept(struct tcp_server* server, struct tcp_client* client)
     ev.data.fd = client->sockfd;
     if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, client->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32
-    if (WSAEventSelect(client->sockfd, server->pfd, FD_READ | FD_WRITE | FD_CLOSE) == SOCKET_ERROR) return netc_error(POLL_FD);
+    WSAPOLLFD event = { .fd = server->sockfd, .events = POLLIN | POLLERR | POLLHUP };
+    vector_push(&server->events, &event);
 #elif __APPLE__
     struct kevent ev;
     EV_SET(&ev, client->sockfd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
@@ -223,7 +214,7 @@ int tcp_server_accept(struct tcp_server* server, struct tcp_client* client)
     return 0;
 };
 
-int tcp_server_send(socket_t sockfd, char* message, size_t msglen, int flags)
+int tcp_server_send(socket_t sockfd, char *message, size_t msglen, int flags)
 {
     int result = send(sockfd, message, msglen, flags);
     if (result == -1) netc_error(BADSEND);
@@ -231,7 +222,7 @@ int tcp_server_send(socket_t sockfd, char* message, size_t msglen, int flags)
     return result;
 };
 
-int tcp_server_receive(socket_t sockfd, char* message, size_t msglen, int flags)
+int tcp_server_receive(socket_t sockfd, char *message, size_t msglen, int flags)
 {
     int result = recv(sockfd, message, msglen, flags);
     if (result == -1) netc_error(BADRECV);
@@ -239,7 +230,7 @@ int tcp_server_receive(socket_t sockfd, char* message, size_t msglen, int flags)
     return result;
 };
 
-int tcp_server_close_self(struct tcp_server* server)
+int tcp_server_close_self(struct tcp_server *server)
 {
     int result = close(server->sockfd);
     if (result == -1) return netc_error(CLOSE);
@@ -252,12 +243,21 @@ int tcp_server_close_self(struct tcp_server* server)
     return 0;
 };
 
-int tcp_server_close_client(struct tcp_server* server, socket_t sockfd, int is_error)
+int tcp_server_close_client(struct tcp_server *server, socket_t sockfd, int is_error)
 {
     if (server->on_disconnect != NULL) server->on_disconnect(server, sockfd, is_error, server->data);
 
 #ifdef _WIN32
     int result = closesocket(sockfd);
+    for (size_t i = 0; i < server->events.size; ++i)
+    {
+        WSAPOLLFD event = vector_get(&server->events, i);
+        if (event.fd == sockfd)
+        {
+            vector_delete(&server->events, i);
+            break;
+        };
+    };
 #else
     int result = close(sockfd);
 #endif

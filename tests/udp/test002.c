@@ -50,15 +50,15 @@
 static int udp_test002_server_data = 0;
 static int udp_test002_client_data = 0;
 
-static void* udp_test002_server_thread_blocking_main(void* arg);
-static void* udp_test002_client_thread_blocking_main(void* arg);
+static void *udp_test002_server_thread_blocking_main(void *arg);
+static void *udp_test002_client_thread_blocking_main(void *arg);
 
 static int udp_test002();
 
-static void* udp_test002_server_thread_blocking_main(void* arg)
+static void *udp_test002_server_thread_blocking_main(void *arg)
 {
-    struct udp_server* server = (struct udp_server*)arg;
-    char* buffer = calloc(18, sizeof(char));
+    struct udp_server *server = (struct udp_server*)arg;
+    char *buffer = calloc(18, sizeof(char));
     struct sockaddr client_addr;
     socklen_t client_addrlen = sizeof(client_addr);
 
@@ -81,9 +81,9 @@ static void* udp_test002_server_thread_blocking_main(void* arg)
     return NULL;
 };
 
-static void udp_test002_server_on_data(struct udp_server* server, void* data)
+static void udp_test002_server_on_data(struct udp_server *server, void *data)
 {
-    char* buffer = calloc(18, sizeof(char));
+    char *buffer = calloc(18, sizeof(char));
     struct sockaddr client_addr;
     socklen_t client_addrlen = sizeof(client_addr);
 
@@ -106,9 +106,9 @@ static void udp_test002_server_on_data(struct udp_server* server, void* data)
     udp_server_close(server);
 };
 
-static void* udp_test002_client_thread_blocking_main(void* arg)
+static void *udp_test002_client_thread_blocking_main(void *arg)
 {
-    struct udp_client* client = (struct udp_client*)arg;
+    struct udp_client *client = (struct udp_client*)arg;
 
     int send_result = 0;
     if ((send_result = udp_client_send(client, "hello from client", 18, 0, NULL, 0)) != 18)
@@ -117,7 +117,7 @@ static void* udp_test002_client_thread_blocking_main(void* arg)
         return NULL;
     };
 
-    char* buffer = calloc(18, sizeof(char));
+    char *buffer = calloc(18, sizeof(char));
     int recv_result = 0;
     // note: you can provide NULL for the server addr and socklen if you have used
     // udp_client_connect() to connect to the server beforehand.
@@ -134,9 +134,9 @@ static void* udp_test002_client_thread_blocking_main(void* arg)
     return NULL;
 };
 
-static void udp_test002_client_on_data(struct udp_client* client, void* data)
+static void udp_test002_client_on_data(struct udp_client *client, void *data)
 {
-    char* buffer = calloc(18, sizeof(char));
+    char *buffer = calloc(18, sizeof(char));
 
     struct sockaddr addr = {};
     socklen_t socklen = 0;
@@ -156,7 +156,7 @@ static void udp_test002_client_on_data(struct udp_client* client, void* data)
 
 static int udp_test002()
 {
-    struct udp_server* server = malloc(sizeof(struct udp_server));
+    struct udp_server *server = malloc(sizeof(struct udp_server));
     server->on_data = udp_test002_server_on_data;
 
     struct sockaddr_in udp_server_addr = {
@@ -190,7 +190,7 @@ static int udp_test002()
     pthread_t server_thread;
     pthread_create(&server_thread, NULL, udp_test002_server_thread_blocking_main, server);
 
-    struct udp_client* client = malloc(sizeof(struct udp_client));
+    struct udp_client *client = malloc(sizeof(struct udp_client));
     client->on_data = udp_test002_client_on_data;
 
     struct sockaddr_in udp_client_addr = {

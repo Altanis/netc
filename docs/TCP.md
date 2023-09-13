@@ -80,7 +80,7 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 #include <stdint.h>
 #include <netc/tcp/server.h>
 
-void on_connect(struct tcp_server* server, void* data)
+void on_connect(struct tcp_server *server, void *data)
 {
     struct tcp_client client = {0};
     int r = tcp_server_accept(server, &client);
@@ -97,7 +97,7 @@ void on_connect(struct tcp_server* server, void* data)
     /** The server does not track current clients. You need to do it yourself. */
 };
 
-void on_data(struct tcp_server* server, socket_t sockfd, void* data)
+void on_data(struct tcp_server *server, socket_t sockfd, void *data)
 {
     /** An example of an efficient protocol would be 4 bytes for the size of the data and then the data itself. */
     char data_size[4] = {0};
@@ -130,7 +130,7 @@ void on_data(struct tcp_server* server, socket_t sockfd, void* data)
     };
 };
 
-void on_disconnect(struct tcp_server* server, socket_t sockfd, void* data)
+void on_disconnect(struct tcp_server *server, socket_t sockfd, void *data)
 {
     /** Do something with the client. */
     printf("Client disconnected. Their sockfd: %d\n", sockfd);
@@ -227,13 +227,13 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 #include <stdint.h>
 #include <netc/tcp/client.h>
 
-void on_connect(struct tcp_client* client, void* data)
+void on_connect(struct tcp_client *client, void *data)
 {
     /** Do something with the client. */
     printf("Connected to server.\n");
 };
 
-void on_data(struct tcp_client* client, void* data)
+void on_data(struct tcp_client *client, void *data)
 {
     /** An example of an efficient protocol would be 4 bytes for the size of the data and then the data itself. */
     char data_size[4] = {0};
@@ -266,7 +266,7 @@ void on_data(struct tcp_client* client, void* data)
     };
 };
 
-void on_disconnect(struct tcp_client* client, void* data)
+void on_disconnect(struct tcp_client *client, void *data)
 {
     /** Do something with the client. */
     printf("Disconnected from server.\n");

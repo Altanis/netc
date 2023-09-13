@@ -68,7 +68,7 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 #include <stdint.h>
 #include <netc/udp/server.h>
 
-void on_data(struct udp_server* server, void* data)
+void on_data(struct udp_server *server, void *data)
 {
     /** The packet structure is very lackluster and doesn't include sequence numbers, payload lengths, checksums, etc. */
     char buffer[1024];
@@ -178,7 +178,7 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 #include <stdint.h>
 #include <netc/udp/client.h>
 
-void on_data(struct udp_client* client, void* data)
+void on_data(struct udp_client *client, void *data)
 {
     /** The packet structure is very lackluster and doesn't include sequence numbers, payload lengths, checksums, etc. */
     char buffer[1024];

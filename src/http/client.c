@@ -5,16 +5,16 @@
 #include <stdlib.h>
 #include <string.h>
 
-static void _tcp_on_connect(struct tcp_client* client, void* data)
+static void _tcp_on_connect(struct tcp_client *client, void *data)
 {
-    struct http_client* http_client = (struct http_client*)data;
+    struct http_client *http_client = (struct http_client*)data;
     if (http_client->on_connect != NULL)
         http_client->on_connect(http_client, http_client->data);
 };
 
-static void _tcp_on_data(struct tcp_client* client, void* data)
+static void _tcp_on_data(struct tcp_client *client, void *data)
 {
-    struct http_client* http_client = (struct http_client*)data;
+    struct http_client *http_client = (struct http_client*)data;
     struct http_response response = {0};
 
     int result = 0;
@@ -30,16 +30,16 @@ static void _tcp_on_data(struct tcp_client* client, void* data)
         http_client->on_data(http_client, response, http_client->data);
 };
 
-static void _tcp_on_disconnect(struct tcp_client* client, int is_error, void* data)
+static void _tcp_on_disconnect(struct tcp_client *client, int is_error, void *data)
 {
-    struct http_client* http_client = (struct http_client*)data;
+    struct http_client *http_client = (struct http_client*)data;
     if (http_client->on_disconnect != NULL)
         http_client->on_disconnect(http_client, is_error, http_client->data);
 };
 
-int http_client_init(struct http_client* client, struct sockaddr address)
+int http_client_init(struct http_client *client, struct sockaddr address)
 {
-    struct tcp_client* tcp_client = malloc(sizeof(struct tcp_client));
+    struct tcp_client *tcp_client = malloc(sizeof(struct tcp_client));
     tcp_client->data = client;
 
     int init_result = tcp_client_init(tcp_client, address, 1);
@@ -62,12 +62,12 @@ int http_client_init(struct http_client* client, struct sockaddr address)
     return 0;
 };
 
-int http_client_start(struct http_client* client)
+int http_client_start(struct http_client *client)
 {
     return tcp_client_main_loop(client->client);
 };
 
-int http_client_send_chunked_data(struct http_client* client, char* data, size_t length)
+int http_client_send_chunked_data(struct http_client *client, char *data, size_t length)
 {
     char length_str[16] = {0};
     sprintf(length_str, "%zx\r\n", length);
@@ -81,7 +81,7 @@ int http_client_send_chunked_data(struct http_client* client, char* data, size_t
     return 0;
 };
 
-int http_client_send_request(struct http_client* client, struct http_request* request, const char* data, size_t data_length)
+int http_client_send_request(struct http_client *client, struct http_request *request, const char *data, size_t data_length)
 {
     string_t request_str = {0};
     sso_string_init(&request_str, "");
@@ -100,9 +100,9 @@ int http_client_send_request(struct http_client* client, struct http_request* re
 
     for (size_t i = 0; i < request->headers.size; ++i)
     {
-        struct http_header* header = vector_get(&request->headers, i);
-        const char* name = sso_string_get(&header->name);
-        const char* value = sso_string_get(&header->value);
+        struct http_header *header = vector_get(&request->headers, i);
+        const char *name = sso_string_get(&header->name);
+        const char *value = sso_string_get(&header->value);
 
         if (!chunked && strcmp(name, "Transfer-Encoding") == 0 && strcmp(value, "chunked") == 0)
             chunked = 1;
@@ -139,7 +139,7 @@ int http_client_send_request(struct http_client* client, struct http_request* re
     return 0;
 };
 
-int http_client_parse_response(struct http_client* client, struct http_response* response)
+int http_client_parse_response(struct http_client *client, struct http_response *response)
 {   
     char floffy[8192] = {0};
     recv(client->client->sockfd, floffy, 8192, MSG_PEEK);
@@ -235,9 +235,14 @@ int http_client_parse_response(struct http_client* client, struct http_response*
 
             if (chunk_size == 0)
             {
+                char POOFY[4096] = {0};
+                recv(client->client->sockfd, POOFY, 4096, MSG_PEEK);
+                printf("POOFY: %s\n", POOFY);
                 // todo crlf not get absorb proper :(
-                char crlf[4096];
-                if (socket_recv_until_fixed(client->client->sockfd, crlf, 2, "\r\n", 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+                char crlf[4096] = {0};
+                // if (socket_recv_until_fixed(client->client->sockfd, crlf, 2, "\r\n", 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+                if (recv(client->client->sockfd, crlf, 4096, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+                printf("crlf: %s\n", crlf);
                 break;
             };
 
@@ -269,7 +274,7 @@ int http_client_parse_response(struct http_client* client, struct http_response*
     return 0;
 };
 
-int http_client_close(struct http_client* client)
+int http_client_close(struct http_client *client)
 {
     return tcp_client_close(client->client, 0);
 };

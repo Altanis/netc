@@ -89,13 +89,13 @@ You must use asynchronous events to be notified of when incoming connections, re
 #include <stdio.h>
 #include <netc/http/server.h>
 
-void on_connect(struct http_server* server, struct tcp_client* client)
+void on_connect(struct http_server *server, struct tcp_client *client)
 {
     /** Refer to documentation and header files for more information about TCP. */
     printf("A connection has been established.\n");
 };
 
-void on_malformed_request(struct http_server* server, socket_t sockfd, enum parse_request_error_types error, void* data)
+void on_malformed_request(struct http_server *server, socket_t sockfd, enum parse_request_error_types error, void *data)
 {
     /** An incoming request was unable to be parsed. */
 
@@ -114,7 +114,7 @@ void on_malformed_request(struct http_server* server, socket_t sockfd, enum pars
     }
 };
 
-static void on_disconnect(struct http_server* server, socket_t sockfd, int is_error, void* data)
+static void on_disconnect(struct http_server *server, socket_t sockfd, int is_error, void *data)
 {
     if (sockfd == server->sockfd)
         printf("The server has been closed.\n");
@@ -123,7 +123,7 @@ static void on_disconnect(struct http_server* server, socket_t sockfd, int is_er
 };
 
 /** The callback for the /echo route (in the example above). */
-void callback_echo(struct http_server* server, socket_t sockfd, struct http_request request)
+void callback_echo(struct http_server *server, socket_t sockfd, struct http_request request)
 {
     printf("An incoming request has come!\n");
 
@@ -139,17 +139,17 @@ void callback_echo(struct http_server* server, socket_t sockfd, struct http_requ
 
     for (size_t i = 0; i < request.query.size; ++i)
     {
-        struct http_query* query = vector_get(&request.query, i);
+        struct http_query *query = vector_get(&request.query, i);
         printf("QUERY: %s=%s", http_query_get_key(query), http_query_get_value(query));
     };
 
     for (size_t i = 0; i < request.headers.size; ++i)
     {
-        struct http_header* header = vector_get(&request.headers, i);
+        struct http_header *header = vector_get(&request.headers, i);
         printf("HEADER: %s=%s", http_header_get_name(header), http_header_get_value(header));
     };
 
-    char* body = http_request_get_body(&request);
+    char *body = http_request_get_body(&request);
     // Printing this will cause undefined behavior if the body is binary data.
     // Instrad, do this:
     printf("BODY:");
@@ -162,7 +162,7 @@ void callback_echo(struct http_server* server, socket_t sockfd, struct http_requ
 Sending a response to a request is a straightforward process. The following code snippet shows how to send a response (based off our previous examples).
 
 ```c
-void callback_404(struct http_server* server, socket_t sockfd, struct http_request request)
+void callback_404(struct http_server *server, socket_t sockfd, struct http_request request)
 {
     struct http_response response = {0};
     /** Similar to before, you can't use raw strings. You need to use a setter. */
@@ -203,7 +203,7 @@ void callback_404(struct http_server* server, socket_t sockfd, struct http_reque
     vector_free(&response.headers);
 };
 
-void callback_echo(struct http_server* server, socket_t sockfd, struct http_request request)
+void callback_echo(struct http_server *server, socket_t sockfd, struct http_request request)
 {
     printf("An incoming request has come!\n");
 
@@ -216,17 +216,17 @@ void callback_echo(struct http_server* server, socket_t sockfd, struct http_requ
 
     for (size_t i = 0; i < request.query.size; ++i)
     {
-        struct http_query* query = vector_get(&request.query, i);
+        struct http_query *query = vector_get(&request.query, i);
         printf("QUERY: %s=%s", http_query_get_key(query), http_query_get_value(query));
     };
 
     for (size_t i = 0; i < request.headers.size; ++i)
     {
-        struct http_header* header = vector_get(&request.headers, i);
+        struct http_header *header = vector_get(&request.headers, i);
         printf("HEADER: %s=%s", http_header_get_name(header), http_header_get_value(header));
     };
 
-    char* body = http_request_get_body(&request);
+    char *body = http_request_get_body(&request);
     // Printing this will cause undefined behavior if the body is binary data.
     // Instrad, do this:
     printf("BODY:");
@@ -329,12 +329,12 @@ You must use asynchronous events to be notified of when incoming connections, re
 #include <stdio.h>
 #include <netc/http/client.h>
 
-void on_connect(struct http_client* client, void* data)
+void on_connect(struct http_client *client, void *data)
 {
     printf("A connection has been established.\n");
 };
 
-void on_malformed_response(struct http_client* client, enum parse_response_error_types error, void* data)
+void on_malformed_response(struct http_client *client, enum parse_response_error_types error, void *data)
 {
     /** An incoming response was unable to be parsed. */
     /** This (usually) should NOT happen. If it ever happens errnoeously, please report an issue! */
@@ -346,7 +346,7 @@ void on_malformed_response(struct http_client* client, enum parse_response_error
     };
 };
 
-void on_data(struct http_client* client, struct http_response response, void* data)
+void on_data(struct http_client *client, struct http_response response, void *data)
 {
     /** Returns a response to a request. */
 
@@ -360,11 +360,11 @@ void on_data(struct http_client* client, struct http_response response, void* da
 
     for (size_t i = 0; i < response.headers.size; ++i)
     {
-        struct http_header* header = vector_get(&response.headers, i);
+        struct http_header *header = vector_get(&response.headers, i);
         printf("HEADER: %s=%s", http_header_get_name(header), http_header_get_value(header));
     };
 
-    char* body = http_response_get_body(&response);
+    char *body = http_response_get_body(&response);
     // Printing this will cause undefined behavior if the body is binary data.
     // Instrad, do this:
     printf("BODY:");
@@ -372,7 +372,7 @@ void on_data(struct http_client* client, struct http_response response, void* da
     printf("\n");
 };
 
-void on_disconnect(struct http_client* client, int is_error, void* data)
+void on_disconnect(struct http_client *client, int is_error, void *data)
 {
     printf("Disconnected from the server.\n");
 };

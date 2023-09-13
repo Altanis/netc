@@ -4,7 +4,7 @@
 
 __thread int netc_errno_reason = 0;
 
-void netc_strerror(char* buffer)
+void netc_strerror(char *buffer)
 {
 #ifdef _WIN32
     char error[512] = {0};
@@ -32,7 +32,7 @@ void netc_strerror(char* buffer)
 #endif
 };
 
-void netc_perror(const char* message, FILE* stream)
+void netc_perror(const char *message, FILE *stream)
 {
     char error[512] = {0};
     netc_strerror(error);

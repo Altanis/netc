@@ -17,7 +17,7 @@
 
 __thread int netc_http_server_listening = 0;
 
-int _path_matches(const char* path, const char* pattern) 
+int _path_matches(const char *path, const char *pattern) 
 {
     if (strcmp(path, pattern) == 0) return 1;
 
@@ -49,9 +49,9 @@ int _path_matches(const char* path, const char* pattern)
     return (*path == '\0');
 };
 
-static void _tcp_on_connect(struct tcp_server* server, void* data)
+static void _tcp_on_connect(struct tcp_server *server, void *data)
 {
-    struct http_server* http_server = data;
+    struct http_server *http_server = data;
 
     struct tcp_client client;
     tcp_server_accept(server, &client);
@@ -60,9 +60,9 @@ static void _tcp_on_connect(struct tcp_server* server, void* data)
         http_server->on_connect(http_server, &client, http_server->data);
 };
 
-static void _tcp_on_data(struct tcp_server* server, socket_t sockfd, void* data)
+static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
 {
-    struct http_server* http_server = data;
+    struct http_server *http_server = data;
     struct http_request request = {0};
 
     int result = 0;
@@ -78,24 +78,24 @@ static void _tcp_on_data(struct tcp_server* server, socket_t sockfd, void* data)
         return;
     };
 
-    char* path = strdup(sso_string_get(&request.path));
+    char *path = strdup(sso_string_get(&request.path));
 
     /** Check for query strings to parse. */
-    char* query_string = strchr(path, '?');
+    char *query_string = strchr(path, '?');
     if (query_string != NULL)
     {
         path[query_string - path] = '\0';
 
         vector_init(&request.query, 8, sizeof(struct http_query));
 
-        char* token = strtok(query_string + 1, "&");
+        char *token = strtok(query_string + 1, "&");
         while (token != NULL)
         {
             struct http_query query = {0};
             sso_string_init(&query.key, "");
             sso_string_init(&query.value, "");
 
-            char* value = strchr(token, '=');
+            char *value = strchr(token, '=');
             if (value == NULL) break;
 
             *value = '\0';
@@ -107,13 +107,13 @@ static void _tcp_on_data(struct tcp_server* server, socket_t sockfd, void* data)
         };
     };
 
-    void (*callback)(struct http_server* server, socket_t sockfd, struct http_request request) = http_server_find_route(http_server, path);
+    void (*callback)(struct http_server *server, socket_t sockfd, struct http_request request) = http_server_find_route(http_server, path);
     
     if (callback != NULL) callback(http_server, sockfd, request);
     else 
     {
         // That comedian...
-        const char* notfound_message = "\
+        const char *notfound_message = "\
         HTTP/1.1 404 Not Found\r\n\
         Content-Type: text/plain\r\n\
         Content-Length: 9\r\
@@ -126,18 +126,18 @@ static void _tcp_on_data(struct tcp_server* server, socket_t sockfd, void* data)
     free(path);
 };
 
-static void _tcp_on_disconnect(struct tcp_server* server, socket_t sockfd, int is_error, void* data)
+static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, int is_error, void *data)
 {
-    struct http_server* http_server = data;
+    struct http_server *http_server = data;
     if (http_server->on_disconnect != NULL)
         http_server->on_disconnect(http_server, sockfd, is_error, http_server->data);
 };
 
-int http_server_init(struct http_server* http_server, struct sockaddr address, int backlog)
+int http_server_init(struct http_server *http_server, struct sockaddr address, int backlog)
 {
     vector_init(&http_server->routes, 8, sizeof(struct http_route));
 
-    struct tcp_server* tcp_server = malloc(sizeof(struct tcp_server));
+    struct tcp_server *tcp_server = malloc(sizeof(struct tcp_server));
     tcp_server->data = http_server;
     
     int init_result = tcp_server_init(tcp_server, address, 1);
@@ -163,23 +163,23 @@ int http_server_init(struct http_server* http_server, struct sockaddr address, i
     return 0;
 };
 
-int http_server_start(struct http_server* server)
+int http_server_start(struct http_server *server)
 {
     return tcp_server_main_loop(server->server);
 };
 
-void http_server_create_route(struct http_server* server, struct http_route* route)
+void http_server_create_route(struct http_server *server, struct http_route *route)
 {
     vector_push(&server->routes, route);
 };
 
-void (*http_server_find_route(struct http_server* server, const char* path))(struct http_server* server, socket_t sockfd, struct http_request request)
+void (*http_server_find_route(struct http_server *server, const char *path))(struct http_server *server, socket_t sockfd, struct http_request request)
 {
-    void (*callback)(struct http_server* server, socket_t sockfd, struct http_request request) = NULL;
+    void (*callback)(struct http_server *server, socket_t sockfd, struct http_request request) = NULL;
 
     for (size_t i = 0; i < server->routes.size; ++i)
     {
-        struct http_route* route = vector_get(&server->routes, i);
+        struct http_route *route = vector_get(&server->routes, i);
         if (_path_matches(path, route->path))
         {
             callback = route->callback;
@@ -190,11 +190,11 @@ void (*http_server_find_route(struct http_server* server, const char* path))(str
     return callback;
 };
 
-void http_server_remove_route(struct http_server* server, const char* path)
+void http_server_remove_route(struct http_server *server, const char *path)
 {
     for (size_t i = 0; i < server->routes.size; ++i)
     {
-        struct http_route* route = vector_get(&server->routes, i);
+        struct http_route *route = vector_get(&server->routes, i);
         if (strcmp(route->path, path) == 0)
         {
             vector_delete(&server->routes, i);
@@ -203,7 +203,7 @@ void http_server_remove_route(struct http_server* server, const char* path)
     };
 };
 
-int http_server_send_chunked_data(struct http_server* server, socket_t sockfd, char* data, size_t length)
+int http_server_send_chunked_data(struct http_server *server, socket_t sockfd, char *data, size_t length)
 {
     char length_str[16] = {0};
     sprintf(length_str, "%zx\r\n", length);
@@ -227,7 +227,7 @@ int http_server_send_chunked_data(struct http_server* server, socket_t sockfd, c
     return 0;
 };
 
-int http_server_send_response(struct http_server* server, socket_t sockfd, struct http_response* response, const char* data, size_t data_length)
+int http_server_send_response(struct http_server *server, socket_t sockfd, struct http_response *response, const char *data, size_t data_length)
 {
     string_t response_str = {0};
     sso_string_init(&response_str, "");
@@ -247,9 +247,9 @@ int http_server_send_response(struct http_server* server, socket_t sockfd, struc
 
     for (size_t i = 0; i < response->headers.size; ++i)
     {
-        struct http_header* header = vector_get(&response->headers, i);
-        const char* name = sso_string_get(&header->name);
-        const char* value = sso_string_get(&header->value);
+        struct http_header *header = vector_get(&response->headers, i);
+        const char *name = sso_string_get(&header->name);
+        const char *value = sso_string_get(&header->value);
 
         if (!chunked && strcmp(name, "Transfer-Encoding") == 0 && strcmp(value, "chunked") == 0)
             chunked = 1;
@@ -288,7 +288,7 @@ int http_server_send_response(struct http_server* server, socket_t sockfd, struc
     return first_send + second_send;
 };
 
-int http_server_parse_request(struct http_server* server, socket_t sockfd, struct http_request* request)
+int http_server_parse_request(struct http_server *server, socket_t sockfd, struct http_request *request)
 {
     size_t MAX_HTTP_METHOD_LEN = (server->config.max_method_len ? server->config.max_method_len : 7);
     size_t MAX_HTTP_PATH_LEN = (server->config.max_path_len ? server->config.max_path_len : 2000);
@@ -460,12 +460,12 @@ int http_server_parse_request(struct http_server* server, socket_t sockfd, struc
     return 0;
 };
 
-int http_server_close(struct http_server* server)
+int http_server_close(struct http_server *server)
 {
     return tcp_server_close_self(server->server);
 };
 
-int http_server_close_client(struct http_server* server, socket_t sockfd)
+int http_server_close_client(struct http_server *server, socket_t sockfd)
 {
     return tcp_server_close_client(server->server, sockfd, 0);
 };
