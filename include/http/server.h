@@ -4,6 +4,9 @@
 #include "tcp/server.h"
 #include "http/common.h"
 
+/** Whether or not the server is listening for events. */
+extern __thread int netc_http_server_listening;
+
 /** A structure representing the HTTP server. */
 struct http_server
 {
@@ -57,9 +60,6 @@ struct http_route
     char *path;
 };
 
-/** Whether or not the server is listening for events. */
-extern __thread int netc_http_server_listening;
-
 /** Initializes the HTTP server. */
 int http_server_init(struct http_server *http_server, struct sockaddr address, int backlog);
 /** Starts a nonblocking event loop for the HTTP server. */
@@ -77,7 +77,7 @@ int http_server_send_chunked_data(struct http_server *server, socket_t sockfd, c
 /** Sends the HTTP response. */
 int http_server_send_response(struct http_server *server, socket_t sockfd, struct http_response *response, const char *binary_data, size_t length);
 /** Parses the HTTP request. */
-int http_server_parse_request(struct http_server *server, socket_t sockfd, struct http_request *request);
+int http_server_parse_request(struct http_server *server, socket_t sockfd);
 
 /** Closes the HTTP server. */
 int http_server_close(struct http_server *server);

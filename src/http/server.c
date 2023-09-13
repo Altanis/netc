@@ -15,7 +15,29 @@
 #include <sys/event.h>
 #endif
 
+/** A struct representing the current state of http parsing. */
+struct http_parsing_state
+{
+    /** The current HTTP request. */
+    struct http_request request;
+    /** The current state of parsing. */
+    enum http_request_parsing_states parsing_state;
+    /** The current data associated with an incomplete parse. */
+    union
+    {
+        string_t sso_data;
+        char *buffer_data;
+    };
+};
+
 __thread int netc_http_server_listening = 0;
+__thread struct http_parsing_state current_http_request = 
+{
+    .request = {0},
+    .parsing_state = -1,
+    .sso_data = {0},
+    .buffer_data = NULL
+};
 
 int _path_matches(const char *path, const char *pattern) 
 {
@@ -63,22 +85,26 @@ static void _tcp_on_connect(struct tcp_server *server, void *data)
 static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
 {
     struct http_server *http_server = data;
-    struct http_request request = {0};
 
     int result = 0;
-    if ((result = http_server_parse_request(http_server, sockfd, &request)) != 0 && http_server->on_malformed_request != NULL)
+    if ((result = http_server_parse_request(http_server, sockfd)) != 0)
     {
-        if (http_server->on_malformed_request)
+        if (result < 0)
         {
-            /** TODO(Altanis): Fix one HTTP request partitioned into two causing two event calls. */
-            printf("malformed request: %d\n", result);
-            http_server->on_malformed_request(http_server, sockfd, result, http_server->data);
-        }
+            /** Malformed request. */
+            if (http_server->on_malformed_request)
+            {
+                /** TODO(Altanis): Fix one HTTP request partitioned into two causing two event calls. */
+                printf("malformed request: %d\n", result);
+                http_server->on_malformed_request(http_server, sockfd, result, http_server->data);
+            }
+        };
 
+        // > 0 means the http request is incomplete and waiting for incoming data
         return;
     };
 
-    char *path = strdup(sso_string_get(&request.path));
+    char *path = strdup(sso_string_get(&current_http_request.request.path));
 
     /** Check for query strings to parse. */
     char *query_string = strchr(path, '?');
@@ -86,7 +112,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
     {
         path[query_string - path] = '\0';
 
-        vector_init(&request.query, 8, sizeof(struct http_query));
+        vector_init(&current_http_request.request.query, 8, sizeof(struct http_query));
 
         char *token = strtok(query_string + 1, "&");
         while (token != NULL)
@@ -103,13 +129,13 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
             sso_string_set(&query.key, token);
             sso_string_set(&query.value, value + 1);
 
-            vector_push(&request.query, &query);
+            vector_push(&current_http_request.request.query, &query);
         };
     };
 
     void (*callback)(struct http_server *server, socket_t sockfd, struct http_request request) = http_server_find_route(http_server, path);
     
-    if (callback != NULL) callback(http_server, sockfd, request);
+    if (callback != NULL) callback(http_server, sockfd, current_http_request.request);
     else 
     {
         // That comedian...
@@ -122,6 +148,12 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
 
         tcp_server_send(sockfd, (char*)notfound_message, strlen(notfound_message), 0);
     };
+
+    memset(&current_http_request.request, 0, sizeof(current_http_request.request));
+    current_http_request.parsing_state = -1;
+    sso_string_free(&current_http_request.sso_data);
+    memset(&current_http_request.sso_data.short_string, 0, SSO_STRING_MAX_LENGTH);
+    free(current_http_request.buffer_data);
 
     free(path);
 };
@@ -288,7 +320,7 @@ int http_server_send_response(struct http_server *server, socket_t sockfd, struc
     return first_send + second_send;
 };
 
-int http_server_parse_request(struct http_server *server, socket_t sockfd, struct http_request *request)
+int http_server_parse_request(struct http_server *server, socket_t sockfd) 
 {
     size_t MAX_HTTP_METHOD_LEN = (server->config.max_method_len ? server->config.max_method_len : 7);
     size_t MAX_HTTP_PATH_LEN = (server->config.max_path_len ? server->config.max_path_len : 2000);
@@ -302,162 +334,10 @@ int http_server_parse_request(struct http_server *server, socket_t sockfd, struc
     size_t HTTP_HEADERS_TIMEOUT_SECONDS = server->config.headers_timeout_seconds ? server->config.headers_timeout_seconds : 10;
     size_t HTTP_BODY_TIMEOUT_SECONDS = server->config.body_timeout_seconds ? server->config.body_timeout_seconds : 10;
 
-    vector_init(&request->headers, 8, sizeof(struct http_header));
-
-    string_t method = {0};
-    string_t path = {0};
-    string_t version = {0};
-
-    sso_string_init(&method, "");
-    sso_string_init(&path, "");
-    sso_string_init(&version, "");
-
-    /** The initial time of when parsing starts happening. */
-    time_t start_time = time(NULL);
-    /** The state of parsing. */
-    enum http_request_parsing_states state = -1; 
-
-    while (1)
+    if (current_http_request.parsing_state <= -1)
     {
-        if (time(NULL) - start_time > HTTP_REQUEST_LINE_TIMEOUT_SECONDS) return REQUEST_PARSE_ERROR_TIMEOUT;
-
-        NETC_HTTP_REQUEST_PARSE(state, REQUEST_PARSING_STATE_METHOD, sockfd, &method, " ", 1, MAX_HTTP_METHOD_LEN + 2, 0);
-        NETC_HTTP_REQUEST_PARSE(state, REQUEST_PARSING_STATE_PATH, sockfd, &path, " ", 1, MAX_HTTP_PATH_LEN + 2, 0);
-        NETC_HTTP_REQUEST_PARSE(state, REQUEST_PARSING_STATE_VERSION, sockfd, &version, "\r\n", 1, MAX_HTTP_VERSION_LEN + 2, 0);
-
-        break;
-    };
-    
-    char decoded[path.length];
-    http_url_percent_decode((char*)sso_string_get(&path), decoded);
-
-    sso_string_set(&path, decoded);
-
-    request->method = method;
-    request->path = path;
-    request->version = version;
-
-    int content_length = 0; // < 0 means chunked
-    size_t header_count = 0;
-
-    start_time = time(NULL);
-    while (1)
-    {
-        if (time(NULL) - start_time > HTTP_HEADERS_TIMEOUT_SECONDS) return REQUEST_PARSE_ERROR_TIMEOUT;
-
-        char temp_buffer[2] = {0};
-        if (recv(sockfd, temp_buffer, 2, MSG_PEEK) <= 0) return REQUEST_PARSE_ERROR_RECV;
-
-        if (temp_buffer[0] == '\r' && temp_buffer[1] == '\n')
-        {
-            if (recv(sockfd, temp_buffer, 2, 0) <= 0) return REQUEST_PARSE_ERROR_RECV;
-            break;
-        };
-
-        struct http_header header = {0};
-        sso_string_init(&header.name, "");
-        sso_string_init(&header.value, "");
-
-        NETC_HTTP_REQUEST_PARSE(state, REQUEST_PARSING_STATE_HEADER_NAME, sockfd, &header.name, ": ", 1, MAX_HTTP_HEADER_NAME_LEN + 2, 0);
-        NETC_HTTP_REQUEST_PARSE(state, REQUEST_PARSING_STATE_HEADER_VALUE, sockfd, &header.value, "\r\n", 1, MAX_HTTP_HEADER_VALUE_LEN + 2, 0);
-
-        if (content_length == 0 && strcmp(sso_string_get(&header.name), "Content-Length") == 0)
-        {
-            size_t len = strtoul(sso_string_get(&header.value), NULL, 10);
-            content_length = len;
-
-            if (len > MAX_HTTP_BODY_LEN) return REQUEST_PARSE_ERROR_BODY_TOO_BIG;
-            else MAX_HTTP_BODY_LEN = len;
-        }
-        else if (content_length == 0 && strcmp(sso_string_get(&header.name), "Transfer-Encoding") == 0 && strcmp(sso_string_get(&header.value), "chunked") == 0)
-            content_length = -1;
-
-        printf("%s: %s\n", sso_string_get(&header.name), sso_string_get(&header.value));
-
-        vector_push(&request->headers, &header);
-
-        if (++header_count > MAX_HTTP_HEADER_COUNT) return REQUEST_PARSE_ERROR_TOO_MANY_HEADERS;
-    };
-
-    start_time = time(NULL);
-    
-    char buffer[MAX_HTTP_BODY_LEN];
-    size_t buffer_length = 0;
-
-    if (content_length == 0) return 0;
-    else if (content_length == -1)
-    {
-        state = REQUEST_PARSING_STATE_CHUNK_DATA;
-        while (1)
-        {
-            if (time(NULL) - start_time > HTTP_BODY_TIMEOUT_SECONDS) return REQUEST_PARSE_ERROR_TIMEOUT;
-
-            char chunk_length[18] = {0};
-
-            NETC_HTTP_REQUEST_PARSE(state, REQUEST_PARSING_STATE_CHUNK_SIZE, sockfd, chunk_length, "\r\n", 1, 16 + 2, 1);
-
-            size_t chunk_size = strtoul(chunk_length, NULL, 16);
-            if (chunk_size == 0)
-            {
-                printf("dissolving...\n");
-                char temp_buffer[2] = {0};
-                if (recv(sockfd, temp_buffer, 2, 0) <= 0)
-                {
-                    printf("[ser] recv failed, errno: \n", errno);
-                    return REQUEST_PARSE_ERROR_RECV;
-                };
-                break;
-            };
-
-            if (buffer_length + chunk_size > MAX_HTTP_BODY_LEN) return REQUEST_PARSE_ERROR_BODY_TOO_BIG;
-
-            char chunk_data[chunk_size + 2];
-            if (state == REQUEST_PARSING_STATE_CHUNK_SIZE)
-            {
-                state = REQUEST_PARSING_STATE_CHUNK_DATA;
-                if (recv(sockfd, chunk_data, chunk_size + 2, 0) <= 0) return REQUEST_PARSE_ERROR_RECV;
-            };
-
-            memcpy(buffer + buffer_length, chunk_data, chunk_size);
-            buffer_length += chunk_size;
-        };
-    }
-    else
-    {
-        state = REQUEST_PARSING_STATE_BODY;
-        size_t bytes_left = MAX_HTTP_BODY_LEN;
         
-        while (1)
-        {
-            if (bytes_left <= 0)
-            {
-                buffer_length = MAX_HTTP_BODY_LEN;
-                break;
-            };
-
-            if (time(NULL) - start_time > HTTP_BODY_TIMEOUT_SECONDS) return REQUEST_PARSE_ERROR_TIMEOUT;
-            
-            ssize_t result = recv(sockfd, buffer + buffer_length, bytes_left, 0);
-            if (result == -1) return REQUEST_PARSE_ERROR_RECV;
-            else if (result == 0)
-            {
-                buffer_length = MAX_HTTP_BODY_LEN - bytes_left;
-                break;
-            };
-
-            bytes_left -= result;
-        };
-
-        char temp_buffer[2] = {0};
-        if (recv(sockfd, temp_buffer, 2, MSG_PEEK) > 0) return REQUEST_PARSE_ERROR_BODY_TOO_BIG;
     };
-
-    request->body = malloc(buffer_length + 1);
-    memcpy(request->body, buffer, buffer_length);
-    request->body[buffer_length] = '\0';
-    request->body_size = buffer_length;
-
-    return 0;
 };
 
 int http_server_close(struct http_server *server)
