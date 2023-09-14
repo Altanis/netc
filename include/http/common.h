@@ -281,6 +281,38 @@ struct http_query
     string_t value;
 };
 
+/** A struct representing the current state of parsing a HTTP request. */
+struct http_server_parsing_state
+{
+    /** The current HTTP request. */
+    struct http_request request;
+    /** The current state of parsing. */
+    enum http_request_parsing_states parsing_state;
+
+    /** The content length of the request. < 0 means chunked. */
+    int content_length;
+
+    /** Whether or not parsing the terminating CRLF is done. */
+    int parsed_crlf;
+    /** The current HTTP header being populated (if any). */
+    struct http_header header;
+    /** The current chunk length being populated (if any). */
+    char chunk_length[18];
+    /** The current (parsed) chunk size. */
+    size_t chunk_size;
+};
+
+/** A struct representing the current state of parsing a HTTP response. */
+struct http_client_parsing_state
+{
+    /** The current HTTP request. */
+    struct http_request request;
+    /** The current state of parsing. */
+    enum http_response_parsing_states parsing_state;
+    /** The current HTTP header being populated (if any). */
+    struct http_header header;
+};
+
 /** Gets the value of a request's method. */
 const char *http_request_get_method(const struct http_request *request);
 /** Gets the value of a request's path. */

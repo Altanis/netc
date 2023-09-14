@@ -18,6 +18,9 @@ struct http_server
     /** User defined data to be passed to the event callbacks. */
     void *data;
 
+    /** The current parsing state of an incoming HTTP response. */
+    struct http_server_parsing_state parsing_state;
+
     /** A structure representing the configuration for the HTTP server. */
     struct netc_http_server_config
     {
@@ -77,7 +80,7 @@ int http_server_send_chunked_data(struct http_server *server, socket_t sockfd, c
 /** Sends the HTTP response. */
 int http_server_send_response(struct http_server *server, socket_t sockfd, struct http_response *response, const char *binary_data, size_t length);
 /** Parses the HTTP request. */
-int http_server_parse_request(struct http_server *server, socket_t sockfd);
+int http_server_parse_request(struct http_server *server, socket_t sockfd, struct http_server_parsing_state *current_state);
 
 /** Closes the HTTP server. */
 int http_server_close(struct http_server *server);

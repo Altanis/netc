@@ -14,7 +14,10 @@
 
 ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char *bytes, int remove_delimiter, size_t max_bytes_received)
 {
-    size_t bytes_len = strlen(bytes), bytes_received = 0;
+    size_t bytes_len = bytes == NULL ? 0 : strlen(bytes);
+    ssize_t bytes_received = 0;
+
+    int has_pattern = 0;
 
     while (bytes_received <= max_bytes_received)
     {
@@ -22,11 +25,8 @@ ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char 
         ssize_t recv_result = recv(sockfd, &c, sizeof(c), 0);
         if (recv_result <= 0)
         {
-            if (recv_result == -1) 
-            {
-                if (errno == EAGAIN || errno == EWOULDBLOCK) break;
+            if (recv_result == -1 && errno != EWOULDBLOCK) 
                 netc_error(BADRECV);
-            };
 
             return recv_result;
         };
@@ -34,8 +34,10 @@ ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char 
         bytes_received++;
         sso_string_concat_char(string, c);
 
-        if (bytes_received >= bytes_len && strcmp(sso_string_get(string) + string->length - bytes_len, bytes) == 0)
+        if (bytes != NULL && bytes_received >= bytes_len && strcmp(sso_string_get(string) + string->length - bytes_len, bytes) == 0)
         {
+            has_pattern = 1;
+
             if (remove_delimiter)
             {
                 sso_string_backspace(string, bytes_len);
@@ -46,13 +48,16 @@ ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char 
         };
     };
 
+    if (bytes != NULL && has_pattern == 0) return -1;
     return bytes_received;
 };
 
 ssize_t socket_recv_until_fixed(socket_t sockfd, char *buffer, size_t buffer_size, char *bytes, int remove_delimiter)
 {
-    size_t bytes_len = strlen(bytes);
+    size_t bytes_len = bytes == NULL ? 0 : strlen(bytes);
     size_t bytes_received = 0;
+
+    int has_pattern = 0;
 
     while ((bytes_received + bytes_len) <= buffer_size)
     {
@@ -70,8 +75,10 @@ ssize_t socket_recv_until_fixed(socket_t sockfd, char *buffer, size_t buffer_siz
 
         bytes_received += recv_result;
 
-        if (bytes_received >= bytes_len && strncmp(buffer + bytes_received - bytes_len, bytes, bytes_len) == 0)
+        if (bytes != NULL && bytes_received >= bytes_len && strncmp(buffer + bytes_received - bytes_len, bytes, bytes_len) == 0)
         {
+            has_pattern = 1;
+
             if (remove_delimiter)
             {
                 buffer[bytes_received - bytes_len] = '\0';
@@ -82,6 +89,7 @@ ssize_t socket_recv_until_fixed(socket_t sockfd, char *buffer, size_t buffer_siz
         }
     };
 
+    if (bytes != NULL && has_pattern == 0) return -1;
     return bytes_received;
 };
 

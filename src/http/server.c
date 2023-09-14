@@ -15,29 +15,7 @@
 #include <sys/event.h>
 #endif
 
-/** A struct representing the current state of http parsing. */
-struct http_parsing_state
-{
-    /** The current HTTP request. */
-    struct http_request request;
-    /** The current state of parsing. */
-    enum http_request_parsing_states parsing_state;
-    /** The current data associated with an incomplete parse. */
-    union
-    {
-        string_t sso_data;
-        char *buffer_data;
-    };
-};
-
 __thread int netc_http_server_listening = 0;
-__thread struct http_parsing_state current_http_request = 
-{
-    .request = {0},
-    .parsing_state = -1,
-    .sso_data = {0},
-    .buffer_data = NULL
-};
 
 int _path_matches(const char *path, const char *pattern) 
 {
@@ -85,9 +63,10 @@ static void _tcp_on_connect(struct tcp_server *server, void *data)
 static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
 {
     struct http_server *http_server = data;
+    struct http_server_parsing_state current_state = http_server->parsing_state;
 
     int result = 0;
-    if ((result = http_server_parse_request(http_server, sockfd)) != 0)
+    if ((result = http_server_parse_request(http_server, sockfd, &current_state)) != 0)
     {
         if (result < 0)
         {
@@ -104,7 +83,20 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
         return;
     };
 
-    char *path = strdup(sso_string_get(&current_http_request.request.path));
+    printf("finished parsing request.\n");
+    printf("method: %s\n", sso_string_get(&current_state.request.method));
+    printf("path: %s\n", sso_string_get(&current_state.request.path));
+    printf("version: %s\n", sso_string_get(&current_state.request.version));
+
+    for (size_t i = 0; i < current_state.request.headers.size; ++i)
+    {
+        struct http_header *header = vector_get(&current_state.request.headers, i);
+        printf("header: %s: %s\n", sso_string_get(&header->name), sso_string_get(&header->value));
+    };
+
+    printf("body: %s\n", current_state.request.body);
+
+    char *path = strdup(sso_string_get(&current_state.request.path));
 
     /** Check for query strings to parse. */
     char *query_string = strchr(path, '?');
@@ -112,7 +104,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
     {
         path[query_string - path] = '\0';
 
-        vector_init(&current_http_request.request.query, 8, sizeof(struct http_query));
+        vector_init(&current_state.request.query, 8, sizeof(struct http_query));
 
         char *token = strtok(query_string + 1, "&");
         while (token != NULL)
@@ -129,13 +121,13 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
             sso_string_set(&query.key, token);
             sso_string_set(&query.value, value + 1);
 
-            vector_push(&current_http_request.request.query, &query);
+            vector_push(&current_state.request.query, &query);
         };
     };
 
     void (*callback)(struct http_server *server, socket_t sockfd, struct http_request request) = http_server_find_route(http_server, path);
     
-    if (callback != NULL) callback(http_server, sockfd, current_http_request.request);
+    if (callback != NULL) callback(http_server, sockfd, current_state.request);
     else 
     {
         // That comedian...
@@ -149,11 +141,8 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
         tcp_server_send(sockfd, (char*)notfound_message, strlen(notfound_message), 0);
     };
 
-    memset(&current_http_request.request, 0, sizeof(current_http_request.request));
-    current_http_request.parsing_state = -1;
-    sso_string_free(&current_http_request.sso_data);
-    memset(&current_http_request.sso_data.short_string, 0, SSO_STRING_MAX_LENGTH);
-    free(current_http_request.buffer_data);
+    memset(&current_state.request, 0, sizeof(current_state.request));
+    current_state.parsing_state = -1;
 
     free(path);
 };
@@ -191,6 +180,7 @@ int http_server_init(struct http_server *http_server, struct sockaddr address, i
     tcp_server->on_disconnect = _tcp_on_disconnect;
 
     http_server->server = tcp_server;
+    memset(&http_server->parsing_state, 0, sizeof(http_server->parsing_state));
 
     return 0;
 };
@@ -320,13 +310,17 @@ int http_server_send_response(struct http_server *server, socket_t sockfd, struc
     return first_send + second_send;
 };
 
-int http_server_parse_request(struct http_server *server, socket_t sockfd) 
+int http_server_parse_request(struct http_server *server, socket_t sockfd, struct http_server_parsing_state *current_state)
 {
+    char boffy[4096] = {0};
+    recv(sockfd, boffy, 4095, MSG_PEEK);
+    printf("boffy: %s\n", boffy);
+
     size_t MAX_HTTP_METHOD_LEN = (server->config.max_method_len ? server->config.max_method_len : 7);
     size_t MAX_HTTP_PATH_LEN = (server->config.max_path_len ? server->config.max_path_len : 2000);
     size_t MAX_HTTP_VERSION_LEN = (server->config.max_version_len ? server->config.max_version_len : 8);
     size_t MAX_HTTP_HEADER_NAME_LEN = (server->config.max_header_name_len ? server->config.max_header_name_len : 256);
-    size_t MAX_HTTP_HEADER_VALUE_LEN = (server->config.max_header_value_len ? server->config.max_header_value_len : 8192);
+    size_t MAX_HTTP_HEADER_VALUE_LEN = (server->config.max_header_value_len ? server->config.max_header_value_len : 4096);
     size_t MAX_HTTP_HEADER_COUNT = server->config.max_header_count ? server->config.max_header_count : 24;
     size_t MAX_HTTP_BODY_LEN = (server->config.max_body_len ? server->config.max_body_len : 65536);
 
@@ -334,10 +328,260 @@ int http_server_parse_request(struct http_server *server, socket_t sockfd)
     size_t HTTP_HEADERS_TIMEOUT_SECONDS = server->config.headers_timeout_seconds ? server->config.headers_timeout_seconds : 10;
     size_t HTTP_BODY_TIMEOUT_SECONDS = server->config.body_timeout_seconds ? server->config.body_timeout_seconds : 10;
 
-    if (current_http_request.parsing_state <= -1)
+    vector_init(&current_state->request.headers, 8, sizeof(struct http_header));
+
+    if (current_state->parsing_state == -1)
+        current_state->parsing_state = REQUEST_PARSING_STATE_METHOD;
+    
+    if (current_state->parsing_state == REQUEST_PARSING_STATE_METHOD)
     {
-        
+        if (current_state->request.method.length == 0) sso_string_init(&current_state->request.method, "");
+
+        if (current_state->request.method.length < MAX_HTTP_METHOD_LEN)
+        {
+            ssize_t bytes_received = socket_recv_until_dynamic(sockfd, &current_state->request.method, " ", 1, MAX_HTTP_METHOD_LEN - current_state->request.method.length + 1);
+
+            if (bytes_received <= 0)
+            {
+                if (errno == EWOULDBLOCK) return 1;
+                else return REQUEST_PARSE_ERROR_RECV;
+            };
+        };
+
+        current_state->parsing_state = REQUEST_PARSING_STATE_PATH;
     };
+
+    errno = 0;
+    
+    if (current_state->parsing_state == REQUEST_PARSING_STATE_PATH)
+    {
+        if (current_state->request.path.length == 0) sso_string_init(&current_state->request.path, "");
+
+        if (current_state->request.path.length < MAX_HTTP_PATH_LEN)
+        {
+            ssize_t bytes_received = socket_recv_until_dynamic(sockfd, &current_state->request.path, " ", 1, MAX_HTTP_PATH_LEN - current_state->request.path.length + 1);
+            if (bytes_received <= 0)
+            {
+                if (errno == EWOULDBLOCK) return 1;
+                else return REQUEST_PARSE_ERROR_RECV;
+            };
+        };
+
+        current_state->parsing_state = REQUEST_PARSING_STATE_VERSION;
+    };
+
+    errno = 0;
+
+    if (current_state->parsing_state == REQUEST_PARSING_STATE_VERSION)
+    {
+        if (current_state->request.version.length == 0) sso_string_init(&current_state->request.version, "");
+
+        if (current_state->request.version.length < MAX_HTTP_VERSION_LEN)
+        {
+            char *bytes = (MAX_HTTP_VERSION_LEN - current_state->request.version.length) == 1 ? "\n" : "\r\n";
+            ssize_t bytes_received = socket_recv_until_dynamic(sockfd, &current_state->request.version, bytes, 1, MAX_HTTP_VERSION_LEN - current_state->request.version.length + 2);
+            if (bytes_received <= 0)
+            {
+                if (errno == EWOULDBLOCK) return 1;
+                else return REQUEST_PARSE_ERROR_RECV;
+            };
+        };
+
+        current_state->parsing_state = REQUEST_PARSING_STATE_HEADER_NAME;
+    };
+
+    printf("current val: %s\n", sso_string_get(&current_state->request.version));
+
+    errno = 0;
+
+    while (current_state->parsing_state == REQUEST_PARSING_STATE_HEADER_NAME || current_state->parsing_state == REQUEST_PARSING_STATE_HEADER_VALUE)
+    {
+        if (current_state->parsing_state == REQUEST_PARSING_STATE_HEADER_NAME)
+        {
+            /** Test for CRLF (two CRLFs = end of headers). */
+            char crlf[2] = {0};
+
+            if (current_state->parsed_crlf == 0)
+            {
+                ssize_t check_crlf = recv(sockfd, crlf, sizeof(crlf), MSG_PEEK);
+                if (check_crlf == 1 && crlf[0] == '\r')
+                {
+                    if (recv(sockfd, crlf, 1, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+                    current_state->parsed_crlf = 1;
+                    return 1;
+                }
+                else if (check_crlf == 2 && crlf[0] == '\r' && crlf[1] == '\n')
+                {
+                    if (recv(sockfd, crlf, 2, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+                    current_state->parsed_crlf = 2;
+                    break;
+                };
+            }
+            else if (current_state->parsed_crlf == 1)
+            {
+                ssize_t check_crlf = recv(sockfd, crlf, 1, MSG_PEEK);
+                if (check_crlf == 1 && crlf[0] == '\n')
+                {
+                    if (recv(sockfd, crlf, 1, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+                    current_state->parsed_crlf = 2;
+                    return 1;
+                };
+            };
+
+            if (current_state->request.headers.size >= MAX_HTTP_HEADER_COUNT) return REQUEST_PARSE_ERROR_TOO_MANY_HEADERS;
+
+            if (current_state->header.name.length == 0) sso_string_init(&current_state->header.name, "");
+
+            if (current_state->header.name.length < MAX_HTTP_HEADER_NAME_LEN)
+            {
+                char *bytes = (MAX_HTTP_HEADER_NAME_LEN - current_state->header.name.length) == 1 ? " " : ": ";
+                ssize_t bytes_received = socket_recv_until_dynamic(sockfd, &current_state->header.name, bytes, 1, MAX_HTTP_HEADER_NAME_LEN - current_state->header.name.length + 2);
+                if (bytes_received <= 0)
+                {
+                    if (errno == EWOULDBLOCK) return 1;
+                    else return REQUEST_PARSE_ERROR_RECV;
+                };
+
+                printf("header name: %s\n", sso_string_get(&current_state->header.name));
+                
+                current_state->parsing_state = REQUEST_PARSING_STATE_HEADER_VALUE;
+            };
+
+            errno = 0;
+        }
+        else if (current_state->parsing_state == REQUEST_PARSING_STATE_HEADER_VALUE)
+        {
+            if (current_state->header.value.length == 0) sso_string_init(&current_state->header.value, "");
+
+            if (current_state->header.value.length < MAX_HTTP_HEADER_VALUE_LEN)
+            {
+                char *bytes = (MAX_HTTP_HEADER_VALUE_LEN - current_state->header.value.length) == 1 ? "\n" : "\r\n";
+                ssize_t bytes_received = socket_recv_until_dynamic(sockfd, &current_state->header.value, bytes, 1, MAX_HTTP_HEADER_VALUE_LEN - current_state->header.value.length + 2);
+                if (bytes_received <= 0)
+                {
+                    if (errno == EWOULDBLOCK) return 1;
+                    else return REQUEST_PARSE_ERROR_RECV;
+                };
+            };
+
+            errno = 0;
+
+            if (strcmp(sso_string_get(&current_state->header.name), "Content-Length") == 0)
+            {
+                size_t len = strtoul(sso_string_get(&current_state->header.value), NULL, 10);
+                current_state->content_length = len;
+
+                if (current_state->content_length > MAX_HTTP_BODY_LEN) return REQUEST_PARSE_ERROR_BODY_TOO_BIG;
+            }
+            else if (strcmp(sso_string_get(&current_state->header.name), "Transfer-Encoding") == 0)
+            {
+                current_state->content_length = -1;
+            };
+
+            vector_push(&current_state->request.headers, &current_state->header);
+            // todo: figure out why vector_push not work?
+            current_state->parsing_state = REQUEST_PARSING_STATE_HEADER_NAME;
+            memset(&current_state->header, 0, sizeof(current_state->header));
+        };
+    };
+
+    if (current_state->content_length == 0) return 0;
+    else if (current_state->content_length == -1)
+    {
+        if (current_state->request.body == NULL)
+        {
+            current_state->parsing_state = RESPONSE_PARSING_STATE_CHUNK_SIZE;
+            current_state->request.body = calloc(current_state->content_length, sizeof(char));
+        };
+
+        while (current_state->parsing_state == RESPONSE_PARSING_STATE_CHUNK_SIZE || current_state->parsing_state == RESPONSE_PARSING_STATE_CHUNK_DATA)
+        {
+            if (current_state->parsing_state == RESPONSE_PARSING_STATE_CHUNK_SIZE)
+            {
+                size_t chunk_size = strlen(current_state->chunk_length);
+                char *bytes = ((16 + 2) - chunk_size) == 1 ? "\n" : "\r\n";
+
+                ssize_t bytes_received_chunk_len = socket_recv_until_fixed(sockfd, current_state->chunk_length + chunk_size, (16 + 2 /** 16 digits + crlf */) - chunk_size, bytes, 1);
+                if (bytes_received_chunk_len <= 0)
+                {
+                    if (errno == EWOULDBLOCK) return 1;
+                    else return REQUEST_PARSE_ERROR_RECV;
+                };
+
+                current_state->chunk_size = strtoul(current_state->chunk_length, NULL, 16);
+
+                errno = 0;
+            };
+
+            current_state->parsing_state = RESPONSE_PARSING_STATE_CHUNK_DATA;
+
+            if (current_state->chunk_size == 0)
+            {
+                char crlf[2] = {0};
+
+                if (current_state->parsed_crlf == 2)
+                {
+                    ssize_t check_crlf = recv(sockfd, crlf, sizeof(crlf), MSG_PEEK);
+                    if (check_crlf == 1 && crlf[0] == '\r')
+                    {
+                        if (recv(sockfd, crlf, 1, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+                        current_state->parsed_crlf = 3;
+                        return 1;
+                    }
+                    else if (check_crlf == 2 && crlf[0] == '\r' && crlf[1] == '\n')
+                    {
+                        if (recv(sockfd, crlf, 2, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+                        current_state->parsed_crlf = 4;
+                    };
+                }
+                else if (current_state->parsed_crlf == 3)
+                {
+                    ssize_t check_crlf = recv(sockfd, crlf, 1, MSG_PEEK);
+                    if (check_crlf == 1 && crlf[0] == '\n')
+                    {
+                        if (recv(sockfd, crlf, 1, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+                        current_state->parsed_crlf = 4;
+                        return 1;
+                    };
+                };
+
+                if (current_state->parsed_crlf == 4) break;
+            };
+
+            if (current_state->parsing_state == RESPONSE_PARSING_STATE_CHUNK_DATA)
+            {
+                char *bytes = (current_state->chunk_size - current_state->request.body_size) == 1 ? "\n" : "\r\n";
+                ssize_t bytes_received_chunk_data = socket_recv_until_fixed(sockfd, current_state->request.body + current_state->request.body_size, current_state->chunk_size - current_state->request.body_size + 2, bytes, 1);
+                if (bytes_received_chunk_data <= 0)
+                {
+                    if (errno == EWOULDBLOCK) return 1;
+                    else return REQUEST_PARSE_ERROR_RECV;
+                };
+            };
+
+            current_state->request.body_size += current_state->chunk_size;
+        };
+    }
+    else
+    {
+        if (current_state->request.body == NULL)
+        {
+            current_state->parsing_state = RESPONSE_PARSING_STATE_BODY;
+            current_state->request.body = calloc(current_state->content_length, sizeof(char));
+        };
+
+        current_state->parsing_state = REQUEST_PARSING_STATE_BODY;
+
+        ssize_t bytes_received_body = socket_recv_until_fixed(sockfd, current_state->request.body + current_state->request.body_size, current_state->content_length - current_state->request.body_size + 2, NULL, 0);
+        if (bytes_received_body <= 0)
+        {
+            if (errno == EWOULDBLOCK) return 1;
+            else return REQUEST_PARSE_ERROR_RECV;
+        };
+        current_state->request.body_size += bytes_received_body;
+    };
+
+    return 0;
 };
 
 int http_server_close(struct http_server *server)

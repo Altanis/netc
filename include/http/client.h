@@ -13,6 +13,9 @@ struct http_client
     /** User defined data to be passed to the event callbacks. */
     void *data;
 
+    /** The current parsing state of an incoming HTTP response. */
+    struct http_client_parsing_state parsing_state;
+
     /** The callback for when a client connects. */
     void (*on_connect)(struct http_client *client, void *data);
     /** The callback for when a response is received. */
