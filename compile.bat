@@ -1,2 +1,0 @@
-:: `gcc` command for compiling (for now)
-gcc -g -Iinclude src/socket.c src/tcp/client.c src/tcp/server.c src/udp/client.c src/udp/server.c src/http/client.c src/http/common.c src/http/server.c src/utils/error.c src/utils/string.c src/utils/vector.c tests/http/test001.c tests/tcp/test001.c tests/tcp/test002.c tests/udp/test001.c tests/udp/test002.c main.c -o netc -lws2_32
