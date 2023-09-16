@@ -256,7 +256,7 @@ int http_client_parse_response(struct http_client *client, struct http_response 
         state = RESPONSE_PARSING_STATE_BODY;
 
         char body_data[content_length + 2];
-        if (socket_recv_until_fixed(client->client->sockfd, body_data, content_length + 2, "\r\n", 1) <= 0) return RESPONSE_PARSE_ERROR_RECV;
+        if (socket_recv_until_fixed(client->client->sockfd, body_data, content_length + 2, NULL, 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
         for (size_t i = 0; i < content_length; ++i) 
         {
             printf("%c\n", body_data[i]);

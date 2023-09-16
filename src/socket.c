@@ -19,7 +19,7 @@ ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char 
 
     int has_pattern = 0;
 
-    while (bytes_received <= max_bytes_received)
+    while (bytes_received < max_bytes_received)
     {
         char c;
         ssize_t recv_result = recv(sockfd, &c, sizeof(c), 0);
@@ -48,7 +48,7 @@ ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char 
         };
     };
 
-    if (bytes != NULL && has_pattern == 0) return -1;
+    if (bytes != NULL && has_pattern == 0) return -2;
     return bytes_received;
 };
 
@@ -59,7 +59,7 @@ ssize_t socket_recv_until_fixed(socket_t sockfd, char *buffer, size_t buffer_siz
 
     int has_pattern = 0;
 
-    while ((bytes_received + bytes_len) <= buffer_size)
+    while ((bytes_received + bytes_len) < buffer_size)
     {
         ssize_t recv_result = recv(sockfd, buffer + bytes_received, 1, 0);
         if (recv_result <= 0) 
@@ -74,6 +74,8 @@ ssize_t socket_recv_until_fixed(socket_t sockfd, char *buffer, size_t buffer_siz
         };
 
         bytes_received += recv_result;
+        // printf("bytes_received: %d\n", bytes_received);
+        // printf("buffer size: %d\n", buffer_size);
 
         if (bytes != NULL && bytes_received >= bytes_len && strncmp(buffer + bytes_received - bytes_len, bytes, bytes_len) == 0)
         {
@@ -86,10 +88,10 @@ ssize_t socket_recv_until_fixed(socket_t sockfd, char *buffer, size_t buffer_siz
             };
 
             break;
-        }
+        };
     };
 
-    if (bytes != NULL && has_pattern == 0) return -1;
+    if (bytes != NULL && has_pattern == 0) return -2;
     return bytes_received;
 };
 
