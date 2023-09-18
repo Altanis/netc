@@ -15,12 +15,16 @@ A cross-platform networking library for TCP, UDP, HTTP, and WS sockets. Written 
         - [X] Chunked Encoding
         - [ ] Binary Data
         - [ ] Keep Alive
+        - [ ] HTTP Encoding/Decoding
+        - [ ] Compression/Decompression
     - [X] Client
         - [X] URL Percent Encoding/Decoding
         - [X] Query String Encoding
         - [X] Chunked Encoding
         - [ ] Binary Data
         - [ ] Keep Alive
+        - [ ] HTTP Encoding/Decoding
+        - [ ] Compression/Decompression
 - [ ] WebSocket Abstraction
 - [ ] Threadpool
 - [ ] SSL/TLS Support (for HTTP/1.1 and WS Client)

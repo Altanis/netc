@@ -12,14 +12,17 @@ struct http_server
 {
     /** The TCP server. */
     struct tcp_server *server;
-    /** A map storing all the routes to their callbacks. */
+    /** A vector storing all the routes to their callbacks. */
     struct vector routes; // <http_route>
+
+    /** A map storing all the sockfds to their client structs. */
+    struct vector clients; // <struct http_client>
 
     /** User defined data to be passed to the event callbacks. */
     void *data;
 
     /** The current parsing state of an incoming HTTP response. */
-    struct http_server_parsing_state parsing_state;
+    struct vector parsing_states;
 
     /** A structure representing the configuration for the HTTP server. */
     struct netc_http_server_config
