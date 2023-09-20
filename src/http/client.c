@@ -1,6 +1,6 @@
 #include "http/client.h"
 
-#include<unistd.h>
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -67,15 +67,15 @@ int http_client_start(struct http_client *client)
     return tcp_client_main_loop(client->client);
 };
 
-int http_client_send_chunked_data(struct http_client *client, char *data, size_t length)
+int http_client_send_chunked_data(struct http_client *client, char *data, size_t data_length)
 {
     char length_str[16] = {0};
-    sprintf(length_str, "%zx\r\n", length);
+    sprintf(length_str, "%zx\r\n", data_length);
 
     int send_result = 0;
 
     if ((send_result = tcp_client_send(client->client, length_str, strlen(length_str), 0)) <= 0) return send_result;
-    if (length != 0 && ((send_result = tcp_client_send(client->client, length == 0 ? "" : data, length, 0)) <= 0)) return send_result;    
+    if (data_length != 0 && ((send_result = tcp_client_send(client->client, data_length == 0 ? "" : data, data_length, 0)) <= 0)) return send_result;    
     if ((send_result = tcp_client_send(client->client, "\r\n", 2, 0)) <= 2) return send_result;
 
     return 0;

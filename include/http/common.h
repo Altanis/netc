@@ -300,6 +300,8 @@ struct http_server_parsing_state
     char chunk_length[18];
     /** The current (parsed) chunk size. */
     size_t chunk_size;
+    /** The size of the (incomplete) chunk data. */
+    size_t incomplete_chunk_data_size;
 };
 
 /** A struct representing the current state of parsing a HTTP response. */

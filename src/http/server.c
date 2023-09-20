@@ -53,21 +53,30 @@ static void _tcp_on_connect(struct tcp_server *server, void *data)
 {
     struct http_server *http_server = data;
 
-    struct tcp_client client;
-    tcp_server_accept(server, &client);
+    struct http_client *client = malloc(sizeof(struct http_client));
+    client->client = malloc(sizeof(struct tcp_client));
+
+    tcp_server_accept(server, client->client);
+
+    printf("[sockfd] %d\n", client->client->sockfd);
+    map_set(&http_server->clients, &(socket_t){client->client->sockfd}, client, sizeof(client->client->sockfd));
 
     if (http_server->on_connect != NULL)
-        http_server->on_connect(http_server, &client, http_server->data);
+        http_server->on_connect(http_server, client, http_server->data);
 };
 
 static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
 {
-    printf("received data.\n");
     struct http_server *http_server = data;
-    struct http_server_parsing_state current_state = http_server->parsing_state;
+    printf("[sockfd data] %d\n", sockfd);
+    struct http_client *client = map_get(&http_server->clients, &sockfd, sizeof(sockfd));
+
+    if (client == NULL) printf("what.\n");
+
+    struct http_server_parsing_state current_state = client->parsing_state;
 
     int result = 0;
-    if ((result = http_server_parse_request(http_server, sockfd, &current_state)) != 0)
+    if ((result = http_server_parse_request(http_server, client, &current_state)) != 0)
     {
         if (result < 0)
         {
@@ -76,13 +85,12 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
             {
                 /** TODO(Altanis): Fix one HTTP request partitioned into two causing two event calls. */
                 printf("malformed request: %d\n", result);
-                http_server->on_malformed_request(http_server, sockfd, result, http_server->data);
+                http_server->on_malformed_request(http_server, client, result, http_server->data);
             }
         };
 
         // > 0 means the http request is incomplete and waiting for incoming data
         printf("WAITING FOR INCOMING DATA...\n");
-        printf("%d\n", http_server->parsing_state->)
         return;
     };
 
@@ -128,9 +136,9 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
         };
     };
 
-    void (*callback)(struct http_server *server, socket_t sockfd, struct http_request request) = http_server_find_route(http_server, path);
+    void (*callback)(struct http_server *server, struct http_client *client, struct http_request request) = http_server_find_route(http_server, path);
     
-    if (callback != NULL) callback(http_server, sockfd, current_state.request);
+    if (callback != NULL) callback(http_server, client, current_state.request);
     else 
     {
         // That comedian...
@@ -153,6 +161,8 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
 static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, int is_error, void *data)
 {
     struct http_server *http_server = data;
+    struct http_client *client = map_get(&http_server->clients, &sockfd, sizeof(sockfd));
+
     if (http_server->on_disconnect != NULL)
         http_server->on_disconnect(http_server, sockfd, is_error, http_server->data);
 };
@@ -160,6 +170,7 @@ static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, int i
 int http_server_init(struct http_server *http_server, struct sockaddr address, int backlog)
 {
     vector_init(&http_server->routes, 8, sizeof(struct http_route));
+    map_init(&http_server->clients, 8);
 
     struct tcp_server *tcp_server = malloc(sizeof(struct tcp_server));
     tcp_server->data = http_server;
@@ -183,7 +194,6 @@ int http_server_init(struct http_server *http_server, struct sockaddr address, i
     tcp_server->on_disconnect = _tcp_on_disconnect;
 
     http_server->server = tcp_server;
-    memset(&http_server->parsing_state, 0, sizeof(http_server->parsing_state));
 
     return 0;
 };
@@ -198,9 +208,9 @@ void http_server_create_route(struct http_server *server, struct http_route *rou
     vector_push(&server->routes, route);
 };
 
-void (*http_server_find_route(struct http_server *server, const char *path))(struct http_server *server, socket_t sockfd, struct http_request request)
+void (*http_server_find_route(struct http_server *server, const char *path))(struct http_server *server, struct http_client *client, struct http_request request)
 {
-    void (*callback)(struct http_server *server, socket_t sockfd, struct http_request request) = NULL;
+    void (*callback)(struct http_server *server, struct http_client *client, struct http_request request) = NULL;
 
     for (size_t i = 0; i < server->routes.size; ++i)
     {
@@ -228,15 +238,17 @@ void http_server_remove_route(struct http_server *server, const char *path)
     };
 };
 
-int http_server_send_chunked_data(struct http_server *server, socket_t sockfd, char *data, size_t length)
+int http_server_send_chunked_data(struct http_server *server, struct http_client *client, char *data, size_t data_length)
 {
     char length_str[16] = {0};
-    sprintf(length_str, "%zx\r\n", length);
+    sprintf(length_str, "%zx\r\n", data_length);
+
+    socket_t sockfd = client->client->sockfd;
 
     int send_result = 0;
 
     if ((send_result = tcp_server_send(sockfd, length_str, strlen(length_str), 0)) <= 0) return send_result;
-    if (length != 0 && ((send_result = tcp_server_send(sockfd, length == 0 ? "" : data, length, 0)) <= 0)) return send_result;    
+    if (data_length != 0 && ((send_result = tcp_server_send(sockfd, data_length == 0 ? "" : data, data_length, 0)) <= 0)) return send_result;    
     if ((send_result = tcp_server_send(sockfd, "\r\n", 2, 0)) <= 2) return send_result;
 
     // combine them all into one char buffer
@@ -252,8 +264,10 @@ int http_server_send_chunked_data(struct http_server *server, socket_t sockfd, c
     return 0;
 };
 
-int http_server_send_response(struct http_server *server, socket_t sockfd, struct http_response *response, const char *data, size_t data_length)
+int http_server_send_response(struct http_server *server, struct http_client *client, struct http_response *response, const char *data, size_t data_length)
 {
+    socket_t sockfd = client->client->sockfd;
+
     string_t response_str = {0};
     sso_string_init(&response_str, "");
 
@@ -313,8 +327,10 @@ int http_server_send_response(struct http_server *server, socket_t sockfd, struc
     return first_send + second_send;
 };
 
-int http_server_parse_request(struct http_server *server, socket_t sockfd, struct http_server_parsing_state *current_state)
+int http_server_parse_request(struct http_server *server, struct http_client *client, struct http_server_parsing_state *current_state)
 {
+    socket_t sockfd = client->client->sockfd;
+
     char boffy[4096] = {0};
     recv(sockfd, boffy, 4095, MSG_PEEK);
     printf("boffy: %s\n", boffy);
@@ -493,6 +509,8 @@ parse_start:
             char *delimiter = length == 1 ? "\n" : "\r\n";
 
             ssize_t bytes_received_chunk_length = socket_recv_until_fixed(sockfd, current_state->chunk_length + preexisting_chunk_length, length, delimiter, 1);
+            printf("bytes recv chunk len");
+            print_bytes(current_state->chunk_length, length);
             if (bytes_received_chunk_length <= 0)
             {
                 if (errno == EWOULDBLOCK) return 1;
@@ -521,7 +539,7 @@ parse_start:
         };
         case RESPONSE_PARSING_STATE_CHUNK_DATA:
         {
-            size_t preexisting_chunk_data = current_state->request.body_size;
+            size_t preexisting_chunk_data = current_state->incomplete_chunk_data_size;
             size_t length = current_state->chunk_size + 2 - preexisting_chunk_data;
 
             ssize_t bytes_received_chunk_data = recv(sockfd, current_state->request.body + preexisting_chunk_data, length, 0);
@@ -529,17 +547,26 @@ parse_start:
             if (bytes_received_chunk_data <= 0)
             {
                 printf("OH OH OH> %d %d %s?\n", bytes_received_chunk_data, errno, strerror(errno));
+                current_state->incomplete_chunk_data_size += bytes_received_chunk_data;
                 if (errno == EWOULDBLOCK) return 1;
                 else return REQUEST_PARSE_ERROR_RECV;
-            } else current_state->request.body_size += bytes_received_chunk_data;
+            } 
+            else
+            {
+                current_state->incomplete_chunk_data_size = 0;
+                current_state->request.body_size += bytes_received_chunk_data;
+            };
 
             if (bytes_received_chunk_data < length) return 1;
             else
             {
                 current_state->request.body_size -= 2 /** crlf */;
-                current_state->request.body[current_state->request.body_size - 1] = '\0';
+                printf("current body size %d\n", current_state->request.body_size);
+                current_state->request.body[current_state->request.body_size] = '\0';
                 current_state->parsing_state = REQUEST_PARSING_STATE_CHUNK_SIZE;
             };
+
+            printf("[cstr] %s\n", current_state->request.body);
 
             goto parse_start;
         };
@@ -575,7 +602,7 @@ int http_server_close(struct http_server *server)
     return tcp_server_close_self(server->server);
 };
 
-int http_server_close_client(struct http_server *server, socket_t sockfd)
+int http_server_close_client(struct http_server *server, struct http_client *client)
 {
-    return tcp_server_close_client(server->server, sockfd, 0);
+    return tcp_server_close_client(server->server, client->client->sockfd, 0);
 };

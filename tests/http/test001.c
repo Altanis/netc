@@ -47,11 +47,11 @@ static int http_test001_client_connect = 0;
 static int http_test001_client_data = 0; // 0 = passed /, 1 = passed /wow, 2 = passed /wow?x=1, 3 = passed /?x=1, 4 = passed /test (priority over /*)
 static int http_test001_client_disconnect = 0;
 
-static void http_test001_server_on_connect(struct http_server *server, struct tcp_client *client, void *data);
-static void http_test001_server_on_data(struct http_server *server, socket_t sockfd, struct http_request request);
-static void http_test001_server_on_data_wrong_route(struct http_server *server, socket_t sockfd, struct http_request request);
-static void http_test001_server_on_data_wildcard_route(struct http_server *server, socket_t sockfd, struct http_request request);
-static void http_test001_server_on_malformed_request(struct http_server *server, socket_t sockfd, enum parse_request_error_types error, void *data);
+static void http_test001_server_on_connect(struct http_server *server, struct http_client *client, void *data);
+static void http_test001_server_on_data(struct http_server *server, struct http_client *client, struct http_request request);
+static void http_test001_server_on_data_wrong_route(struct http_server *server, struct http_client *client, struct http_request request);
+static void http_test001_server_on_data_wildcard_route(struct http_server *server, struct http_client *client, struct http_request request);
+static void http_test001_server_on_malformed_request(struct http_server *server, struct http_client *client, enum parse_request_error_types error, void *data);
 static void http_test001_server_on_disconnect(struct http_server *server, socket_t sockfd, int is_error, void *data);
 
 static void http_test001_client_on_connect(struct http_client *client, void *data);
@@ -100,19 +100,19 @@ static void print_response(struct http_response response)
     printf("body: %s\n\n", http_response_get_body(&response));
 };
 
-static void http_test001_server_on_connect(struct http_server *server, struct tcp_client *client, void *data)
+static void http_test001_server_on_connect(struct http_server *server, struct http_client *client, void *data)
 {
     http_test001_server_connect = 1;
 
     char ip[INET6_ADDRSTRLEN] = {0};
-    if (client->sockaddr.sa_family == AF_INET)
+    if (client->client->sockaddr.sa_family == AF_INET)
     {
-        struct sockaddr_in *addr = (struct sockaddr_in*)&client->sockaddr;
+        struct sockaddr_in *addr = (struct sockaddr_in*)&client->client->sockaddr;
         inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
     }
     else
     {
-        struct sockaddr_in6 *addr = (struct sockaddr_in6*)&client->sockaddr;
+        struct sockaddr_in6 *addr = (struct sockaddr_in6*)&client->client->sockaddr;
         inet_ntop(AF_INET6, &addr->sin6_addr, ip, sizeof(ip));
     };
 
@@ -120,8 +120,10 @@ static void http_test001_server_on_connect(struct http_server *server, struct tc
     /** if need be, make your own map implementation and map sockfd -> ip */
 };
 
-static void http_test001_server_on_data(struct http_server *server, socket_t sockfd, struct http_request request)
+static void http_test001_server_on_data(struct http_server *server, struct http_client *client, struct http_request request)
 {
+    socket_t sockfd = client->client->sockfd;
+
     ++http_test001_server_data;
     
     printf("[HTTP TEST CASE 001] server received data from %d at endpoint \"/\"\n", sockfd);
@@ -173,12 +175,12 @@ static void http_test001_server_on_data(struct http_server *server, socket_t soc
         size_t file_size = ftell(file);
         fseek(file, 0, SEEK_SET);
 
-        http_server_send_response(server, sockfd, &response, NULL, 0);
+        http_server_send_response(server, client, &response, NULL, 0);
 
         char buffer[8192];
         size_t bytes_read;
         while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-            http_server_send_chunked_data(server, sockfd, buffer, bytes_read);
+            http_server_send_chunked_data(server, client, buffer, bytes_read);
         };
 
         // write image to ./tests/http/tests/server_send.png
@@ -187,7 +189,7 @@ static void http_test001_server_on_data(struct http_server *server, socket_t soc
             fwrite(buffer + i, 1, 1, file_w2);
         fclose(file_w2);
 
-        http_server_send_chunked_data(server, sockfd, NULL, 0);
+        http_server_send_chunked_data(server, client, NULL, 0);
 
         fclose(file);
         // http_server_close(server);
@@ -202,21 +204,23 @@ static void http_test001_server_on_data(struct http_server *server, socket_t soc
 
         vector_push(&response.headers, &transfer_encoding);
 
-        http_server_send_response(server, sockfd, &response, NULL, 0);
-        http_server_send_chunked_data(server, sockfd, "he", 2);
-        http_server_send_chunked_data(server, sockfd, "llo", 3);
-        http_server_send_chunked_data(server, sockfd, "world", 5);
-        http_server_send_chunked_data(server, sockfd, NULL, 0);
+        http_server_send_response(server, client, &response, NULL, 0);
+        http_server_send_chunked_data(server, client, "he", 2);
+        http_server_send_chunked_data(server, client, "llo", 3);
+        http_server_send_chunked_data(server, client, "world", 5);
+        http_server_send_chunked_data(server, client, NULL, 0);
     }
     else 
     {
         printf("sending \"hello\"\n");
-        http_server_send_response(server, sockfd, &response, "hello", 5);
+        http_server_send_response(server, client, &response, "hello", 5);
     }
 };
 
-static void http_test001_server_on_data_wrong_route(struct http_server *server, socket_t sockfd, struct http_request request)
+static void http_test001_server_on_data_wrong_route(struct http_server *server, struct http_client *client, struct http_request request)
 {
+    socket_t sockfd = client->client->sockfd;
+
     ++http_test001_server_data;
     printf("Sending \"later\"\n");
     
@@ -235,13 +239,14 @@ static void http_test001_server_on_data_wrong_route(struct http_server *server, 
     vector_init(&response.headers, 1, sizeof(struct http_header));
     vector_push(&response.headers, &content_type);
 
-    http_server_send_response(server, sockfd, &response, "later", 5);
+    http_server_send_response(server, client, &response, "later", 5);
 };
 
-static void http_test001_server_on_data_wildcard_route(struct http_server *server, socket_t sockfd, struct http_request request) { printf("[HTTP TEST CASE 001] defaulted to /* ... failure...\n"); };
+static void http_test001_server_on_data_wildcard_route(struct http_server *server, struct http_client *client, struct http_request request) { printf("[HTTP TEST CASE 001] defaulted to /* ... failure...\n"); };
 
-static void http_test001_server_on_malformed_request(struct http_server *server, socket_t sockfd, enum parse_request_error_types error, void *data)
+static void http_test001_server_on_malformed_request(struct http_server *server, struct http_client *client, enum parse_request_error_types error, void *data)
 {
+    socket_t sockfd = client->client->sockfd;
     printf("[HTTP TEST CASE 001] server could not process request from %d\n", sockfd);
 };
 
@@ -251,6 +256,11 @@ static void http_test001_server_on_disconnect(struct http_server *server, socket
     {
         http_test001_server_disconnect = 1;
         printf("[HTTP TEST CASE 001] server disconnected from from %d\n", sockfd);
+    }
+    else
+    {
+        struct http_client *client = map_get(&server->clients, &sockfd, sizeof(sockfd));
+        printf("[HTTP TEST CASE 001] client disconnected from server %d\n", sockfd);
     };
 };
 
