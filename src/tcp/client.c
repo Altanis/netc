@@ -198,7 +198,8 @@ int tcp_client_close(struct tcp_client *client, int is_error)
     if (client->on_disconnect != NULL) client->on_disconnect(client, is_error, client->data);
 
     socket_t sockfd = client->sockfd;
-
+    netc_tcp_client_listening = 0;
+    
 #ifdef _WIN32
     int result = closesocket(sockfd);
 #else
@@ -206,8 +207,6 @@ int tcp_client_close(struct tcp_client *client, int is_error)
 #endif
 
     if (result == -1) return netc_error(CLOSE);
-
-    netc_tcp_client_listening = 0;
 
     return 0;
 };

@@ -130,6 +130,7 @@ int udp_client_receive(struct udp_client *client, char *message, size_t msglen, 
 int udp_client_close(struct udp_client *client)
 {
     socket_t sockfd = client->sockfd;
+    netc_udp_client_listening = 0;
 
 #ifdef _WIN32
     int result = closesocket(sockfd);
@@ -138,8 +139,6 @@ int udp_client_close(struct udp_client *client)
 #endif
 
     if (result == -1) return netc_error(CLOSE);
-
-    netc_udp_client_listening = 0;
 
     return 0;
 };

@@ -161,6 +161,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd, void *data)
 static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, int is_error, void *data)
 {
     struct http_server *http_server = data;
+    // todo altanis: this segfaults
     struct http_client *client = map_get(&http_server->clients, &sockfd, sizeof(sockfd));
 
     if (http_server->on_disconnect != NULL)

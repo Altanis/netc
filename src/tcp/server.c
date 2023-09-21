@@ -232,14 +232,18 @@ int tcp_server_receive(socket_t sockfd, char *message, size_t msglen, int flags)
 
 int tcp_server_close_self(struct tcp_server *server)
 {
-    int result = close(server->sockfd);
-    if (result == -1) return netc_error(CLOSE);
-
     netc_tcp_server_listening = 0;
+
+#ifdef _WIN32
+    int result = closesocket(server->sockfd);
+#else
+    int result = close(server->sockfd);
+#endif
+    if (result == -1) return netc_error(CLOSE);
 
     if (server->on_disconnect != NULL) 
         server->on_disconnect(server, server->sockfd, 0, server->data);
-
+        
     return 0;
 };
 

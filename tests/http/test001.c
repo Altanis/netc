@@ -39,6 +39,8 @@
 #define ANSI_GREEN "\x1b[32m"
 #define ANSI_RESET "\x1b[0m"
 
+static struct http_server server = {0};
+
 /** At the end of this test, all of these values must equal 1 unless otherwise specified. */
 static int http_test001_server_connect = 0;
 static int http_test001_server_data = 0; // 0 = passed /, 1 = passed /wow, 2 = passed /wow?x=1, 3 = passed /?x=1, 4 = passed /test (priority over /*)
@@ -192,7 +194,7 @@ static void http_test001_server_on_data(struct http_server *server, struct http_
         http_server_send_chunked_data(server, client, NULL, 0);
 
         fclose(file);
-        // http_server_close(server);
+        http_server_close(server);
     }
     else if (chunked)
     {
@@ -371,8 +373,8 @@ static void http_test001_client_on_data(struct http_client *client, struct http_
 
         printf("Wrote image to ./tests/http/tests/client_recv.png\n");
 
-        // http_client_close(client);
-    }
+        http_client_close(client);
+    };
 };
 
 static void http_test001_client_on_malformed_response(struct http_client *client, enum parse_response_error_types error, void *data)
@@ -389,7 +391,6 @@ static void http_test001_client_on_disconnect(struct http_client *client, int is
 
 static int http_test001()
 {
-    struct http_server server = {0};
     server.on_connect = http_test001_server_on_connect;
     server.on_malformed_request = http_test001_server_on_malformed_request;
     server.on_disconnect = http_test001_server_on_disconnect;

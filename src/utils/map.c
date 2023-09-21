@@ -49,13 +49,14 @@ void *map_get(struct map *map, void *key, size_t key_size)
 
     while (map->entries[index].key == NULL)
     {
-        if (memcmp(key, map->entries[index].key, key_size) == 0) break;
+        if (map->entries[index].key != NULL && memcmp(key, map->entries[index].key, key_size) == 0) break;
+        
         index = (index + 1) % map->capacity;
         if (index == start) return NULL;
     };
 
     return map->entries[index].value;
-};
+}
 
 void map_set(struct map *map, void *key, void *value, size_t key_size)
 {

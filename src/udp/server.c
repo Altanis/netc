@@ -140,6 +140,7 @@ int udp_server_receive(struct udp_server *server, char *message, size_t msglen, 
 int udp_server_close(struct udp_server *server)
 {
     socket_t sockfd = server->sockfd;
+    netc_udp_server_listening = 0;
 
 #ifdef _WIN32
     int result = closesocket(sockfd);
@@ -148,8 +149,6 @@ int udp_server_close(struct udp_server *server)
 #endif
 
     if (result == -1) return netc_error(CLOSE);
-
-    netc_udp_server_listening = 0;
 
     return 0;
 };
