@@ -89,13 +89,16 @@ You must use asynchronous events to be notified of when incoming connections, re
 #include <stdio.h>
 #include <netc/http/server.h>
 
-void on_connect(struct http_server *server, struct tcp_client *client)
+void on_connect(struct http_server *server, struct http_client *client)
 {
     /** Refer to documentation and header files for more information about TCP. */
+    struct tcp_client *client = client->client;
+    http_client->data = "389439"; /** You can store data in the client struct for callbacks. */
+
     printf("A connection has been established.\n");
 };
 
-void on_malformed_request(struct http_server *server, socket_t sockfd, enum parse_request_error_types error, void *data)
+void on_malformed_request(struct http_server *server, struct http_client *client, enum parse_request_error_types error, void *data)
 {
     /** An incoming request was unable to be parsed. */
 
@@ -105,13 +108,11 @@ void on_malformed_request(struct http_server *server, socket_t sockfd, enum pars
         case REQUEST_PARSE_ERROR_RECV: printf("the recv syscall failed.\n"); break;
         case REQUEST_PARSE_ERROR_BODY_TOO_BIG: printf("the body was too big.\n"); break;
         case REQUEST_PARSE_ERROR_TOO_MANY_HEADERS: printf("too many headers were sent.\n"); break;
-        case REQUEST_PARSE_ERROR_TIMEOUT:
-        {
-            printf("the request timed out, likely due to a DoS attempt.\n"); 
-            http_server_close_client(server, sockfd);
-            break;
-        };
-    }
+        case REQUEST_PARSE_ERROR_TIMEOUT: printf("the request timed out, likely due to a DoS attempt.\n"); break;
+    };
+
+    /** It's recommended to close the client. */
+    http_server_close_client(server, client);
 };
 
 static void on_disconnect(struct http_server *server, socket_t sockfd, int is_error, void *data)
@@ -123,7 +124,7 @@ static void on_disconnect(struct http_server *server, socket_t sockfd, int is_er
 };
 
 /** The callback for the /echo route (in the example above). */
-void callback_echo(struct http_server *server, socket_t sockfd, struct http_request request)
+void callback_echo(struct http_server *server, struct http_client *client, struct http_request request)
 {
     printf("An incoming request has come!\n");
 
@@ -150,8 +151,8 @@ void callback_echo(struct http_server *server, socket_t sockfd, struct http_requ
     };
 
     char *body = http_request_get_body(&request);
-    // Printing this will cause undefined behavior if the body is binary data.
-    // Instrad, do this:
+    // In the event this is binary data, printing may terminate early
+    // because the binary data may contain '\0'
     printf("BODY:");
     for (size_t i = 0; i < request.body_size; ++i) printf("%c", body[i]);
     printf("\n"); 
@@ -162,7 +163,7 @@ void callback_echo(struct http_server *server, socket_t sockfd, struct http_requ
 Sending a response to a request is a straightforward process. The following code snippet shows how to send a response (based off our previous examples).
 
 ```c
-void callback_404(struct http_server *server, socket_t sockfd, struct http_request request)
+void callback_404(struct http_server *server, struct http_client *client, struct http_request request)
 {
     struct http_response response = {0};
     /** Similar to before, you can't use raw strings. You need to use a setter. */
@@ -194,7 +195,7 @@ void callback_404(struct http_server *server, socket_t sockfd, struct http_reque
     // You should directly provide the data to the send function.
 
     /** Send the response. */
-    http_server_send_response(server, sockfd, &response, "Not Found" /** the buffer to send */, 9 /** the length of the buffer */);
+    http_server_send_response(server, client, &response, "Not Found" /** the buffer to send */, 9 /** the length of the buffer */);
 
     // NOTE: You are able to send binary data.
     // Ensure you set the correct Content-Type header.
@@ -203,7 +204,7 @@ void callback_404(struct http_server *server, socket_t sockfd, struct http_reque
     vector_free(&response.headers);
 };
 
-void callback_echo(struct http_server *server, socket_t sockfd, struct http_request request)
+void callback_echo(struct http_server *server, struct http_client *client, struct http_request request)
 {
     printf("An incoming request has come!\n");
 
@@ -263,7 +264,7 @@ void callback_echo(struct http_server *server, socket_t sockfd, struct http_requ
     // You should directly provide the data to the send function.
 
     /** Send the response. */
-    http_server_send_response(server, sockfd, &response, body, request.body_size);
+    http_server_send_response(server, client, &response, body, request.body_size);
 
     // NOTE: You are able to send binary data.
     // Replace NULL with your binary data, and 0
@@ -277,7 +278,50 @@ void callback_echo(struct http_server *server, socket_t sockfd, struct http_requ
 
 ### Sending Files <a name="sending-files-server"/>
 
-TBD.
+Sending a file to a client is possible in two ways: waiting for the file to be read into memory, or sending the file in chunks. The following code snippet shows how to do both.
+
+```c
+/** Assume that the server is already initialized as `server`, and a response with correct headers and MIME type is initialized as `response`. */
+
+#define CHUNKED 0
+
+if (CHUNKED == 0)
+{
+    /** Add Transfer-Encoding: chunked header. */
+    struct http_header transfer_encoding_header = {0};
+    http_header_set_name(&transfer_encoding_header, "Transfer-Encoding");
+    http_header_set_value(&transfer_encoding_header, "chunked");
+
+    vector_push(&response.headers, &transfer_encoding_header);
+
+    FILE *file = fopen("file.png", "r");
+    fseek(file, 0, SEEK_END);
+    size_t file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char *buffer = malloc(file_size);
+    fread(buffer, 1, file_size, file);
+
+    /** Send the response. */
+    http_server_send_response(server, client, &response, buffer, file_size);
+}
+else
+{
+    FILE *file = fopen("file.png", "r");
+    fseek(file, 0, SEEK_END);
+    size_t file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char buffer[file_size];
+    size_t bytes_read = 0;
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
+    {
+        http_server_send_chunked_data(server, client, buffer, bytes_read);
+    };
+
+    http_server_send_chunked_data(server, client, NULL, 0 /** send the terminating chunk */);
+};
+```
 
 ## HTTP Client <a name="http-server"/>
 The HTTP component of this library is purely asynchronous, and the underlying TCP mechanism will only be nonblocking.
@@ -427,4 +471,47 @@ vector_free(&request.headers);
 
 ### Sending Files <a name="sending-files-client"/>
 
-TBD.
+Sending a file to a server is possible in two ways: waiting for the file to be read into memory, or sending the file in chunks. The following code snippet shows how to do both.
+
+```c
+/** Assume that the client is already initialized as `client`, and a request with correct headers and MIME type is initialized as `request`. */
+
+#define CHUNKED 0
+
+if (CHUNKED == 0)
+{
+    /** Add Transfer-Encoding: chunked header. */
+    struct http_header transfer_encoding_header = {0};
+    http_header_set_name(&transfer_encoding_header, "Transfer-Encoding");
+    http_header_set_value(&transfer_encoding_header, "chunked");
+
+    vector_push(&request.headers, &transfer_encoding_header);
+
+    FILE *file = fopen("file.png", "r");
+    fseek(file, 0, SEEK_END);
+    size_t file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char *buffer = malloc(file_size);
+    fread(buffer, 1, file_size, file);
+
+    /** Send the request. */
+    http_client_send_request(client, &request, buffer, file_size);
+}
+else
+{
+    FILE *file = fopen("file.png", "r");
+    fseek(file, 0, SEEK_END);
+    size_t file_size = ftell(file);
+    fseek(file, 0, SEEK_SET);
+
+    char buffer[file_size];
+    size_t bytes_read = 0;
+    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
+    {
+        http_client_send_chunked_data(client, buffer, bytes_read);
+    };
+
+    http_client_send_chunked_data(client, NULL, 0 /** send the terminating chunk */);
+};
+```

@@ -106,20 +106,20 @@ static void http_test001_server_on_connect(struct http_server *server, struct ht
 {
     http_test001_server_connect = 1;
 
-    char ip[INET6_ADDRSTRLEN] = {0};
+    char *ip = calloc(INET6_ADDRSTRLEN, sizeof(char));
     if (client->client->sockaddr.sa_family == AF_INET)
     {
         struct sockaddr_in *addr = (struct sockaddr_in*)&client->client->sockaddr;
-        inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
+        inet_ntop(AF_INET, &addr->sin_addr, ip, client->client->sockfd);
     }
     else
     {
         struct sockaddr_in6 *addr = (struct sockaddr_in6*)&client->client->sockaddr;
-        inet_ntop(AF_INET6, &addr->sin6_addr, ip, sizeof(ip));
+        inet_ntop(AF_INET6, &addr->sin6_addr, ip, client->client->sockfd);
     };
 
-    printf("[HTTP TEST CASE 001] server accepting client. ip: %s\n", ip);
-    /** if need be, make your own map implementation and map sockfd -> ip */
+    client->data = ip;
+    printf("[HTTP TEST CASE 001] server accepting client. ip: %s\n", client->data);
 };
 
 static void http_test001_server_on_data(struct http_server *server, struct http_client *client, struct http_request request)
@@ -128,7 +128,7 @@ static void http_test001_server_on_data(struct http_server *server, struct http_
 
     ++http_test001_server_data;
     
-    printf("[HTTP TEST CASE 001] server received data from %d at endpoint \"/\"\n", sockfd);
+    printf("[HTTP TEST CASE 001] server received data from %s at endpoint \"/\"\n", client->data);
     print_request(request);
 
     int chunked = 0;
@@ -226,7 +226,7 @@ static void http_test001_server_on_data_wrong_route(struct http_server *server, 
     ++http_test001_server_data;
     printf("Sending \"later\"\n");
     
-    printf("[HTTP TEST CASE 001] server received data from %d at endpoint \"/test\"\n", sockfd);
+    printf("[HTTP TEST CASE 001] server received data from %s at endpoint \"/test\"\n", client->data);
     print_request(request);
 
     struct http_response response = {0};
@@ -249,7 +249,7 @@ static void http_test001_server_on_data_wildcard_route(struct http_server *serve
 static void http_test001_server_on_malformed_request(struct http_server *server, struct http_client *client, enum parse_request_error_types error, void *data)
 {
     socket_t sockfd = client->client->sockfd;
-    printf("[HTTP TEST CASE 001] server could not process request from %d\n", sockfd);
+    printf("[HTTP TEST CASE 001] server could not process request from %s\n", client->data);
 };
 
 static void http_test001_server_on_disconnect(struct http_server *server, socket_t sockfd, int is_error, void *data)

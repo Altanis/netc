@@ -13,7 +13,7 @@ A cross-platform networking library for TCP, UDP, HTTP, and WS sockets. Written 
         - [X] URL Percent Encoding/Decoding
         - [X] Wildcards
         - [X] Chunked Encoding
-        - [ ] Binary Data
+        - [X] Binary Data
         - [ ] Keep Alive
         - [ ] HTTP Encoding/Decoding
         - [ ] Compression/Decompression
