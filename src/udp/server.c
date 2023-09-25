@@ -20,15 +20,13 @@
 #include <sys/errno.h>
 #endif
 
-__thread int netc_udp_server_listening = 0;
-
 int udp_server_main_loop(struct udp_server *server)
 {
     /** The server socket should be nonblocking when listening for events. */
     socket_set_non_blocking(server->sockfd);
-    netc_udp_server_listening = 1;
+    server->listening = 1;
 
-    while (netc_udp_server_listening)
+    while (server->listening)
     {
 #ifdef __linux__
         int pfd = server->pfd;
@@ -48,7 +46,7 @@ int udp_server_main_loop(struct udp_server *server)
         if (nev == -1) return netc_error(POLL_FD);
 #endif
 
-        if (netc_udp_server_listening == 0) break;
+        if (server->listening == 0) break;
 
 #ifdef __linux__
         struct epoll_event ev = events[0];
@@ -79,6 +77,8 @@ int udp_server_init(struct udp_server *server, struct sockaddr addr, int non_blo
 
     server->sockfd = socket(protocol, SOCK_DGRAM, 0); // IPv4, UDP, 0
     if (server->sockfd == -1) return netc_error(SOCKET_C);
+
+    server->listening = 0;
 
     if (non_blocking == 0) return 0;
     if (socket_set_non_blocking(server->sockfd) == -1) return netc_error(FD_CTL);
@@ -140,7 +140,7 @@ int udp_server_receive(struct udp_server *server, char *message, size_t msglen, 
 int udp_server_close(struct udp_server *server)
 {
     socket_t sockfd = server->sockfd;
-    netc_udp_server_listening = 0;
+    server->listening = 0;
 
 #ifdef _WIN32
     int result = closesocket(sockfd);

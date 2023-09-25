@@ -3,8 +3,6 @@
 
 #include "udp/server.h"
 
-extern __thread int netc_udp_client_listening;
-
 /** A structure representing a UDP client. */
 struct udp_client
 {
@@ -12,6 +10,9 @@ struct udp_client
     socket_t sockfd;
         /** The client's address. */
     struct sockaddr sockaddr;
+
+    /** Whether or not the client is polling. */
+    int listening;
 
 #ifndef _WIN32
     /** The polling file descriptor. */
@@ -24,9 +25,6 @@ struct udp_client
     /** The callback for when data is received. */
     void (*on_data)(struct udp_client *client, void *data);
 };
-
-/** Whether or not the client is listening for events. */
-extern __thread int netc_udp_client_listening;
 
 /** The main loop of a nonblocking UDP client. */
 int udp_client_main_loop(struct udp_client *client);

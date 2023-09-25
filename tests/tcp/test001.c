@@ -61,7 +61,7 @@ static void tcp_test001_client_on_disconnect(struct tcp_client *client, int is_e
 
 static void *tcp_test001_server_thread_nonblocking_main(void *arg)
 {
-    struct tcp_server *server = (struct tcp_server*)arg;
+    struct tcp_server *server = (struct tcp_server *)arg;
     int r = tcp_server_main_loop(server);
     if (r != 0) netc_perror(ANSI_RED "[TCP TEST CASE 001] server main loop aborted", stderr);
 
@@ -108,7 +108,7 @@ static void tcp_test001_on_disconnect(struct tcp_server *server, socket_t sockfd
 
 static void *tcp_test001_client_thread_nonblocking_main(void *arg)
 {
-    struct tcp_client *client = (struct tcp_client*)arg;
+    struct tcp_client *client = (struct tcp_client *)arg;
     int r = tcp_client_main_loop(client);
     if (r != 0) netc_perror(ANSI_RED "[TCP TEST CASE 001] client main loop aborted", stderr);
 
@@ -170,14 +170,14 @@ static int tcp_test001()
     };
 
     int init_result = 0;
-    if ((init_result = tcp_server_init(server, *(struct sockaddr*)&saddr, SERVER_NON_BLOCKING)) != 0)
+    if ((init_result = tcp_server_init(server, *(struct sockaddr *)&saddr, SERVER_NON_BLOCKING)) != 0)
     {
         netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to initialize", stderr);
         return 1;
     };
 
     int optval = 1;
-    if (setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(optval)) != 0)
+    if (setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&optval, sizeof(optval)) != 0)
     {
         netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to set socket options", stderr);
         return 1;
@@ -218,7 +218,7 @@ static int tcp_test001()
     };
 
     int client_init_result = 0;
-    if ((client_init_result = tcp_client_init(client, *(struct sockaddr*)&addr, CLIENT_NON_BLOCKING)) != 0)
+    if ((client_init_result = tcp_client_init(client, *(struct sockaddr *)&addr, CLIENT_NON_BLOCKING)) != 0)
     {
         netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to initialize", stderr);
         return 1;

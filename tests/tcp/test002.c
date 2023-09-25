@@ -55,7 +55,7 @@ static void *tcp_test002_client_thread_blocking_main(void *arg);
 
 static void *tcp_test002_server_thread_blocking_main(void *arg)
 {
-    struct tcp_server *server = (struct tcp_server*)arg;
+    struct tcp_server *server = (struct tcp_server *)arg;
     struct tcp_client *client = malloc(sizeof(struct tcp_client));
 
     int accept_result;
@@ -105,7 +105,7 @@ static void *tcp_test002_server_thread_blocking_main(void *arg)
 
 static void *tcp_test002_client_thread_blocking_main(void *arg)
 {
-    struct tcp_client *client = (struct tcp_client*)arg;
+    struct tcp_client *client = (struct tcp_client *)arg;
 
     int client_connect_result = 0;
     if ((client_connect_result = tcp_client_connect(client)) != 0)
@@ -176,14 +176,14 @@ static int tcp_test002()
     };
 
     int init_result = 0;
-    if ((init_result = tcp_server_init(server, *(struct sockaddr*)&saddr, SERVER_NON_BLOCKING)) != 0)
+    if ((init_result = tcp_server_init(server, *(struct sockaddr *)&saddr, SERVER_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", init_result, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 
     int optval = 1;
-    if (setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(optval)) != 0)
+    if (setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&optval, sizeof(optval)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] server failed to setsockopt\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -210,7 +210,7 @@ static int tcp_test002()
     struct tcp_client *client = malloc(sizeof(struct tcp_client));
 
     int client_init_result = 0;
-    if ((client_init_result = tcp_client_init(client, *(struct sockaddr*)&addr, CLIENT_NON_BLOCKING)) != 0)
+    if ((client_init_result = tcp_client_init(client, *(struct sockaddr *)&addr, CLIENT_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", client_init_result, netc_errno_reason, ANSI_RESET);
         return 1;

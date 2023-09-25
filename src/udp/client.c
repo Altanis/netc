@@ -12,15 +12,13 @@
 #include <sys/event.h>
 #endif
 
-__thread int netc_udp_client_listening = 0;
-
 int udp_client_main_loop(struct udp_client *client)
 {
     /** The client socket should be nonblocking when listening for events. */
     socket_set_non_blocking(client->sockfd);
-    netc_udp_client_listening = 1;
+    client->listening = 1;
 
-    while (netc_udp_client_listening)
+    while (client->listening)
     {
 #ifdef __linux__
         int pfd = client->pfd;
@@ -40,7 +38,7 @@ int udp_client_main_loop(struct udp_client *client)
         if (nev == -1) return netc_error(POLL_FD);
 #endif
 
-        if (netc_udp_client_listening == 0) break;
+        if (client->listening == 0) break;
 
 #ifdef __linux__
         struct epoll_event ev = events[0];
@@ -69,6 +67,8 @@ int udp_client_init(struct udp_client *client, struct sockaddr addr, int non_blo
 
     client->sockfd = socket(protocol, SOCK_DGRAM, 0);
     if (client->sockfd == -1) return netc_error(SOCKET_C);
+
+    client->listening = 0;
 
     if (non_blocking == 0) return 0;
     if (socket_set_non_blocking(client->sockfd) != 0) return netc_error(FD_CTL);
@@ -130,7 +130,7 @@ int udp_client_receive(struct udp_client *client, char *message, size_t msglen, 
 int udp_client_close(struct udp_client *client)
 {
     socket_t sockfd = client->sockfd;
-    netc_udp_client_listening = 0;
+    client->listening = 0;
 
 #ifdef _WIN32
     int result = closesocket(sockfd);

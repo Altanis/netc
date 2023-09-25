@@ -20,15 +20,13 @@
 #include <sys/errno.h>
 #endif
 
-__thread int netc_tcp_server_listening = 0;
-
 int tcp_server_main_loop(struct tcp_server *server)
 {
     /** The server socket should be nonblocking when listening for events. */
     socket_set_non_blocking(server->sockfd);
-    netc_tcp_server_listening = 1;
+    server->listening = 1;
 
-    while (netc_tcp_server_listening)
+    while (server->listening)
     {
 #ifdef __linux__
         int pfd = server->pfd;
@@ -48,7 +46,7 @@ int tcp_server_main_loop(struct tcp_server *server)
         if (nev == -1) return netc_error(POLL_FD);
 #endif
 
-        if (netc_tcp_server_listening == 0) break;
+        if (server->listening == 0) break;
 
         for (int i = 0; i < nev; ++i)
         {
@@ -131,6 +129,7 @@ int tcp_server_init(struct tcp_server *server, struct sockaddr address, int non_
     if (server->sockfd == -1) return netc_error(SOCKET_C);
 
     server->client_count = 0;
+    server->listening = 0;
 
     if (server->non_blocking == 0) return 0;
     if (socket_set_non_blocking(server->sockfd) != 0) return netc_error(FD_CTL);
@@ -185,7 +184,7 @@ int tcp_server_listen(struct tcp_server *server, int backlog)
 int tcp_server_accept(struct tcp_server *server, struct tcp_client *client)
 {
     socket_t sockfd = server->sockfd;
-    struct sockaddr *addr = (struct sockaddr*)&client->sockaddr;
+    struct sockaddr *addr = (struct sockaddr *)&client->sockaddr;
     socklen_t addrlen = sizeof(client->sockaddr);
 
     int result = accept(sockfd, addr, &addrlen);
@@ -232,7 +231,7 @@ int tcp_server_receive(socket_t sockfd, char *message, size_t msglen, int flags)
 
 int tcp_server_close_self(struct tcp_server *server)
 {
-    netc_tcp_server_listening = 0;
+    server->listening = 0;
 
 #ifdef _WIN32
     int result = closesocket(server->sockfd);

@@ -59,7 +59,7 @@ static int udp_test001();
 
 static void *udp_test001_server_thread_nonblocking_main(void *arg)
 {
-    struct udp_server *server = (struct udp_server*)arg;
+    struct udp_server *server = (struct udp_server *)arg;
     int r = udp_server_main_loop(server);
     if (r != 0) printf(ANSI_RED "[UDP TEST CASE 001] server main loop aborted:\nerrno: %d\nreason: %d\n%s", r, netc_errno_reason, ANSI_RESET);
 
@@ -93,7 +93,7 @@ static void udp_test001_server_on_data(struct udp_server *server, void *data)
 
 static void *udp_test001_client_thread_nonblocking_main(void *arg)
 {
-    struct udp_client *client = (struct udp_client*)arg;
+    struct udp_client *client = (struct udp_client *)arg;
     int r = udp_client_main_loop(client);
     if (r != 0) printf(ANSI_RED "[UDP TEST CASE 001] client main loop aborted:\nerrno: %d\nreason: %d\n%s", r, netc_errno_reason, ANSI_RESET);
 
@@ -115,7 +115,7 @@ static void udp_test001_client_on_data(struct udp_client *client, void *data)
     } else printf("[UDP TEST CASE 001] client received data from server %s\n", buffer);
 
     udp_test001_client_data = 1;
-    netc_udp_client_listening = 0;
+    client->listening = 0;
 
     udp_client_close(client);
 };
@@ -132,14 +132,14 @@ static int udp_test001()
     };
 
     int init_result = 0;
-    if ((init_result = udp_server_init(server, *(struct sockaddr*)&udp_server_addr, SERVER_NON_BLOCKING)) != 0)
+    if ((init_result = udp_server_init(server, *(struct sockaddr *)&udp_server_addr, SERVER_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[UDP TEST CASE 001] server init failed:\nerrno: %d\nreason: %d\n%s", init_result, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 
     int optval = 1;
-    if (setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, (char*)&optval, sizeof(optval)) != 0)
+    if (setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&optval, sizeof(optval)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] server failed to setsockopt\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -171,7 +171,7 @@ static int udp_test001()
     };
 
     int client_init_result = 0;
-    if ((client_init_result = udp_client_init(client, *(struct sockaddr*)&udp_client_addr, CLIENT_NON_BLOCKING)) != 0)
+    if ((client_init_result = udp_client_init(client, *(struct sockaddr *)&udp_client_addr, CLIENT_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[UDP TEST CASE 001] client init failed:\nerrno: %d\nreason: %d\n%s", init_result, netc_errno_reason, ANSI_RESET);
         return 1;

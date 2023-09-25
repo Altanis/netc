@@ -22,6 +22,9 @@ struct udp_server
     /** The server's address. */
     struct sockaddr sockaddr;
 
+    /** Whether or not the server is polling. */
+    int listening;
+
 #ifndef _WIN32
     /** The polling file descriptor. */
     int pfd;
@@ -33,9 +36,6 @@ struct udp_server
     /** The callback for when data is received. */
     void (*on_data)(struct udp_server *server, void *data);
 };
-
-/** Whether or not the server is listening for events. */
-extern __thread int netc_udp_server_listening;
 
 /** The main loop of a nonblocking UDP server. */
 int udp_server_main_loop(struct udp_server *server);

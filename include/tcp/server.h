@@ -19,6 +19,9 @@ struct tcp_client
     /** The address of the server to connect to. */
     struct sockaddr sockaddr;
 
+    /** Whether or not the client is polling. */
+    int listening;
+
 #ifndef _WIN32
     /** The polling file descriptor. */
     int pfd;
@@ -42,7 +45,9 @@ struct tcp_server
     socket_t sockfd;
     /** The server's address. */
     struct sockaddr address;
-    
+
+    /** Whether or not the server is polling. */
+    int listening;
     /** Whether or not the socket is nonblocking. */
     int non_blocking;
 
@@ -67,9 +72,6 @@ struct tcp_server
     /** The callback for when a client socket disconnects. */
     void (*on_disconnect)(struct tcp_server *server, socket_t sockfd, int is_error, void *data);
 };
-
-/** Whether or not the server is listening for events. */
-extern __thread int netc_tcp_server_listening;
 
 /** The main loop of a nonblocking TCP server. */
 int tcp_server_main_loop(struct tcp_server *server);

@@ -3,8 +3,6 @@
 
 #include "tcp/server.h"
 
-extern __thread int netc_tcp_client_listening;
-
 /** The main loop of a nonblocking TCP client. */
 int tcp_client_main_loop(struct tcp_client *client);
 

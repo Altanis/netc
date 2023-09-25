@@ -113,7 +113,7 @@ int main()
         .sin_addr.s_addr = INADDR_ANY,
     };
 
-    if (http_server_init(&server, *(struct sockaddr*)&server_address, BACKLOG) != 0) 
+    if (http_server_init(&server, *(struct sockaddr *)&server_address, BACKLOG) != 0) 
     {
         netc_perror("http_server_init", stderr);
         return 1;

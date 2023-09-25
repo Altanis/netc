@@ -33,7 +33,7 @@ struct sockaddr_in sockaddr =
 };
 
 /** Create the UDP server. */
-int init_result = udp_server_init(&server, *(struct sockaddr*)&sockaddr, 1 /** use non-blocking mode or not */);
+int init_result = udp_server_init(&server, *(struct sockaddr *)&sockaddr, 1 /** use non-blocking mode or not */);
 if (init_result != 0) 
 {
     /** Handle error. */
@@ -151,7 +151,7 @@ struct sockaddr_in sockaddr =
 if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to convert address.\n"); /** Handle error. */
 
 /** Create the UDP client. */
-int init_result = udp_client_init(&client, 0 *(struct sockaddr*)&sockaddr, 1 /** use non-blocking mode or not */);
+int init_result = udp_client_init(&client, 0 *(struct sockaddr *)&sockaddr, 1 /** use non-blocking mode or not */);
 if (init_result != 0) 
 {
     /** Handle error. */

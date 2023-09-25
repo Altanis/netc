@@ -13,11 +13,19 @@ struct http_client
     /** User defined data to be passed to the event callbacks. */
     void *data;
 
-    /** 
-     * Specific to a server using this struct as a client representation.
-     * The parsing state of the server's incoming request.
-    */
-    struct http_server_parsing_state parsing_state;
+    union
+    {
+        /** 
+         * Specific to a server using this struct as a client representation.
+         * The parsing state of the server's incoming request.
+        */
+        struct http_server_parsing_state server_parsing_state;
+        /** 
+         * Specific to a client using this struct as a client representation.
+         * The parsing state of the client's incoming response.
+        */
+        struct http_client_parsing_state client_parsing_state;
+    };
 
     /** The callback for when a client connects. */
     void (*on_connect)(struct http_client *client, void *data);
@@ -39,7 +47,7 @@ int http_client_send_chunked_data(struct http_client *client, char *data, size_t
 /** Sends an HTTP request to the server. */
 int http_client_send_request(struct http_client *client, struct http_request *request, const char *data, size_t data_length);
 /** Parses an HTTP response from the server. */
-int http_client_parse_response(struct http_client *client, struct http_response *response);
+int http_client_parse_response(struct http_client *client, struct http_client_parsing_state *current_state);
 
 /** Closes the HTTP client. */
 int http_client_close(struct http_client *client);

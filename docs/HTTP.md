@@ -38,7 +38,7 @@ struct sockaddr_in addr =
     .sin_port = htons(8080)
 };
 
-int r = http_server_init(&server, *(struct sockaddr*)&addr, 10 /** the max number of connections in backlog */);
+int r = http_server_init(&server, *(struct sockaddr *)&addr, 10 /** the max number of connections in backlog */);
 if (r != 0) 
 {
     /** Handle error. */
@@ -348,7 +348,7 @@ struct sockaddr_in sockaddr =
 if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to convert address.\n"); /** Handle error. */
 
 /** Create the HTTP client. */
-int init_result = http_client_init(&client, *(struct sockaddr*)&sockaddr);
+int init_result = http_client_init(&client, *(struct sockaddr *)&sockaddr);
 if (init_result != 0) 
 {
     /** Handle error. */

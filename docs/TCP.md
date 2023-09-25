@@ -36,7 +36,7 @@ struct sockaddr_in sockaddr =
 };
 
 /** Create the TCP server. */
-int init_result = tcp_server_init(&server, *(struct sockaddr*)&sockaddr, 1 /** use non-blocking mode or not */);
+int init_result = tcp_server_init(&server, *(struct sockaddr *)&sockaddr, 1 /** use non-blocking mode or not */);
 if (init_result != 0) 
 {
     /** Handle error. */
@@ -113,7 +113,7 @@ void on_data(struct tcp_server *server, socket_t sockfd, void *data)
 }
     else
     {
-        recv_amt = *(uint32_t*)data_size;
+        recv_amt = *(uint32_t *)data_size;
         char buffer[recv_amt];
         r = tcp_server_receive(sockfd, buffer, recv_amt, 0 /** flags */);
         if (r == -1) 
@@ -192,7 +192,7 @@ struct sockaddr_in sockaddr =
 if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to convert address.\n"); /** Handle error. */
 
 /** Create the TCP client. */
-int init_result = tcp_client_init(&client, *(struct sockaddr*)&sockaddr, 1 /** use non-blocking mode or not */);
+int init_result = tcp_client_init(&client, *(struct sockaddr *)&sockaddr, 1 /** use non-blocking mode or not */);
 if (init_result != 0) 
 {
     /** Handle error. */
@@ -249,7 +249,7 @@ void on_data(struct tcp_client *client, void *data)
 }
     else
     {
-        recv_amt = *(uint32_t*)data_size;
+        recv_amt = *(uint32_t *)data_size;
         char buffer[recv_amt];
         r = tcp_client_receive(client, buffer, recv_amt, 0 /** flags */);
         if (r == -1) 
@@ -289,7 +289,7 @@ Use the functions as normal. They will block.
 // assume a blocking client is already set up as `client`.
 
 // this will block until a connection is established.
-tcp_client_connect(&client, *(struct sockaddr*)&sockaddr, sizeof(sockaddr));
+tcp_client_connect(&client, *(struct sockaddr *)&sockaddr, sizeof(sockaddr));
 
 char buffer[1024] = {0};
 // this will block until data is received.

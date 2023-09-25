@@ -109,12 +109,12 @@ static void http_test001_server_on_connect(struct http_server *server, struct ht
     char *ip = calloc(INET6_ADDRSTRLEN, sizeof(char));
     if (client->client->sockaddr.sa_family == AF_INET)
     {
-        struct sockaddr_in *addr = (struct sockaddr_in*)&client->client->sockaddr;
+        struct sockaddr_in *addr = (struct sockaddr_in *)&client->client->sockaddr;
         inet_ntop(AF_INET, &addr->sin_addr, ip, client->client->sockfd);
     }
     else
     {
-        struct sockaddr_in6 *addr = (struct sockaddr_in6*)&client->client->sockaddr;
+        struct sockaddr_in6 *addr = (struct sockaddr_in6 *)&client->client->sockaddr;
         inet_ntop(AF_INET6, &addr->sin6_addr, ip, client->client->sockfd);
     };
 
@@ -194,7 +194,6 @@ static void http_test001_server_on_data(struct http_server *server, struct http_
         http_server_send_chunked_data(server, client, NULL, 0);
 
         fclose(file);
-        http_server_close(server);
     }
     else if (chunked)
     {
@@ -374,6 +373,7 @@ static void http_test001_client_on_data(struct http_client *client, struct http_
         printf("Wrote image to ./tests/http/tests/client_recv.png\n");
 
         http_client_close(client);
+        http_server_close(&server);
     };
 };
 
@@ -401,7 +401,7 @@ static int http_test001()
         .sin_port = htons(PORT)
     };
 
-    if (http_server_init(&server, *(struct sockaddr*)&addr, BACKLOG) != 0)
+    if (http_server_init(&server, *(struct sockaddr *)&addr, BACKLOG) != 0)
     {
         printf(ANSI_RED "[HTTP TEST CASE 001] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -418,7 +418,7 @@ static int http_test001()
     http_server_create_route(&server, &wildcard_route);
 
     pthread_t servt;
-    pthread_create(&servt, NULL, (void*)http_server_start, &server);
+    pthread_create(&servt, NULL, (void *)http_server_start, &server);
 
     struct http_client client = {0};
     client.on_connect = http_test001_client_on_connect;
@@ -437,14 +437,14 @@ static int http_test001()
         return 1;
     };
 
-    if (http_client_init(&client, *(struct sockaddr*)&cliaddr) != 0)
+    if (http_client_init(&client, *(struct sockaddr *)&cliaddr) != 0)
     {
         printf(ANSI_RED "[HTTP TEST CASE 001] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 
     pthread_t clit;
-    pthread_create(&clit, NULL, (void*)http_client_start, &client);
+    pthread_create(&clit, NULL, (void *)http_client_start, &client);
 
     pthread_join(clit, NULL);
     pthread_join(servt, NULL);
