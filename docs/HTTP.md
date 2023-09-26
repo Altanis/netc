@@ -7,14 +7,16 @@
     3. [Handling Asynchronous Events](#handling-asynchronous-events-server)
     4. [Sending Responses](#sending-data)
     5. [Sending Files](#sending-files-server)
+    6. [Keep Alive](#keep-alive-server)
 2. [HTTP Client](#http-client)
     1. [Creating a HTTP Client](#creating-a-http-client)
     2. [Handling Asynchronous Events](#handling-asynchronous-events-client)
     3. [Sending Requests](#sending-requests)
     4. [Sending Files](#sending-files-client)
+    5. [Keep Alive](#keep-alive-client)
 
 ## HTTP Server <a name="http-server"/>
-The HTTP component of this library is purely asynchronous, and the underlying TCP mechanism will only be nonblocking.
+The HTTP component of this library is purely asynchronous, and the underlying TCP mechanism will only be nonblocking. The HTTP server only supports HTTP/1.1 for now.
 
 ### Creating a HTTP Server <a name="creating-a-http-server"/>
 Creating a HTTP server is a straightforward process. The following code snippet shows how to create a HTTP server that listens on port 8080 and handles incoming connections.
@@ -186,7 +188,6 @@ void callback_404(struct http_server *server, struct http_client *client, struct
     // in that case.
 
     /** Initialize a vector to hold each header. */
-    /** response.headers is already an initialized vector. */
     vector_init(&response.headers, 1 /** capacity, gets resized if need be */, sizeof(struct http_header));
     vector_push(&response.headers, &content_type_header);
     // vector_push(&response.headers, &content_length_header);
@@ -255,7 +256,6 @@ void callback_echo(struct http_server *server, struct http_client *client, struc
     // in that case.
 
     /** Initialize a vector to hold each header. */
-    /** response.headers is already an initialized vector. */
     vector_init(&response.headers, 1 /** capacity, gets resized if need be */, sizeof(struct http_header));
     vector_push(&response.headers, &content_type_header);
     // vector_push(&response.headers, &content_length_header);
@@ -323,8 +323,43 @@ else
 };
 ```
 
+# Keep Alive <a name="keep-alive-server"/>
+Keep alive is a feature that allows the server to keep the underlying TCP connection open after sending a response. This allows the client to send more requests without having to reconnect. Keep alive generally is more performant.
+
+The server by default will keep the connection alive. As of current, there is no mechanism to time out the connection. The following code snippet shows how to disable keep alive. If you want to disable keep-alive, you can send a response with the `Connection: close` header.
+
+```c
+void callback_echo(struct http_server *server, struct http_client *client, struct http_request request)
+{
+    struct http_response response = {0};
+    /** Similar to before, you can't use raw strings. You need to use a setter. */
+    http_response_set_version(&response, "HTTP/1.1");
+    response.status_code = 200;
+    http_response_set_status_message(&response, "OK");
+
+    /** Create headers to send to the client. */
+    struct http_header content_type_header = {0};
+    http_header_set_name(&content_type_header, "Content-Type");
+    http_header_set_value(&content_type_header, "text/plain");
+
+    struct http_header connection_header = {0};
+    http_header_set_name(&connection_header, "Connection");
+    http_header_set_value(&connection_header, "close");
+
+    /** Initialize a vector to hold each header. */
+    vector_init(&response.headers, 1 /** capacity, gets resized if need be */, sizeof(struct http_header));
+    vector_push(&response.headers, &content_type_header);
+    // vector_push(&response.headers, &content_length_header);
+    vector_push(&response.headers, &connection_header);
+
+    /** Send the response. */
+    http_server_send_response(server, client, &response, "OK" /** the buffer to send */, 2 /** the length of the buffer */);
+};
+```
+
+
 ## HTTP Client <a name="http-server"/>
-The HTTP component of this library is purely asynchronous, and the underlying TCP mechanism will only be nonblocking.
+The HTTP component of this library is purely asynchronous, and the underlying TCP mechanism will only be nonblocking. The HTTP client supports only HTTP/1.1 for now.
 
 ### Creating a HTTP Client <a name="creating-a-http-client"/>
 Creating a HTTP client is a straightforward process. The following code snippet shows how to create a HTTP client that connects to localhost:8080.
@@ -449,7 +484,6 @@ http_header_set_value(&content_type_header, "text/plain");
 // in that case.
 
 /** Initialize a vector to hold each header. */
-/** request.headers is already an initialized vector. */
 vector_init(&request.headers, 1 /** capacity, gets resized if need be */, sizeof(struct http_header));
 vector_push(&request.headers, &content_type_header);
 // vector_push(&request.headers, &content_length_header);
@@ -515,3 +549,35 @@ else
     http_client_send_chunked_data(client, NULL, 0 /** send the terminating chunk */);
 };
 ```
+
+### Keep Alive <a name="keep-alive-client"/>
+Keep alive is a feature that allows the client to keep the underlying TCP connection open after sending a request. This allows the server to send more responses without having to reconnect. Keep alive generally is more performant.
+
+The client supports keep alive by default. To disable keep alive, you can send a request with the `Connection: close` header.
+
+```c
+struct http_request request = {0};
+/** Similar to before, you can't use raw strings. You need to use a setter. */
+http_request_set_method(&request, "GET");
+http_request_set_path(&request, "/echo");
+http_request_set_version(&request, "HTTP/1.1");
+
+/** Create headers to send to the server. */
+struct http_header content_type_header = {0};
+http_header_set_name(&content_type_header, "Content-Type");
+http_header_set_value(&content_type_header, "text/plain");
+
+struct http_header connection_header = {0};
+http_header_set_name(&connection_header, "Connection");
+http_header_set_value(&connection_header, "close");
+
+/** Initialize a vector to hold each header. */
+vector_init(&request.headers, 1 /** capacity, gets resized if need be */, sizeof(struct http_header));
+vector_push(&request.headers, &content_type_header);
+vector_push(&request.headers, &connection_header);
+
+/** Send the request. */
+http_client_send_request(client, &request, "hello" /** the buffer to send */, 5 /** the length of the buffer */);
+```
+
+Keep in mind that if the server sends a `Connection: close` header, the client will automatically close the connection and will no longer be usable to make new requests.

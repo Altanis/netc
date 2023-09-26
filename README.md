@@ -14,22 +14,21 @@ A cross-platform networking library for TCP, UDP, HTTP, and WS sockets. Written 
         - [X] Wildcards
         - [X] Chunked Encoding
         - [X] Binary Data
-        - [ ] Keep Alive
-        - [ ] HTTP Encoding/Decoding
+        - [X] Keep Alive
+            - [ ] Timeout 
         - [ ] Compression/Decompression
     - [X] Client
         - [X] URL Percent Encoding/Decoding
         - [X] Query String Encoding
         - [X] Chunked Encoding
         - [X] Binary Data
-        - [ ] Keep Alive
-        - [ ] HTTP Encoding/Decoding
+        - [X] Keep Alive
         - [ ] Compression/Decompression
 - [ ] WebSocket Abstraction
 - [ ] Threadpool
 - [ ] SSL/TLS Support (for HTTP/1.1 and WS Client)
 <!-- In my opinion, there is no point of providing SSL suport for servers due to reverse proxies providing them. -->
-- [ ] Windows Support
+- [ ] Linux/Windows Support
 - [ ] Buffering
 - [ ] HTTP/2 Abstractions
 - [ ] HTTP/3 and QUIC Abstractions

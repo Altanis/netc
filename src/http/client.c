@@ -33,6 +33,9 @@ static void _tcp_on_data(struct tcp_client *client, void *data)
 
     if (http_client->on_data != NULL)
         http_client->on_data(http_client, current_state.response, http_client->data);
+
+    if (http_client->client_close_flag)
+        tcp_client_close(client, 0);
 };
 
 static void _tcp_on_disconnect(struct tcp_client *client, int is_error, void *data)
@@ -63,6 +66,7 @@ int http_client_init(struct http_client *client, struct sockaddr address)
     tcp_client->on_disconnect = _tcp_on_disconnect;
 
     client->client = tcp_client;
+    client->client_close_flag = 0;
 
     return 0;
 };
@@ -262,6 +266,9 @@ parse_start:
                 current_state->content_length = atoi(sso_string_get(&header->value));
             else if (strcasecmp(sso_string_get(&header->name), "Transfer-Encoding") == 0 && strcasecmp(sso_string_get(&header->value), "chunked") == 0)
                 current_state->content_length = -1;
+            
+            if (strcasecmp(sso_string_get(&header->name), "Connection") == 0 && strcasecmp(sso_string_get(&header->value), "close") == 0)
+                client->client_close_flag = 1;
 
             vector_push(headers, header);
             memset(header, 0, sizeof(*header));
@@ -271,11 +278,6 @@ parse_start:
         };
         case RESPONSE_PARSING_STATE_CHUNK_SIZE:
         {
-                        char woffywoffy[4096] = {0};
-            int x = recv(sockfd, woffywoffy, 4096, MSG_PEEK);
-            printf("worg up.\n");
-            print_bytes(woffywoffy, x);
-
             if (current_state->chunk_data.size == 0)
             {
                 current_state->chunk_size = -1;
@@ -330,17 +332,7 @@ parse_start:
             for (size_t i = 0; i < bytes_received; ++i) vector_push(&current_state->chunk_data, buffer + i);
             if (bytes_received == length)
             {
-                printf("[women]:\n");
-                for (size_t i = 0; i < current_state->chunk_data.size; ++i)
-                {
-                    print_bytes((char *)vector_get(&current_state->chunk_data, i), 1);
-                };
-
-                printf("trying! to delete: %d\n", current_state->chunk_data.size - 1);
-                printf("the location of this data:");
-                print_bytes((char *)vector_get(&current_state->chunk_data, current_state->chunk_data.size - 1), 1);
-
-                size_t vec_size = current_state->chunk_data.size;
+               size_t vec_size = current_state->chunk_data.size;
 
                 vector_delete(&current_state->chunk_data, vec_size - 1); // delete \n
                 vector_delete(&current_state->chunk_data, vec_size - 2); // delete \r

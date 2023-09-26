@@ -55,6 +55,7 @@ static void _tcp_on_connect(struct tcp_server *server, void *data)
 
     struct http_client *client = malloc(sizeof(struct http_client));
     client->client = malloc(sizeof(struct tcp_client));
+    client->server_close_flag = 0;
 
     tcp_server_accept(server, client->client);
 
@@ -251,6 +252,9 @@ int http_server_send_chunked_data(struct http_server *server, struct http_client
     if (data_length != 0 && ((send_result = tcp_server_send(sockfd, data_length == 0 ? "" : data, data_length, 0)) <= 0)) return send_result;    
     if ((send_result = tcp_server_send(sockfd, "\r\n", 2, 0)) <= 2) return send_result;
 
+    if (data_length == 0 && client->server_close_flag)
+        tcp_server_close_client(server->server, client->client->sockfd, 0);
+
     // combine them all into one char buffer
     // char buffer[length + strlen(length_str) + 2];
     // memcpy(buffer, length_str, strlen(length_str));
@@ -283,6 +287,7 @@ int http_server_send_response(struct http_server *server, struct http_client *cl
     sso_string_concat_buffer(&response_str, "\r\n");
 
     int chunked = 0;
+    int has_connection_close = 0;
 
     for (size_t i = 0; i < response->headers.size; ++i)
     {
@@ -294,12 +299,16 @@ int http_server_send_response(struct http_server *server, struct http_client *cl
             chunked = 1;
         else if (!chunked && strcmp(name, "Content-Length") == 0)
             chunked = -1;
+        else if (client->server_close_flag && strcasecmp(name, "Connection") == 0 && strcasecmp(name, "close") == 0)
+            has_connection_close = 1;
 
         sso_string_concat_buffer(&response_str, name);
         sso_string_concat_buffer(&response_str, ": ");
         sso_string_concat_buffer(&response_str, value);
         sso_string_concat_buffer(&response_str, "\r\n");
     };
+
+    printf("should we close this connection? %s", client->server_close_flag ? "yes.." : "no..");
 
     if (chunked == 0)
     {
@@ -310,6 +319,9 @@ int http_server_send_response(struct http_server *server, struct http_client *cl
         sso_string_concat_buffer(&response_str, length_str);
         sso_string_concat_buffer(&response_str, "\r\n");
     };
+
+    if (has_connection_close == 0 && client->server_close_flag)
+        sso_string_concat_buffer(&response_str, "Connection: close\r\n");
 
     sso_string_concat_buffer(&response_str, "\r\n");
 
@@ -322,6 +334,9 @@ int http_server_send_response(struct http_server *server, struct http_client *cl
     {
         second_send = tcp_server_send(sockfd, (char*)data, data_length, 0);
         if (second_send <= 0) return second_send;
+
+        if (client->server_close_flag)
+            tcp_server_close_client(server->server, client->client->sockfd, 0);
     };
 
     return first_send + second_send;
@@ -489,6 +504,10 @@ parse_start:
             else if (strcasecmp(sso_string_get(&header->name), "Transfer-Encoding") == 0 && strcasecmp(sso_string_get(&header->value), "chunked") == 0)
             {
                 current_state->content_length = -1;
+            }
+            else if (strcasecmp(sso_string_get(&header->name), "Connection") == 0 && strcasecmp(sso_string_get(&header->value), "close") == 0)
+            {
+                client->server_close_flag = 1;
             };
 
             printf("[header value]: %s\n", sso_string_get(&header->value));

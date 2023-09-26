@@ -13,6 +13,22 @@ struct http_client
     /** User defined data to be passed to the event callbacks. */
     void *data;
 
+    union {
+        /** 
+         * Specific to a server using this struct as a client representation.
+         * Signals if the server should close the connection.
+         * Checked when sending a response.
+        */
+        int server_close_flag;
+
+        /** 
+         * Specific to a client using this struct as a client representation.
+         * Signals if the client should close the connection.
+         * Checked when receiving a response.
+        */
+        int client_close_flag;
+    };
+
     union
     {
         /** 
@@ -20,6 +36,7 @@ struct http_client
          * The parsing state of the server's incoming request.
         */
         struct http_server_parsing_state server_parsing_state;
+
         /** 
          * Specific to a client using this struct as a client representation.
          * The parsing state of the client's incoming response.

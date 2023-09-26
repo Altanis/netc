@@ -281,7 +281,7 @@ static void http_test001_client_on_connect(struct http_client *client, void *dat
     http_header_set_name(&content_type, "Content-Type");
     http_header_set_value(&content_type, "text/plain");
 
-    vector_init(&request.headers, 1, sizeof(struct http_header));
+    vector_init(&request.headers, 2, sizeof(struct http_header));
     vector_push(&request.headers, &content_type);
     
     http_client_send_request(client, &request, "hello", 5);
@@ -335,7 +335,12 @@ static void http_test001_client_on_data(struct http_client *client, struct http_
             http_header_set_name(&transfer_encoding, "Transfer-Encoding");
             http_header_set_value(&transfer_encoding, "chunked");
 
+            struct http_header connection = {0};
+            http_header_set_name(&connection, "Connection");
+            http_header_set_value(&connection, "close");
+
             vector_push(&request.headers, &transfer_encoding);
+            vector_push(&request.headers, &connection);
 
             FILE *file = fopen("./tests/http/image.png", "rb");
             if (file == NULL) perror("file is null\n");
@@ -372,7 +377,6 @@ static void http_test001_client_on_data(struct http_client *client, struct http_
 
         printf("Wrote image to ./tests/http/tests/client_recv.png\n");
 
-        http_client_close(client);
         http_server_close(&server);
     };
 };
