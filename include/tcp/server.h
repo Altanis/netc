@@ -31,11 +31,11 @@ struct tcp_client
     void *data;
 
     /** The callback for when the client has connected to the server. */
-    void (*on_connect)(struct tcp_client *client, void *data);
+    void (*on_connect)(struct tcp_client *client);
     /** The callback for when the client has received a message from the server. */
-    void (*on_data)(struct tcp_client *client, void *data);
+    void (*on_data)(struct tcp_client *client);
     /** The callback for when the client has disconnected from the server. */
-    void (*on_disconnect)(struct tcp_client *client, int is_error, void *data);
+    void (*on_disconnect)(struct tcp_client *client, int is_error);
 };
 
 /** A structure representing a TCP server. */
@@ -66,11 +66,11 @@ struct tcp_server
     void *data;
 
     /** The callback for when an incoming connection occurs. */
-    void (*on_connect)(struct tcp_server *server, void *data);
+    void (*on_connect)(struct tcp_server *server);
     /** The callback for when a message is received from a client. */
-    void (*on_data)(struct tcp_server *server, socket_t sockfd, void *data);
+    void (*on_data)(struct tcp_server *server, socket_t sockfd);
     /** The callback for when a client socket disconnects. */
-    void (*on_disconnect)(struct tcp_server *server, socket_t sockfd, int is_error, void *data);
+    void (*on_disconnect)(struct tcp_server *server, socket_t sockfd, int is_error);
 };
 
 /** The main loop of a nonblocking TCP server. */

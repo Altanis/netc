@@ -80,24 +80,25 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 #include <stdint.h>
 #include <netc/tcp/server.h>
 
-void on_connect(struct tcp_server *server, void *data)
+/** The server does not track current connected clients. You need to do it yourself. */
+/** You can use the map or vector structs provided by the library. */
+
+void on_connect(struct tcp_server *server)
 {
     struct tcp_client client = {0};
     int r = tcp_server_accept(server, &client);
     if (r != 0) 
-{
-    /** Handle error. */
-    netc_perror("failure", NULL);
-    return 1;
-}
+    {
+        /** Handle error. */
+        netc_perror("failure", NULL);
+        return 1;
+    }
 
     /** Do something with the client. */
     printf("Client connected. Their sockfd: %d\n", client.sockfd);
-
-    /** The server does not track current clients. You need to do it yourself. */
 };
 
-void on_data(struct tcp_server *server, socket_t sockfd, void *data)
+void on_data(struct tcp_server *server, socket_t sockfd)
 {
     /** An example of an efficient protocol would be 4 bytes for the size of the data and then the data itself. */
     char data_size[4] = {0};
@@ -106,22 +107,22 @@ void on_data(struct tcp_server *server, socket_t sockfd, void *data)
     uint32_t recv_amt = 0;
 
     if (r == -1) 
-{
-    /** Handle error. */
-    netc_perror("failure", NULL);
-    return 1;
-}
+    {
+        /** Handle error. */
+        netc_perror("failure", NULL);
+        return 1;
+    }
     else
     {
         recv_amt = *(uint32_t *)data_size;
         char buffer[recv_amt];
         r = tcp_server_receive(sockfd, buffer, recv_amt, 0 /** flags */);
         if (r == -1) 
-{
-    /** Handle error. */
-    netc_perror("failure", NULL);
-    return 1;
-}
+        {
+            /** Handle error. */
+            netc_perror("failure", NULL);
+            return 1;
+        }
         else
         {
             /** Do something with the data. */
@@ -130,7 +131,7 @@ void on_data(struct tcp_server *server, socket_t sockfd, void *data)
     };
 };
 
-void on_disconnect(struct tcp_server *server, socket_t sockfd, void *data)
+void on_disconnect(struct tcp_server *server, socket_t sockfd)
 {
     /** Do something with the client. */
     printf("Client disconnected. Their sockfd: %d\n", sockfd);
@@ -227,13 +228,13 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 #include <stdint.h>
 #include <netc/tcp/client.h>
 
-void on_connect(struct tcp_client *client, void *data)
+void on_connect(struct tcp_client *client)
 {
     /** Do something with the client. */
     printf("Connected to server.\n");
 };
 
-void on_data(struct tcp_client *client, void *data)
+void on_data(struct tcp_client *client)
 {
     /** An example of an efficient protocol would be 4 bytes for the size of the data and then the data itself. */
     char data_size[4] = {0};
@@ -242,22 +243,22 @@ void on_data(struct tcp_client *client, void *data)
     uint32_t recv_amt = 0;
 
     if (r == -1) 
-{
-    /** Handle error. */
-    netc_perror("failure", NULL);
-    return 1;
-}
+    {
+        /** Handle error. */
+        netc_perror("failure", NULL);
+        return 1;
+    }
     else
     {
         recv_amt = *(uint32_t *)data_size;
         char buffer[recv_amt];
         r = tcp_client_receive(client, buffer, recv_amt, 0 /** flags */);
         if (r == -1) 
-{
-    /** Handle error. */
-    netc_perror("failure", NULL);
-    return 1;
-}
+        {
+            /** Handle error. */
+            netc_perror("failure", NULL);
+            return 1;
+        }
         else
         {
             /** Do something with the data. */
@@ -266,7 +267,7 @@ void on_data(struct tcp_client *client, void *data)
     };
 };
 
-void on_disconnect(struct tcp_client *client, void *data)
+void on_disconnect(struct tcp_client *client)
 {
     /** Do something with the client. */
     printf("Disconnected from server.\n");

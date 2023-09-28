@@ -1,70 +1,10 @@
-#ifndef HTTP_COMMON_H
-#define HTTP_COMMON_H
+#ifndef HTTP_HELPER_COMMON_H
+#define HTTP_HELPER_COMMON_H
 
 #include "utils/vector.h"
 #include "utils/string.h"
 
 #include <stdint.h>
-
-/** Parses a component of a request with state management and error handling. */
-#define NETC_HTTP_REQUEST_PARSE(current_state, required_state, sockfd, string, bytes, remove_delimiter, max_bytes_received, is_fixed) \
-{ \
-    switch (current_state) \
-    { \
-        case -1: current_state = REQUEST_PARSING_STATE_METHOD; break; \
-        case REQUEST_PARSING_STATE_METHOD: current_state = REQUEST_PARSING_STATE_PATH; break; \
-        case REQUEST_PARSING_STATE_PATH: current_state = REQUEST_PARSING_STATE_VERSION; break; \
-        case REQUEST_PARSING_STATE_VERSION: current_state = REQUEST_PARSING_STATE_HEADER_NAME; break; \
-        case REQUEST_PARSING_STATE_HEADER_NAME: current_state = REQUEST_PARSING_STATE_HEADER_VALUE; break; \
-        case REQUEST_PARSING_STATE_HEADER_VALUE: current_state = REQUEST_PARSING_STATE_HEADER_NAME; break; \
-        case REQUEST_PARSING_STATE_CHUNK_SIZE: current_state = REQUEST_PARSING_STATE_CHUNK_DATA; break; \
-        case REQUEST_PARSING_STATE_CHUNK_DATA: current_state = REQUEST_PARSING_STATE_CHUNK_SIZE; break; \
-        case REQUEST_PARSING_STATE_BODY: break; \
-        default: break; \
-    } \
-    \
-    \
-    if (current_state == required_state) \
-    { \
-        ssize_t result = 0; \
-        if (is_fixed) \
-            result = socket_recv_until_fixed((sockfd), (string), (max_bytes_received), (bytes), (remove_delimiter)); \
-        else \
-            result = socket_recv_until_dynamic((sockfd), (string), (bytes), (remove_delimiter), (max_bytes_received)); \
-        if (result == -1) { printf("[CHECK RECV RESULT serv] recv failed... erno: %d\n", errno); return REQUEST_PARSE_ERROR_RECV; } \
-        else if (result == 0) continue; \
-    } \
-};
-
-/** Parses a component of a response with state management and error handling. */
-#define NETC_HTTP_RESPONSE_PARSE(current_state, required_state, sockfd, string, bytes, remove_delimiter, max_bytes_received, is_fixed) \
-{ \
-    switch (current_state) \
-    { \
-        case -1: current_state = RESPONSE_PARSING_STATE_VERSION; break; \
-        case RESPONSE_PARSING_STATE_VERSION: current_state = RESPONSE_PARSING_STATE_STATUS_CODE; break; \
-        case RESPONSE_PARSING_STATE_STATUS_CODE: current_state = RESPONSE_PARSING_STATE_STATUS_MESSAGE; break; \
-        case RESPONSE_PARSING_STATE_STATUS_MESSAGE: current_state = RESPONSE_PARSING_STATE_HEADER_NAME; break; \
-        case RESPONSE_PARSING_STATE_HEADER_NAME: current_state = RESPONSE_PARSING_STATE_HEADER_VALUE; break; \
-        case RESPONSE_PARSING_STATE_HEADER_VALUE: current_state = RESPONSE_PARSING_STATE_HEADER_NAME; break; \
-        case RESPONSE_PARSING_STATE_CHUNK_SIZE: current_state = RESPONSE_PARSING_STATE_CHUNK_DATA; break; \
-        case RESPONSE_PARSING_STATE_CHUNK_DATA: current_state = RESPONSE_PARSING_STATE_CHUNK_SIZE; break; \
-        case RESPONSE_PARSING_STATE_BODY: break; \
-        default: break; \
-    } \
-    \
-    \
-    if (current_state == required_state) \
-    { \
-        ssize_t result = 0; \
-        if (is_fixed) \
-            result = socket_recv_until_fixed((sockfd), (string), (max_bytes_received), (bytes), (remove_delimiter)); \
-        else \
-            result = socket_recv_until_dynamic((sockfd), (string), (bytes), (remove_delimiter), (max_bytes_received)); \
-        if (result == -1) { printf("[CHECK RECV RESULT clin] recv failed... erno: %d\n", errno); return RESPONSE_PARSE_ERROR_RECV; } \
-        else if (result == 0) continue; \
-    } \
-};
 
 #define HTTP_STATUS_CODES \
     X(100, "Continue") \
@@ -222,6 +162,19 @@ enum parse_response_error_types
     /** The `recv` syscall failed. */
     RESPONSE_PARSE_ERROR_RECV = -1,
 };
+
+/** An enum representing the different connection types. */
+enum connection_types
+{
+    /** The connection uses HTTP. */
+    CONNECTION_HTTP,
+    /** The connection uses WebSocket. */
+    CONNECTION_WS
+};
+
+/** A structure representing a WebSocket message. */
+struct ws_message
+{};
 
 /** A structure representing the HTTP request. */
 struct http_request
@@ -382,4 +335,4 @@ void http_url_percent_encode(char *url, char *encoded);
 /** Percent decodes a URL. */
 void http_url_percent_decode(char *url, char *decoded);
 
-#endif // HTTP_COMMON_H
+#endif // HTTP_HELPER_COMMON_H

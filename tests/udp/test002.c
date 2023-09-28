@@ -81,7 +81,7 @@ static void *udp_test002_server_thread_blocking_main(void *arg)
     return NULL;
 };
 
-static void udp_test002_server_on_data(struct udp_server *server, void *data)
+static void udp_test002_server_on_data(struct udp_server *server)
 {
     char *buffer = calloc(18, sizeof(char));
     struct sockaddr client_addr;
@@ -134,7 +134,7 @@ static void *udp_test002_client_thread_blocking_main(void *arg)
     return NULL;
 };
 
-static void udp_test002_client_on_data(struct udp_client *client, void *data)
+static void udp_test002_client_on_data(struct udp_client *client)
 {
     char *buffer = calloc(18, sizeof(char));
 

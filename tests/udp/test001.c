@@ -50,10 +50,10 @@ static int udp_test001_server_data = 0;
 static int udp_test001_client_data = 0;
 
 static void *udp_test001_server_thread_nonblocking_main(void *arg);
-static void udp_test001_server_on_data(struct udp_server *server, void *data);
+static void udp_test001_server_on_data(struct udp_server *server);
 
 static void *udp_test001_client_thread_nonblocking_main(void *arg);
-static void udp_test001_client_on_data(struct udp_client *client, void *data);
+static void udp_test001_client_on_data(struct udp_client *client);
 
 static int udp_test001();
 
@@ -66,7 +66,7 @@ static void *udp_test001_server_thread_nonblocking_main(void *arg)
     return NULL;
 };
 
-static void udp_test001_server_on_data(struct udp_server *server, void *data)
+static void udp_test001_server_on_data(struct udp_server *server)
 {
     char *buffer = calloc(18, sizeof(char));
     struct sockaddr client_addr;
@@ -100,7 +100,7 @@ static void *udp_test001_client_thread_nonblocking_main(void *arg)
     return NULL;
 };
 
-static void udp_test001_client_on_data(struct udp_client *client, void *data)
+static void udp_test001_client_on_data(struct udp_client *client)
 {
     char *buffer = calloc(18, sizeof(char));
 

@@ -68,7 +68,7 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 #include <stdint.h>
 #include <netc/udp/server.h>
 
-void on_data(struct udp_server *server, void *data)
+void on_data(struct udp_server *server)
 {
     /** The packet structure is very lackluster and doesn't include sequence numbers, payload lengths, checksums, etc. */
     char buffer[1024];
@@ -78,21 +78,21 @@ void on_data(struct udp_server *server, void *data)
     /** Receive the data. */
     int r = udp_server_receive(server, buffer, 1024 /** sizeof buffer */, 0 /** flags */, &addr, &addr_len);
     if (r == -1) 
-{
-    /** Handle error. */
-    netc_perror("failure", NULL);
-    return 1;
-}
+    {
+        /** Handle error. */
+        netc_perror("failure", NULL);
+        return 1;
+    }
     else
     {
         /** Send the data back. */
         r = udp_server_send(server, buffer, 1024 /** sizeof buffer */, 0 /** flags */, &addr, addr_len);
         if (r == -1) 
-{
-    /** Handle error. */
-    netc_perror("failure", NULL);
-    return 1;
-}
+        {
+            /** Handle error. */
+            netc_perror("failure", NULL);
+            return 1;
+        }
         else
         {
             /** Print the data. */
@@ -178,7 +178,7 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 #include <stdint.h>
 #include <netc/udp/client.h>
 
-void on_data(struct udp_client *client, void *data)
+void on_data(struct udp_client *client)
 {
     /** The packet structure is very lackluster and doesn't include sequence numbers, payload lengths, checksums, etc. */
     char buffer[1024];
@@ -188,21 +188,21 @@ void on_data(struct udp_client *client, void *data)
     /** Receive the data. */
     int r = udp_client_receive(client, buffer, 1024 /** sizeof buffer */, 0 /** flags */, &addr, &addr_len);
     if (r == -1) 
-{
-    /** Handle error. */
-    netc_perror("failure", NULL);
-    return 1;
-}
+    {
+        /** Handle error. */
+        netc_perror("failure", NULL);
+        return 1;
+    }
     else
     {
         /** Send the data back. */
         r = udp_client_send(client, buffer, 1024 /** sizeof buffer */, 0 /** flags */, &addr, addr_len);
         if (r == -1) 
-{
-    /** Handle error. */
-    netc_perror("failure", NULL);
-    return 1;
-}
+        {
+            /** Handle error. */
+            netc_perror("failure", NULL);
+            return 1;
+        }
         else
         {
             /** Print the data. */

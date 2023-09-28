@@ -1,4 +1,4 @@
-#include "http/server.h"
+#include "connection/server.h"
 
 #include "tests/tcp/test001.c"
 #include "tests/tcp/test002.c"
@@ -26,7 +26,7 @@ const char *BANNER = "\
 ██║ ╚████║███████╗   ██║   ╚██████╗\n\
 ╚═╝  ╚═══╝╚══════╝   ╚═╝    ╚═════╝\n";
 
-static void http_server_handler(struct http_server *server, socket_t sockfd, struct http_request request)
+static void http_server_handler(struct server_connection *server, socket_t sockfd, struct http_request request)
 {
     printf("request.\n");
 
@@ -106,7 +106,7 @@ int main()
         printf(ANSI_RED "\n\nTEST SUITE FAILED! fix me.\n%s", ANSI_RESET);
     };
 
-    struct http_server server = {0};
+    struct server_connection server = {0};
     struct sockaddr_in server_address = {
         .sin_family = AF_INET,
         .sin_port = htons(5001),
@@ -119,7 +119,7 @@ int main()
         return 1;
     };
 
-    struct http_route main = { .path = "/", .callback = http_server_handler };
+    struct server_route main = { .path = "/", .http_callback = http_server_handler };
 
     http_server_create_route(&server, &main);
     http_server_start(&server);

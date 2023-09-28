@@ -51,7 +51,7 @@ int tcp_client_main_loop(struct tcp_client *client)
         socket_t sockfd = ev.data.fd;
 
         if (ev.events & EPOLLIN && client->on_data != NULL)
-                client->on_data(client, client->data);
+                client->on_data(client);
         else if (ev.events & EPOLLOUT)
         {
             int error = 0;
@@ -61,7 +61,7 @@ int tcp_client_main_loop(struct tcp_client *client)
             if (result == -1 || error != 0)
                 return netc_error(HANGUP);
             else if (client->on_connect != NULL)
-                    client->on_connect(client, client->data);
+                    client->on_connect(client);
 
             ev.events = EPOLLOUT;
             if (epoll_ctl(pfd, EPOLL_CTL_DEL, sockfd, &ev) == -1) return netc_error(POLL_FD);
@@ -75,7 +75,7 @@ int tcp_client_main_loop(struct tcp_client *client)
         SOCKET sockfd = event.fd;
 
         if (event.revents & POLLIN && client->on_data != NULL)
-                client->on_data(client, client->data);
+                client->on_data(client);
         else if (event.revents & POLLOUT)
         {
             int error = 0;
@@ -85,7 +85,7 @@ int tcp_client_main_loop(struct tcp_client *client)
             if (result == -1 || error != 0)
                 return netc_error(HANGUP);
             else if (client->on_connect != NULL)
-                    client->on_connect(client, client->data);
+                    client->on_connect(client);
         }
         else if (event.revents & POLLERR || event.revents & POLLHUP)
         {
@@ -96,7 +96,7 @@ int tcp_client_main_loop(struct tcp_client *client)
         socket_t sockfd = ev.ident;
 
         if (ev.filter == EVFILT_READ && client->on_data != NULL)
-                client->on_data(client, client->data);
+                client->on_data(client);
         else if (ev.filter == EVFILT_WRITE)
         {
             int error = 0;
@@ -106,7 +106,7 @@ int tcp_client_main_loop(struct tcp_client *client)
             if (result == -1 || error != 0)
                 return netc_error(HANGUP);
             else if (client->on_connect != NULL)
-                    client->on_connect(client, client->data);
+                    client->on_connect(client);
 
             // deregister event
             EV_SET(&ev, sockfd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
@@ -195,7 +195,7 @@ int tcp_client_receive(struct tcp_client *client, char *message, size_t msglen, 
 
 int tcp_client_close(struct tcp_client *client, int is_error)
 {
-    if (client->on_disconnect != NULL) client->on_disconnect(client, is_error, client->data);
+    if (client->on_disconnect != NULL) client->on_disconnect(client, is_error);
 
     socket_t sockfd = client->sockfd;
     client->listening = 0;

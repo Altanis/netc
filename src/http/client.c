@@ -1,82 +1,9 @@
-#include "http/client.h"
-
-#include <unistd.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
+#include <stdlib.h>
 
-static void _tcp_on_connect(struct tcp_client *client, void *data)
-{
-    struct http_client *http_client = (struct http_client *)data;
-    if (http_client->on_connect != NULL)
-        http_client->on_connect(http_client, http_client->data);
-};
+#include "connection/client.h"
 
-static void _tcp_on_data(struct tcp_client *client, void *data)
-{
-    struct http_client *http_client = (struct http_client *)data;
-    struct http_client_parsing_state current_state = http_client->client_parsing_state;
-
-    int result = 0;
-    if ((result = http_client_parse_response(http_client, &current_state)) != 0)
-    {
-        if (result < 0)
-        {
-            if (http_client->on_malformed_response != NULL)
-            http_client->on_malformed_response(http_client, result, http_client->data);
-            return;
-        };
-
-        printf("WAITING.\n");
-        return;
-    };
-
-    if (http_client->on_data != NULL)
-        http_client->on_data(http_client, current_state.response, http_client->data);
-
-    if (http_client->client_close_flag)
-        tcp_client_close(client, 0);
-};
-
-static void _tcp_on_disconnect(struct tcp_client *client, int is_error, void *data)
-{
-    struct http_client *http_client = (struct http_client *)data;
-    if (http_client->on_disconnect != NULL)
-        http_client->on_disconnect(http_client, is_error, http_client->data);
-};
-
-int http_client_init(struct http_client *client, struct sockaddr address)
-{
-    struct tcp_client *tcp_client = malloc(sizeof(struct tcp_client));
-    tcp_client->data = client;
-
-    int init_result = tcp_client_init(tcp_client, address, 1);
-    if (init_result != 0) return init_result;
-
-    if (setsockopt(tcp_client->sockfd, SOL_SOCKET, SO_REUSEADDR, &(char){1}, sizeof(int)) < 0)
-    {
-        /** Not essential. Do not return -1. */
-    };
-
-    int connect_result = tcp_client_connect(tcp_client);
-    if (connect_result != 0) return connect_result;
-
-    tcp_client->on_connect = _tcp_on_connect;
-    tcp_client->on_data = _tcp_on_data;
-    tcp_client->on_disconnect = _tcp_on_disconnect;
-
-    client->client = tcp_client;
-    client->client_close_flag = 0;
-
-    return 0;
-};
-
-int http_client_start(struct http_client *client)
-{
-    return tcp_client_main_loop(client->client);
-};
-
-int http_client_send_chunked_data(struct http_client *client, char *data, size_t data_length)
+int http_client_send_chunked_data(struct client_connection *client, char *data, size_t data_length)
 {
     char length_str[16] = {0};
     sprintf(length_str, "%zx\r\n", data_length);
@@ -90,7 +17,7 @@ int http_client_send_chunked_data(struct http_client *client, char *data, size_t
     return 0;
 };
 
-int http_client_send_request(struct http_client *client, struct http_request *request, const char *data, size_t data_length)
+int http_client_send_request(struct client_connection *client, struct http_request *request, const char *data, size_t data_length)
 {
     string_t request_str = {0};
     sso_string_init(&request_str, "");
@@ -148,7 +75,7 @@ int http_client_send_request(struct http_client *client, struct http_request *re
     return 0;
 };
 
-int http_client_parse_response(struct http_client *client, struct http_client_parsing_state *current_state)
+int http_client_parse_response(struct client_connection *client, struct http_client_parsing_state *current_state)
 {   
     char our_story[4096] = {0};
     recv(client->client->sockfd, our_story, 4095, MSG_PEEK);
@@ -374,9 +301,4 @@ parse_start:
     };
 
     return 0;
-};
-
-int http_client_close(struct http_client *client)
-{
-    return tcp_client_close(client->client, 0);
 };

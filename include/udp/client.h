@@ -23,7 +23,7 @@ struct udp_client
     void *data;
 
     /** The callback for when data is received. */
-    void (*on_data)(struct udp_client *client, void *data);
+    void (*on_data)(struct udp_client *client);
 };
 
 /** The main loop of a nonblocking UDP client. */

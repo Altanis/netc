@@ -1,8 +1,8 @@
 #ifndef HTTP_TEST_001
 #define HTTP_TEST_001
 
-#include "http/server.h"
-#include "http/client.h"
+#include "connection/server.h"
+#include "connection/client.h"
 #include "utils/error.h"
 
 #include <string.h>
@@ -39,7 +39,7 @@
 #define ANSI_GREEN "\x1b[32m"
 #define ANSI_RESET "\x1b[0m"
 
-static struct http_server server = {0};
+static struct server_connection server = {0};
 
 /** At the end of this test, all of these values must equal 1 unless otherwise specified. */
 static int http_test001_server_connect = 0;
@@ -49,17 +49,17 @@ static int http_test001_client_connect = 0;
 static int http_test001_client_data = 0; // 0 = passed /, 1 = passed /wow, 2 = passed /wow?x=1, 3 = passed /?x=1, 4 = passed /test (priority over /*)
 static int http_test001_client_disconnect = 0;
 
-static void http_test001_server_on_connect(struct http_server *server, struct http_client *client, void *data);
-static void http_test001_server_on_data(struct http_server *server, struct http_client *client, struct http_request request);
-static void http_test001_server_on_data_wrong_route(struct http_server *server, struct http_client *client, struct http_request request);
-static void http_test001_server_on_data_wildcard_route(struct http_server *server, struct http_client *client, struct http_request request);
-static void http_test001_server_on_malformed_request(struct http_server *server, struct http_client *client, enum parse_request_error_types error, void *data);
-static void http_test001_server_on_disconnect(struct http_server *server, socket_t sockfd, int is_error, void *data);
+static void http_test001_server_on_connect(struct server_connection *server, struct client_connection *client);
+static void http_test001_server_on_data(struct server_connection *server, struct client_connection *client, struct http_request request);
+static void http_test001_server_on_data_wrong_route(struct server_connection *server, struct client_connection *client, struct http_request request);
+static void http_test001_server_on_data_wildcard_route(struct server_connection *server, struct client_connection *client, struct http_request request);
+static void http_test001_server_on_malformed_request(struct server_connection *server, struct client_connection *client, enum parse_request_error_types error);
+static void http_test001_server_on_disconnect(struct server_connection *server, socket_t sockfd, int is_error);
 
-static void http_test001_client_on_connect(struct http_client *client, void *data);
-static void http_test001_client_on_data(struct http_client *client, struct http_response response, void *data);
-static void http_test001_client_on_malformed_response(struct http_client *client, enum parse_response_error_types error, void *data);
-static void http_test001_client_on_disconnect(struct http_client *client, int is_error, void *data);
+static void http_test001_client_on_connect(struct client_connection *client);
+static void http_test001_client_on_data(struct client_connection *client, struct http_response response);
+static void http_test001_client_on_malformed_response(struct client_connection *client, enum parse_response_error_types error);
+static void http_test001_client_on_disconnect(struct client_connection *client, int is_error);
 
 static void print_request(struct http_request request);
 static void print_response(struct http_response response);
@@ -102,7 +102,7 @@ static void print_response(struct http_response response)
     printf("body: %s\n\n", http_response_get_body(&response));
 };
 
-static void http_test001_server_on_connect(struct http_server *server, struct http_client *client, void *data)
+static void http_test001_server_on_connect(struct server_connection *server, struct client_connection *client)
 {
     http_test001_server_connect = 1;
 
@@ -122,7 +122,7 @@ static void http_test001_server_on_connect(struct http_server *server, struct ht
     printf("[HTTP TEST CASE 001] server accepting client. ip: %s\n", client->data);
 };
 
-static void http_test001_server_on_data(struct http_server *server, struct http_client *client, struct http_request request)
+static void http_test001_server_on_data(struct server_connection *server, struct client_connection *client, struct http_request request)
 {
     socket_t sockfd = client->client->sockfd;
 
@@ -218,7 +218,7 @@ static void http_test001_server_on_data(struct http_server *server, struct http_
     }
 };
 
-static void http_test001_server_on_data_wrong_route(struct http_server *server, struct http_client *client, struct http_request request)
+static void http_test001_server_on_data_wrong_route(struct server_connection *server, struct client_connection *client, struct http_request request)
 {
     socket_t sockfd = client->client->sockfd;
 
@@ -243,15 +243,15 @@ static void http_test001_server_on_data_wrong_route(struct http_server *server, 
     http_server_send_response(server, client, &response, "later", 5);
 };
 
-static void http_test001_server_on_data_wildcard_route(struct http_server *server, struct http_client *client, struct http_request request) { printf("[HTTP TEST CASE 001] defaulted to /* ... failure...\n"); };
+static void http_test001_server_on_data_wildcard_route(struct server_connection *server, struct client_connection *client, struct http_request request) { printf("[HTTP TEST CASE 001] defaulted to /* ... failure...\n"); };
 
-static void http_test001_server_on_malformed_request(struct http_server *server, struct http_client *client, enum parse_request_error_types error, void *data)
+static void http_test001_server_on_malformed_request(struct server_connection *server, struct client_connection *client, enum parse_request_error_types error)
 {
     socket_t sockfd = client->client->sockfd;
     printf("[HTTP TEST CASE 001] server could not process request from %s\n", client->data);
 };
 
-static void http_test001_server_on_disconnect(struct http_server *server, socket_t sockfd, int is_error, void *data)
+static void http_test001_server_on_disconnect(struct server_connection *server, socket_t sockfd, int is_error)
 {
     if (sockfd == server->server->sockfd)
     {
@@ -260,12 +260,12 @@ static void http_test001_server_on_disconnect(struct http_server *server, socket
     }
     else
     {
-        struct http_client *client = map_get(&server->clients, &sockfd, sizeof(sockfd));
+        struct client_connection *client = map_get(&server->clients, &sockfd, sizeof(sockfd));
         printf("[HTTP TEST CASE 001] client disconnected from server %d\n", sockfd);
     };
 };
 
-static void http_test001_client_on_connect(struct http_client *client, void *data)
+static void http_test001_client_on_connect(struct client_connection *client)
 {
     http_test001_client_connect = 1;
 
@@ -287,7 +287,7 @@ static void http_test001_client_on_connect(struct http_client *client, void *dat
     http_client_send_request(client, &request, "hello", 5);
 };
 
-static void http_test001_client_on_data(struct http_client *client, struct http_response response, void *data)
+static void http_test001_client_on_data(struct client_connection *client, struct http_response response)
 {
     printf("[HTTP TEST CASE 001] client received data\n");
     print_response(response);
@@ -381,12 +381,12 @@ static void http_test001_client_on_data(struct http_client *client, struct http_
     };
 };
 
-static void http_test001_client_on_malformed_response(struct http_client *client, enum parse_response_error_types error, void *data)
+static void http_test001_client_on_malformed_response(struct client_connection *client, enum parse_response_error_types error)
 {
     printf(ANSI_RED "[HTTP TEST CASE 001] client received malformed response\n%s", ANSI_RESET);
 };
 
-static void http_test001_client_on_disconnect(struct http_client *client, int is_error, void *data)
+static void http_test001_client_on_disconnect(struct client_connection *client, int is_error)
 {
     http_test001_client_disconnect = 1;
 
@@ -411,8 +411,8 @@ static int http_test001()
         return 1;
     };
 
-    struct http_route test_route = { .path = "/test", .callback = http_test001_server_on_data_wrong_route };
-    struct http_route wildcard_route = { .path = "/*", .callback = http_test001_server_on_data };
+    struct server_route test_route = { .path = "/test", .http_callback = http_test001_server_on_data_wrong_route };
+    struct server_route wildcard_route = { .path = "/*", .http_callback = http_test001_server_on_data };
 
     /** 
      * Please note hierarchy matters. If a path matches two routes,
@@ -424,7 +424,7 @@ static int http_test001()
     pthread_t servt;
     pthread_create(&servt, NULL, (void *)http_server_start, &server);
 
-    struct http_client client = {0};
+    struct client_connection client = {0};
     client.on_connect = http_test001_client_on_connect;
     client.on_malformed_response = http_test001_client_on_malformed_response;
     client.on_data = http_test001_client_on_data;
@@ -441,14 +441,14 @@ static int http_test001()
         return 1;
     };
 
-    if (http_client_init(&client, *(struct sockaddr *)&cliaddr) != 0)
+    if (client_init(&client, *(struct sockaddr *)&cliaddr) != 0)
     {
         printf(ANSI_RED "[HTTP TEST CASE 001] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;
     };
 
     pthread_t clit;
-    pthread_create(&clit, NULL, (void *)http_client_start, &client);
+    pthread_create(&clit, NULL, (void *)client_start, &client);
 
     pthread_join(clit, NULL);
     pthread_join(servt, NULL);

@@ -34,7 +34,7 @@ struct udp_server
     void *data;
 
     /** The callback for when data is received. */
-    void (*on_data)(struct udp_server *server, void *data);
+    void (*on_data)(struct udp_server *server);
 };
 
 /** The main loop of a nonblocking UDP server. */

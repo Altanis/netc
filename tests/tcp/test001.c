@@ -50,14 +50,14 @@ static int tcp_test001_client_data = 0;
 static int tcp_test001_client_disconnect = 0;
 
 static void *tcp_test001_server_thread_nonblocking_main(void *arg);
-static void tcp_test001_server_on_connect(struct tcp_server *server, void *data);
-static void tcp_test001_server_on_data(struct tcp_server *server, socket_t sockfd, void *data);
-static void tcp_test001_on_disconnect(struct tcp_server *server, socket_t sockfd, int is_error, void *data);
+static void tcp_test001_server_on_connect(struct tcp_server *server);
+static void tcp_test001_server_on_data(struct tcp_server *server, socket_t sockfd);
+static void tcp_test001_on_disconnect(struct tcp_server *server, socket_t sockfd, int is_error);
 
 static void *tcp_test001_client_thread_nonblocking_main(void *arg);
-static void tcp_tet001_client_on_connect(struct tcp_client *client, void *data);
-static void tcp_test001_client_on_data(struct tcp_client *client, void *data);
-static void tcp_test001_client_on_disconnect(struct tcp_client *client, int is_error, void *data);
+static void tcp_tet001_client_on_connect(struct tcp_client *client);
+static void tcp_test001_client_on_data(struct tcp_client *client);
+static void tcp_test001_client_on_disconnect(struct tcp_client *client, int is_error);
 
 static void *tcp_test001_server_thread_nonblocking_main(void *arg)
 {
@@ -68,7 +68,7 @@ static void *tcp_test001_server_thread_nonblocking_main(void *arg)
     return NULL;
 };
 
-static void tcp_test001_server_on_connect(struct tcp_server *server, void *data)
+static void tcp_test001_server_on_connect(struct tcp_server *server)
 {
     struct tcp_client client = {};
     tcp_server_accept(server, &client);
@@ -77,7 +77,7 @@ static void tcp_test001_server_on_connect(struct tcp_server *server, void *data)
     tcp_test001_server_connect++;
 };
 
-static void tcp_test001_server_on_data(struct tcp_server *server, socket_t sockfd, void *data)
+static void tcp_test001_server_on_data(struct tcp_server *server, socket_t sockfd)
 {    
     char *buffer = calloc(18, sizeof(char));
     
@@ -99,7 +99,7 @@ static void tcp_test001_server_on_data(struct tcp_server *server, socket_t sockf
     tcp_test001_server_data++;
 };
 
-static void tcp_test001_on_disconnect(struct tcp_server *server, socket_t sockfd, int is_error, void *data)
+static void tcp_test001_on_disconnect(struct tcp_server *server, socket_t sockfd, int is_error)
 {
     printf("[TCP TEST CASE 001] %s disconnected. this was %s\n", sockfd == server->sockfd ? "server" : "client", is_error ? "closed disgracefully" : "closed gracefully");
     tcp_test001_server_disconnect++;
@@ -115,7 +115,7 @@ static void *tcp_test001_client_thread_nonblocking_main(void *arg)
     return NULL;
 };
 
-static void tcp_tet001_client_on_connect(struct tcp_client *client, void *data)
+static void tcp_tet001_client_on_connect(struct tcp_client *client)
 {
     printf("[TCP TEST CASE 001] client connected to server!\n");
     tcp_test001_client_connect++;
@@ -128,7 +128,7 @@ static void tcp_tet001_client_on_connect(struct tcp_client *client, void *data)
     }
 };
 
-static void tcp_test001_client_on_data(struct tcp_client *client, void *data)
+static void tcp_test001_client_on_data(struct tcp_client *client)
 {
     char *buffer = calloc(18, sizeof(char));
 
@@ -150,7 +150,7 @@ static void tcp_test001_client_on_data(struct tcp_client *client, void *data)
     };
 };
 
-static void tcp_test001_client_on_disconnect(struct tcp_client *client, int is_error, void *data)
+static void tcp_test001_client_on_disconnect(struct tcp_client *client, int is_error)
 {
     printf("[TCP TEST CASE 001] client disconnected from server. this was %s\n", is_error ? "closed disgracefully" : "closed gracefully");
     tcp_test001_client_disconnect++;

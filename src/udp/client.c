@@ -43,15 +43,15 @@ int udp_client_main_loop(struct udp_client *client)
 #ifdef __linux__
         struct epoll_event ev = events[0];
         socket_t sockfd = ev.data.fd;
-        if (ev.events & EPOLLIN && client->on_data != NULL) client->on_data(client, client->data);
+        if (ev.events & EPOLLIN && client->on_data != NULL) client->on_data(client);
 #elif _WIN32
             WSAPOLLFD event = events[0];
             SOCKET sockfd = event.fd;
 
-            if (event.revents & POLLIN && client->on_data != NULL) client->on_data(client, client->data);
+            if (event.revents & POLLIN && client->on_data != NULL) client->on_data(client);
 #elif __APPLE__
         socket_t sockfd = client->sockfd;
-        if (events[0].flags & EVFILT_READ && client->on_data != NULL) client->on_data(client, client->data);
+        if (events[0].flags & EVFILT_READ && client->on_data != NULL) client->on_data(client);
 #endif
     };
 

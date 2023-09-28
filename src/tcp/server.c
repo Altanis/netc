@@ -59,7 +59,7 @@ int tcp_server_main_loop(struct tcp_server *server)
                 if (ev.events & EPOLLERR || ev.events & EPOLLHUP) // server socket closed
                     return netc_error(HANGUP);
 
-                 if (server->on_connect != NULL) server->on_connect(server, server->data);
+                 if (server->on_connect != NULL) server->on_connect(server);
             }
             else
             {
@@ -70,7 +70,7 @@ int tcp_server_main_loop(struct tcp_server *server)
                 }
                 else if (ev.events & EPOLLIN && server->on_data != NULL) 
                 {
-                     server->on_data(server, sockfd, server->data);
+                     server->on_data(server, sockfd);
                 }
             }
 #elif _WIN32
@@ -84,8 +84,8 @@ int tcp_server_main_loop(struct tcp_server *server)
             }
             else if (event.revents & POLLIN)
             {
-                if (i == 0 && server->on_connect != NULL) server->on_connect(server, server->data);
-                else if (server->on_data != NULL) server->on_data(server, sockfd, server->data);
+                if (i == 0 && server->on_connect != NULL) server->on_connect(server);
+                else if (server->on_data != NULL) server->on_data(server, sockfd);
             };
 #elif __APPLE__
             struct kevent ev = events[i];
@@ -96,7 +96,7 @@ int tcp_server_main_loop(struct tcp_server *server)
                 if (ev.flags & EV_EOF || ev.flags & EV_ERROR) // server socket closed
                     return netc_error(HANGUP); 
 
-                if (server->on_connect != NULL) server->on_connect(server, server->data);
+                if (server->on_connect != NULL) server->on_connect(server);
             }
             else
             {
@@ -107,7 +107,7 @@ int tcp_server_main_loop(struct tcp_server *server)
                 }
                 else if (ev.flags & EVFILT_READ && server->on_data != NULL)
                 {
-                     server->on_data(server, sockfd, server->data);
+                     server->on_data(server, sockfd);
                 }
             }
 #endif
@@ -241,14 +241,14 @@ int tcp_server_close_self(struct tcp_server *server)
     if (result == -1) return netc_error(CLOSE);
 
     if (server->on_disconnect != NULL) 
-        server->on_disconnect(server, server->sockfd, 0, server->data);
+        server->on_disconnect(server, server->sockfd, 0);
         
     return 0;
 };
 
 int tcp_server_close_client(struct tcp_server *server, socket_t sockfd, int is_error)
 {
-    if (server->on_disconnect != NULL) server->on_disconnect(server, sockfd, is_error, server->data);
+    if (server->on_disconnect != NULL) server->on_disconnect(server, sockfd, is_error);
 
 #ifdef _WIN32
     int result = closesocket(sockfd);

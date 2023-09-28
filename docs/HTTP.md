@@ -25,7 +25,7 @@ Creating a HTTP server is a straightforward process. The following code snippet 
 #include <stdio.h>
 #include <netc/http/server.h>
 
-struct http_server server = {0};
+struct server_connection server = {0};
 server.on_connect = on_connect;
 server.on_malformed_request = on_malformed_request;
 server.on_disconnect = on_disconnect;
@@ -63,16 +63,16 @@ Routes are a way to divide the incoming requests into different handlers based o
 
 ```c
 // assume that the server is already initialized as `server`
-struct http_route echo_route =
+struct server_route echo_route =
 {
     .path = "/echo",
-    .callback = callback_echo,
+    .http_callback = callback_echo,
 };
 
-struct http_route default_route =
+struct server_route default_route =
 {
     .path = "/*",
-    .callback = callback_404,
+    .http_callback = callback_404,
 };
 
 /** 
@@ -91,7 +91,7 @@ You must use asynchronous events to be notified of when incoming connections, re
 #include <stdio.h>
 #include <netc/http/server.h>
 
-void on_connect(struct http_server *server, struct http_client *client)
+void on_connect(struct server_connection *server, struct client_connection *client)
 {
     /** Refer to documentation and header files for more information about TCP. */
     struct tcp_client *client = client->client;
@@ -100,7 +100,7 @@ void on_connect(struct http_server *server, struct http_client *client)
     printf("A connection has been established.\n");
 };
 
-void on_malformed_request(struct http_server *server, struct http_client *client, enum parse_request_error_types error, void *data)
+void on_malformed_request(struct server_connection *server, struct client_connection *client, enum parse_request_error_types error)
 {
     /** An incoming request was unable to be parsed. */
 
@@ -117,7 +117,7 @@ void on_malformed_request(struct http_server *server, struct http_client *client
     http_server_close_client(server, client);
 };
 
-static void on_disconnect(struct http_server *server, socket_t sockfd, int is_error, void *data)
+static void on_disconnect(struct server_connection *server, socket_t sockfd, int is_error)
 {
     if (sockfd == server->sockfd)
         printf("The server has been closed.\n");
@@ -126,7 +126,7 @@ static void on_disconnect(struct http_server *server, socket_t sockfd, int is_er
 };
 
 /** The callback for the /echo route (in the example above). */
-void callback_echo(struct http_server *server, struct http_client *client, struct http_request request)
+void callback_echo(struct server_connection *server, struct client_connection *client, struct http_request request)
 {
     printf("An incoming request has come!\n");
 
@@ -165,7 +165,7 @@ void callback_echo(struct http_server *server, struct http_client *client, struc
 Sending a response to a request is a straightforward process. The following code snippet shows how to send a response (based off our previous examples).
 
 ```c
-void callback_404(struct http_server *server, struct http_client *client, struct http_request request)
+void callback_404(struct server_connection *server, struct client_connection *client, struct http_request request)
 {
     struct http_response response = {0};
     /** Similar to before, you can't use raw strings. You need to use a setter. */
@@ -205,7 +205,7 @@ void callback_404(struct http_server *server, struct http_client *client, struct
     vector_free(&response.headers);
 };
 
-void callback_echo(struct http_server *server, struct http_client *client, struct http_request request)
+void callback_echo(struct server_connection *server, struct client_connection *client, struct http_request request)
 {
     printf("An incoming request has come!\n");
 
@@ -329,7 +329,7 @@ Keep alive is a feature that allows the server to keep the underlying TCP connec
 The server by default will keep the connection alive. As of current, there is no mechanism to time out the connection. The following code snippet shows how to disable keep alive. If you want to disable keep-alive, you can send a response with the `Connection: close` header.
 
 ```c
-void callback_echo(struct http_server *server, struct http_client *client, struct http_request request)
+void callback_echo(struct server_connection *server, struct client_connection *client, struct http_request request)
 {
     struct http_response response = {0};
     /** Similar to before, you can't use raw strings. You need to use a setter. */
@@ -368,7 +368,7 @@ Creating a HTTP client is a straightforward process. The following code snippet 
 #include <stdio.h>
 #include <netc/http/client.h>
 
-struct http_client client = {0};
+struct client_connection client = {0};
 client.on_connect = on_connect;
 client.on_malformed_response = on_malformed_response;
 client.on_data = on_data;
@@ -383,7 +383,7 @@ struct sockaddr_in sockaddr =
 if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to convert address.\n"); /** Handle error. */
 
 /** Create the HTTP client. */
-int init_result = http_client_init(&client, *(struct sockaddr *)&sockaddr);
+int init_result = client_init(&client, *(struct sockaddr *)&sockaddr);
 if (init_result != 0) 
 {
     /** Handle error. */
@@ -392,7 +392,7 @@ if (init_result != 0)
 }
 
 /** Start the main loop. */
-int r = http_client_start(&client); // This will block until the client is closed.
+int r = client_start(&client); // This will block until the client is closed.
 if (r != 0) 
 {
     /** Handle error. */
@@ -408,12 +408,12 @@ You must use asynchronous events to be notified of when incoming connections, re
 #include <stdio.h>
 #include <netc/http/client.h>
 
-void on_connect(struct http_client *client, void *data)
+void on_connect(struct client_connection *client)
 {
     printf("A connection has been established.\n");
 };
 
-void on_malformed_response(struct http_client *client, enum parse_response_error_types error, void *data)
+void on_malformed_response(struct client_connection *client, enum parse_response_error_types error)
 {
     /** An incoming response was unable to be parsed. */
     /** This (usually) should NOT happen. If it ever happens errnoeously, please report an issue! */
@@ -425,7 +425,7 @@ void on_malformed_response(struct http_client *client, enum parse_response_error
     };
 };
 
-void on_data(struct http_client *client, struct http_response response, void *data)
+void on_data(struct client_connection *client, struct http_response response)
 {
     /** Returns a response to a request. */
 
@@ -451,7 +451,7 @@ void on_data(struct http_client *client, struct http_response response, void *da
     printf("\n");
 };
 
-void on_disconnect(struct http_client *client, int is_error, void *data)
+void on_disconnect(struct client_connection *client, int is_error)
 {
     printf("Disconnected from the server.\n");
 };
