@@ -1,4 +1,4 @@
-#include "connection/server.h"
+#include "web/server.h"
 
 #include "tests/tcp/test001.c"
 #include "tests/tcp/test002.c"
@@ -26,48 +26,30 @@ const char *BANNER = "\
 ██║ ╚████║███████╗   ██║   ╚██████╗\n\
 ╚═╝  ╚═══╝╚══════╝   ╚═╝    ╚═════╝\n";
 
-static void http_server_handler(struct server_connection *server, socket_t sockfd, struct http_request request)
+int http_handling_moment(struct web_server *server, struct web_client *client, struct http_request request)
 {
-    printf("request.\n");
-
-    struct http_response response = {0};
+    struct http_response response;
     http_response_set_version(&response, "HTTP/1.1");
     response.status_code = 200;
-    http_response_set_status_message(&response, "OK");
+    http_response_set_status_message(&response, http_status_messages[HTTP_STATUS_CODE_200]);
 
-    struct http_header header = {0};
+    char *content_type = http_request_get_header(&request, "Content-Type");
+
+    struct http_header header;
+    http_header_init(&header);
+
     http_header_set_name(&header, "Content-Type");
-    http_header_set_value(&header, "image/png");
+    http_header_set_value(&header, content_type == NULL ? "text/plain" : content_type);
 
-    struct http_header header2 = {0};
-    http_header_set_name(&header2, "Transfer-Encoding");
-    http_header_set_value(&header2, "chunked");
-
-    vector_init(&response.headers, 2, sizeof(struct http_header));
+    vector_init(&response.headers, 1, sizeof(struct http_header));
     vector_push(&response.headers, &header);
-    vector_push(&response.headers, &header2);
 
-    // read ./tests/http/image.png (an image)
-    FILE *file = fopen("./tests/http/image.png", "rb");
-    fseek(file, 0, SEEK_END);
-    size_t file_size = ftell(file);
-    fseek(file, 0, SEEK_SET);
+    http_server_send_response(server, client, &response, http_request_get_body(&request), http_request_get_body_size(&request));
+};
 
-    http_server_send_response(server, sockfd, &response, NULL, 0);
-
-    // Send the file data in chunks
-    char buffer[8192];  // You can adjust the chunk size as needed
-    size_t bytes_read;
-    while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
-        http_server_send_chunked_data(server, sockfd, buffer, bytes_read);
-    };
-
-    http_server_send_chunked_data(server, sockfd, NULL, 0);
-
-    // Close the file
-    fclose(file);
-
-    printf("response.\n");
+void ws_start_handling_moment(struct web_server *server, struct web_client *client, struct http_request request)
+{
+    printf("lol...\n");
 };
 
 int main()
@@ -106,23 +88,27 @@ int main()
         printf(ANSI_RED "\n\nTEST SUITE FAILED! fix me.\n%s", ANSI_RESET);
     };
 
-    struct server_connection server = {0};
+    struct web_server server = {0};
     struct sockaddr_in server_address = {
         .sin_family = AF_INET,
         .sin_port = htons(5001),
         .sin_addr.s_addr = INADDR_ANY,
     };
 
-    if (http_server_init(&server, *(struct sockaddr *)&server_address, BACKLOG) != 0) 
+    if (web_server_init(&server, *(struct sockaddr *)&server_address, BACKLOG) != 0) 
     {
-        netc_perror("http_server_init", stderr);
+        netc_perror("web_server_init", stderr);
         return 1;
     };
 
-    struct server_route main = { .path = "/", .http_callback = http_server_handler };
+    struct web_server_route main = { 
+        .path = "/", 
+        .on_http_message = http_handling_moment,
+        .on_ws_handshake_request = ws_start_handling_moment,
+    };
 
-    http_server_create_route(&server, &main);
-    http_server_start(&server);
+    web_server_create_route(&server, &main);
+    web_server_start(&server);
 
     return 0;
 };

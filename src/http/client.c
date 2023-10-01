@@ -1,9 +1,9 @@
 #include <string.h>
 #include <stdlib.h>
 
-#include "connection/client.h"
+#include "web/client.h"
 
-int http_client_send_chunked_data(struct client_connection *client, char *data, size_t data_length)
+int http_client_send_chunked_data(struct web_client *client, char *data, size_t data_length)
 {
     char length_str[16] = {0};
     sprintf(length_str, "%zx\r\n", data_length);
@@ -17,7 +17,7 @@ int http_client_send_chunked_data(struct client_connection *client, char *data, 
     return 0;
 };
 
-int http_client_send_request(struct client_connection *client, struct http_request *request, const char *data, size_t data_length)
+int http_client_send_request(struct web_client *client, struct http_request *request, const char *data, size_t data_length)
 {
     string_t request_str = {0};
     sso_string_init(&request_str, "");
@@ -63,6 +63,8 @@ int http_client_send_request(struct client_connection *client, struct http_reque
 
     sso_string_concat_buffer(&request_str, "\r\n");
 
+    printf("[BAD THINGS ALWAYS] %s ..\n", sso_string_get(&request_str));
+
     ssize_t first_send = tcp_client_send(client->client, (char *)sso_string_get(&request_str), request_str.length, 0);
     if (first_send <= 0) return first_send;
     
@@ -75,7 +77,7 @@ int http_client_send_request(struct client_connection *client, struct http_reque
     return 0;
 };
 
-int http_client_parse_response(struct client_connection *client, struct http_client_parsing_state *current_state)
+int http_client_parse_response(struct web_client *client, struct http_client_parsing_state *current_state)
 {   
     char our_story[4096] = {0};
     recv(client->client->sockfd, our_story, 4095, MSG_PEEK);

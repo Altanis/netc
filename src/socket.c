@@ -74,8 +74,6 @@ ssize_t socket_recv_until_fixed(socket_t sockfd, char *buffer, size_t buffer_siz
         };
 
         bytes_received += recv_result;
-        // printf("bytes_received: %d\n", bytes_received);
-        // printf("buffer size: %d\n", buffer_size);
 
         if (bytes != NULL && bytes_received >= bytes_len && strncmp(buffer + bytes_received - bytes_len, bytes, bytes_len) == 0)
         {

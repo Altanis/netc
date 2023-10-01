@@ -10,7 +10,11 @@ void sso_string_init(string_t *string, const char *data)
     string->capacity = string->length > SSO_STRING_MAX_LENGTH ? string->length : SSO_STRING_MAX_LENGTH;
 
     if (string->length > SSO_STRING_MAX_LENGTH) string->long_string = strdup(data);
-    else memcpy(string->short_string, data, string->length);
+    else
+    {
+        memcpy(string->short_string, data, string->length);
+        // string->long_string = NULL;
+    };
 
     sso_string_ensure_null_terminated(string);
 };

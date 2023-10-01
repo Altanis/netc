@@ -1,4 +1,4 @@
-#include "connection/client.h"
+#include "web/client.h"
 
 #include <unistd.h>
 #include <stdio.h>
@@ -7,14 +7,14 @@
 
 static void _tcp_on_connect(struct tcp_client *client)
 {
-    struct client_connection *http_client = client->data;
+    struct web_client *http_client = client->data;
     if (http_client->on_connect != NULL)
         http_client->on_connect(http_client);
 };
 
 static void _tcp_on_data(struct tcp_client *client)
 {
-    struct client_connection *http_client = client->data;
+    struct web_client *http_client = client->data;
     struct http_client_parsing_state current_state = http_client->client_parsing_state;
 
     int result = 0;
@@ -40,12 +40,12 @@ static void _tcp_on_data(struct tcp_client *client)
 
 static void _tcp_on_disconnect(struct tcp_client *client, int is_error)
 {
-    struct client_connection *http_client = client->data;
+    struct web_client *http_client = client->data;
     if (http_client->on_disconnect != NULL)
         http_client->on_disconnect(http_client, is_error);
 };
 
-int client_init(struct client_connection *client, struct sockaddr address, enum connection_types connection_type)
+int web_client_init(struct web_client *client, struct sockaddr address, enum connection_types connection_type)
 {
     struct tcp_client *tcp_client = malloc(sizeof(struct tcp_client));
     tcp_client->data = client;
@@ -72,12 +72,12 @@ int client_init(struct client_connection *client, struct sockaddr address, enum 
     return 0;
 };
 
-int client_start(struct client_connection *client)
+int web_client_start(struct web_client *client)
 {
     return tcp_client_main_loop(client->client);
 };
 
-int client_close(struct client_connection *client)
+int web_client_close(struct web_client *client)
 {
     return tcp_client_close(client->client, 0);
 };

@@ -5,18 +5,17 @@
 #include "http/client.h"
 
 /** A structure representing a client connection over HTTP/WS. */
-struct client_connection
+struct web_client
 {
     /** The underlying TCP client. */
     struct tcp_client *client;
     /** The type of client. */
     enum connection_types connection_type;
 
-    /**
-     * [WS ONLY]
-     * The path the client is connected to.
-    */
+    /** [WS ONLY] The path the client is connected to. */
     char *path;
+    /** [WS ONLY] Whether or not the handshake has completed. */
+    int handshake_completed;
 
     /** User defined data to be passed to the event callbacks. */
     void *data;
@@ -57,20 +56,20 @@ struct client_connection
     };
 
     /** The callback for when a client connects. */
-    void (*on_connect)(struct client_connection *client);
+    void (*on_connect)(struct web_client *client);
     /** The callback for when a response is received. */
-    void (*on_data)(struct client_connection *client, struct http_response response);
+    void (*on_data)(struct web_client *client, struct http_response response);
     /** The callback for when a response is malformed. */
-    void (*on_malformed_response)(struct client_connection *client, enum parse_response_error_types error);
+    void (*on_malformed_response)(struct web_client *client, enum parse_response_error_types error);
     /** The callback for when a client disconnects. */
-    void (*on_disconnect)(struct client_connection *client, int is_error);
+    void (*on_disconnect)(struct web_client *client, int is_error);
 };
 
 /** Initializes the client. */
-int client_init(struct client_connection *client, struct sockaddr address, enum connection_types connection_type);
+int web_client_init(struct web_client *client, struct sockaddr address, enum connection_types connection_type);
 /** Starts a nonblocking event loop for the client. */
-int client_start(struct client_connection *client);
+int web_client_start(struct web_client *client);
 /** Closes the client. */
-int client_close(struct client_connection *client);
+int web_client_close(struct web_client *client);
 
 #endif // CLIENT_CONNECTION_H

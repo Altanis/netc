@@ -25,13 +25,13 @@ Creating a HTTP server is a straightforward process. The following code snippet 
 #include <stdio.h>
 #include <netc/http/server.h>
 
-struct server_connection server = {0};
+struct web_server server = {0};
 server.on_connect = on_connect;
-server.on_malformed_request = on_malformed_request;
+server.on_http_malformed_request = on_http_malformed_request;
 server.on_disconnect = on_disconnect;
 
 /** You can change configuration measures for security when parsing requests. Refer to the HTTP Server header file. */
-// server.config = /* struct config { max_method_len, max_path_len, ... } */;
+// server.http_server_config = /* struct config { max_method_len, max_path_len, ... } */;
 
 struct sockaddr_in addr =
 {
@@ -40,7 +40,7 @@ struct sockaddr_in addr =
     .sin_port = htons(8080)
 };
 
-int r = http_server_init(&server, *(struct sockaddr *)&addr, 10 /** the max number of connections in backlog */);
+int r = web_server_init(&server, *(struct sockaddr *)&addr, 10 /** the max number of connections in backlog */);
 if (r != 0) 
 {
     /** Handle error. */
@@ -49,7 +49,7 @@ if (r != 0)
 }
 
 /** Start the main loop. */
-r = http_server_start(&server); // This will block until the server is closed.
+r = web_server_start(&server); // This will block until the server is closed.
 if (r != 0) 
 {
     /** Handle error. */
@@ -63,16 +63,16 @@ Routes are a way to divide the incoming requests into different handlers based o
 
 ```c
 // assume that the server is already initialized as `server`
-struct server_route echo_route =
+struct web_server_route echo_route =
 {
     .path = "/echo",
-    .http_callback = callback_echo,
+    .on_http_message = callback_echo,
 };
 
-struct server_route default_route =
+struct web_server_route default_route =
 {
     .path = "/*",
-    .http_callback = callback_404,
+    .on_http_message = callback_404,
 };
 
 /** 
@@ -91,7 +91,7 @@ You must use asynchronous events to be notified of when incoming connections, re
 #include <stdio.h>
 #include <netc/http/server.h>
 
-void on_connect(struct server_connection *server, struct client_connection *client)
+void on_connect(struct web_server *server, struct web_client *client)
 {
     /** Refer to documentation and header files for more information about TCP. */
     struct tcp_client *client = client->client;
@@ -100,7 +100,7 @@ void on_connect(struct server_connection *server, struct client_connection *clie
     printf("A connection has been established.\n");
 };
 
-void on_malformed_request(struct server_connection *server, struct client_connection *client, enum parse_request_error_types error)
+void on_http_malformed_request(struct web_server *server, struct web_client *client, enum parse_request_error_types error)
 {
     /** An incoming request was unable to be parsed. */
 
@@ -114,10 +114,10 @@ void on_malformed_request(struct server_connection *server, struct client_connec
     };
 
     /** It's recommended to close the client. */
-    http_server_close_client(server, client);
+    web_server_close_client(server, client);
 };
 
-static void on_disconnect(struct server_connection *server, socket_t sockfd, int is_error)
+static void on_disconnect(struct web_server *server, socket_t sockfd, int is_error)
 {
     if (sockfd == server->sockfd)
         printf("The server has been closed.\n");
@@ -126,7 +126,7 @@ static void on_disconnect(struct server_connection *server, socket_t sockfd, int
 };
 
 /** The callback for the /echo route (in the example above). */
-void callback_echo(struct server_connection *server, struct client_connection *client, struct http_request request)
+void callback_echo(struct web_server *server, struct web_client *client, struct http_request request)
 {
     printf("An incoming request has come!\n");
 
@@ -165,7 +165,7 @@ void callback_echo(struct server_connection *server, struct client_connection *c
 Sending a response to a request is a straightforward process. The following code snippet shows how to send a response (based off our previous examples).
 
 ```c
-void callback_404(struct server_connection *server, struct client_connection *client, struct http_request request)
+void callback_404(struct web_server *server, struct web_client *client, struct http_request request)
 {
     struct http_response response = {0};
     /** Similar to before, you can't use raw strings. You need to use a setter. */
@@ -174,7 +174,15 @@ void callback_404(struct server_connection *server, struct client_connection *cl
     http_response_set_status_message(&response, "Not Found");
 
     /** Create headers to send to the client. */
-    struct http_header content_type_header = {0};
+    
+    /** There are two ways to make headers without undefined behaviour. */
+    // struct http_header content_type_header = {0};
+    /** Zeroing out the struct is one way. */
+    
+    /** Otherwise, you may use http_header_init(); */
+    struct http_header content_type_header;
+    http_header_init(&content_type_header);
+
     http_header_set_name(&content_type_header, "Content-Type");
     http_header_set_value(&content_type_header, "text/plain");
 
@@ -205,7 +213,7 @@ void callback_404(struct server_connection *server, struct client_connection *cl
     vector_free(&response.headers);
 };
 
-void callback_echo(struct server_connection *server, struct client_connection *client, struct http_request request)
+void callback_echo(struct web_server *server, struct web_client *client, struct http_request request)
 {
     printf("An incoming request has come!\n");
 
@@ -329,7 +337,7 @@ Keep alive is a feature that allows the server to keep the underlying TCP connec
 The server by default will keep the connection alive. As of current, there is no mechanism to time out the connection. The following code snippet shows how to disable keep alive. If you want to disable keep-alive, you can send a response with the `Connection: close` header.
 
 ```c
-void callback_echo(struct server_connection *server, struct client_connection *client, struct http_request request)
+void callback_echo(struct web_server *server, struct web_client *client, struct http_request request)
 {
     struct http_response response = {0};
     /** Similar to before, you can't use raw strings. You need to use a setter. */
@@ -368,7 +376,7 @@ Creating a HTTP client is a straightforward process. The following code snippet 
 #include <stdio.h>
 #include <netc/http/client.h>
 
-struct client_connection client = {0};
+struct web_client client = {0};
 client.on_connect = on_connect;
 client.on_malformed_response = on_malformed_response;
 client.on_data = on_data;
@@ -408,12 +416,12 @@ You must use asynchronous events to be notified of when incoming connections, re
 #include <stdio.h>
 #include <netc/http/client.h>
 
-void on_connect(struct client_connection *client)
+void on_connect(struct web_client *client)
 {
     printf("A connection has been established.\n");
 };
 
-void on_malformed_response(struct client_connection *client, enum parse_response_error_types error)
+void on_malformed_response(struct web_client *client, enum parse_response_error_types error)
 {
     /** An incoming response was unable to be parsed. */
     /** This (usually) should NOT happen. If it ever happens errnoeously, please report an issue! */
@@ -425,7 +433,7 @@ void on_malformed_response(struct client_connection *client, enum parse_response
     };
 };
 
-void on_data(struct client_connection *client, struct http_response response)
+void on_data(struct web_client *client, struct http_response response)
 {
     /** Returns a response to a request. */
 
@@ -451,7 +459,7 @@ void on_data(struct client_connection *client, struct http_response response)
     printf("\n");
 };
 
-void on_disconnect(struct client_connection *client, int is_error)
+void on_disconnect(struct web_client *client, int is_error)
 {
     printf("Disconnected from the server.\n");
 };

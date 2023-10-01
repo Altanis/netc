@@ -87,6 +87,18 @@ static const char *http_status_messages[] =
 };
 #undef X
 
+const char *http_status_code_to_message(int status_code)
+{
+    switch (status_code)
+    {
+#define X(code, message) case HTTP_STATUS_CODE_##code: return message;
+        HTTP_STATUS_CODES
+#undef X
+    };
+
+    return NULL;
+}
+
 /** An enum representing the different states during parsing a request. */
 enum http_request_parsing_states
 {
@@ -195,6 +207,9 @@ struct http_request
     char *body;
     /** The size of the HTTP body. */
     size_t body_size;
+
+    /** Whether or not the request wants to upgrade to WS protocol. */
+    int upgrade_websocket;
 };
 
 /** A structure representing the HTTP response. */
@@ -280,14 +295,23 @@ struct http_client_parsing_state
     struct vector chunk_data;
 };
 
+/** Initializes an HTTP request. */
+void http_request_init(struct http_request *request);
+/** Builds an HTTP request. */
+void http_request_build(struct http_request *request, char *method, char *path, char *version, const char *headers[][2]);
+
 /** Gets the value of a request's method. */
 const char *http_request_get_method(const struct http_request *request);
 /** Gets the value of a request's path. */
 const char *http_request_get_path(const struct http_request *request);
 /** Gets the value of a request's version. */
 const char *http_request_get_version(const struct http_request *request);
+/** Gets the value of a request's header, given the name. */
+const char *http_request_get_header(const struct http_request *request, const char *name);
 /** Gets the value of a request's body. */
 const char *http_request_get_body(const struct http_request *request);
+/** Gets the size of a request's body. */
+size_t http_request_get_body_size(const struct http_request *request);
 
 /** Sets the value of a request's method. */
 void http_request_set_method(struct http_request *request, const char *method);
@@ -296,10 +320,17 @@ void http_request_set_path(struct http_request *request, const char *path);
 /** Sets the value of a request's version. */
 void http_request_set_version(struct http_request *request, const char *version);
 
+/** Initializes an HTTP response. */
+void http_response_init(struct http_response *response);
+/** Builds an HTTP request. */
+void http_response_build(struct http_response *response, char *version, int status_code, const char *headers[][2]);
+
 /** Gets the value of a response's version. */
 const char *http_response_get_version(const struct http_response *response);
 /** Gets the value of a response's status message. */
 const char *http_response_get_status_message(const struct http_response *response);
+/** Gets the value of a response's header, given the name. */
+const char *http_response_get_header(const struct http_response *response, const char *name);
 /** Gets the value of a response's body. */
 const char *http_response_get_body(const struct http_response *response);
 
@@ -307,6 +338,9 @@ const char *http_response_get_body(const struct http_response *response);
 void http_response_set_version(struct http_response *response, const char *version);
 /** Sets the value of a response's status message. */
 void http_response_set_status_message(struct http_response *response, const char *status_message);
+
+/** Initializes an HTTP header. */
+void http_header_init(const struct http_header *header);
 
 /** Gets the value of a header's name. */
 const char *http_header_get_name(const struct http_header *header);
@@ -322,11 +356,6 @@ void http_header_set_value(struct http_header *header, const char *value);
 const char *http_query_get_key(const struct http_query *query);
 /** Gets the value of a query's value. */
 const char *http_query_get_value(const struct http_query *query);
-
-/** Sets the value of a query's key. */
-void http_query_set_key(struct http_query *query, const char *key);
-/** Sets the value of a query's value. */
-void http_query_set_value(struct http_query *query, const char *value);
 
 void print_bytes(const char *bytes, size_t bytes_len);
 
