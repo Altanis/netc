@@ -1,7 +1,7 @@
 #ifndef UDP_CLIENT_H
 #define UDP_CLIENT_H
 
-#include "udp/server.h"
+#include "./server.h"
 
 /** A structure representing a UDP client. */
 struct udp_client

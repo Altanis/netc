@@ -1,7 +1,8 @@
-#include "utils/map.h"
+#include "../../include/utils/map.h"
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 
 /** Jenkins hash algorithm. */

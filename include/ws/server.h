@@ -1,7 +1,7 @@
 #ifndef WS_SERVER_H
 #define WS_SERVER_H
 
-#include "web/server.h"
+#include "../web/server.h"
 
 /** The WebSocket GUID. */
 const char* WEBSOCKET_HANDSHAKE_GUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11";

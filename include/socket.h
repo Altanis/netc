@@ -1,8 +1,8 @@
 #ifndef SOCKET_H
 #define SOCKET_H
 
-#include "utils/error.h"
-#include "utils/string.h"
+#include "./utils/vector.h"
+#include "./utils/string.h"
 
 #include <sys/types.h>
 #include <sys/fcntl.h>

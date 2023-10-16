@@ -1,5 +1,5 @@
-#include "ws/server.h"
-#include "tcp/server.h"
+#include "../../include/ws/server.h"
+#include "../../include/tcp/server.h"
 
 int ws_server_upgrade_connection(struct web_server *server, struct web_client *client, struct http_request *request)
 {

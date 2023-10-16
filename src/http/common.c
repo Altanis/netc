@@ -1,5 +1,5 @@
-#include "http/common.h"
-#include "utils/vector.h"
+#include "../../include/http/common.h"
+#include "../../include/utils/vector.h"
 
 #include <stdlib.h>
 #include <string.h>

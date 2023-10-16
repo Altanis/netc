@@ -1,8 +1,8 @@
 #ifndef CLIENT_CONNECTION_H
 #define CLIENT_CONNECTION_H
 
-#include "tcp/client.h"
-#include "http/client.h"
+#include "../tcp/client.h"
+#include "../http/client.h"
 
 /** A structure representing a client connection over HTTP/WS. */
 struct web_client
