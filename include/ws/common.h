@@ -82,6 +82,17 @@ struct ws_frame
     uint64_t payload_length;
 };
 
+/** A structure representing a WebSocket message. */
+struct ws_message
+{
+    /** The opcode for the message. */
+    uint8_t opcode;
+    /** The buffer of data. */
+    char *buffer;
+    /** The size of the buffer. */
+    size_t payload_length;
+};
+
 /** A structure representing the parsing state of one WebSocket frame. */
 struct ws_frame_parsing_state
 {
@@ -97,17 +108,6 @@ struct ws_frame_parsing_state
     uint64_t real_payload_length;
     /** The amount of bytes received. */
     uint64_t received_length;
-};
-
-/** A structure representing a WebSocket message. */
-struct ws_message
-{
-    /** The opcode for the message. */
-    uint8_t opcode;
-    /** The buffer of data. */
-    char *buffer;
-    /** The size of the buffer. */
-    size_t payload_length;
 };
 
 #endif // WS_COMMON_H

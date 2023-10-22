@@ -5,9 +5,9 @@
  * TEST CASE 2: blocking server and client
 */
 
-#include "tcp/server.h"
-#include "tcp/client.h"
-#include "utils/error.h"
+#include "../../include/tcp/server.h"
+#include "../../include/tcp/client.h"
+#include "../../include/utils/error.h"
 
 #include <stdlib.h>
 #include <stdio.h>

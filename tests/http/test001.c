@@ -1,9 +1,9 @@
 #ifndef HTTP_TEST_001
 #define HTTP_TEST_001
 
-#include "web/server.h"
-#include "web/client.h"
-#include "utils/error.h"
+#include "../../include/web/server.h"
+#include "../../include/web/client.h"
+#include "../../include/utils/error.h"
 
 #include <string.h>
 #include <stdlib.h>

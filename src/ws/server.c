@@ -1,10 +1,13 @@
+#include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
+#include <sys/errno.h>
 #include <openssl/sha.h>
 
-#include "web/server.h"
-#include "ws/server.h"
-#include "tcp/server.h"
+#include "../../include/web/server.h"
+#include "../../include/ws/server.h"
+#include "../../include/tcp/server.h"
 
 int ws_server_upgrade_connection(struct web_server *server, struct web_client *client, struct http_request *request)
 {
@@ -170,7 +173,7 @@ parse_start:
             if (current_state->frame.payload_length <= 125) 
             {
                 current_state->real_payload_length = current_state->frame.payload_length;
-                current_state->message.buffer = calloc(current_state->real_payload_length);
+                current_state->message.buffer = calloc(current_state->real_payload_length, sizeof(char));
                 current_state->message.payload_length = current_state->real_payload_length;
 
                 if (current_state->frame.mask == 1)
@@ -208,7 +211,7 @@ parse_start:
 
             if (bytes_received == num_bytes_recv - length)
             {
-                current_state->message.buffer = calloc(current_state->real_payload_length);
+                current_state->message.buffer = calloc(current_state->real_payload_length, sizeof(char));
                 current_state->message.payload_length = current_state->real_payload_length;
 
                 if (current_state->frame.mask == 1)
@@ -222,9 +225,9 @@ parse_start:
         };
         case WS_FRAME_PARSING_STATE_MASKING_KEY:
         {
-            uint8_t masking_key[4] = current_state->frame.masking_key;
-            //ssize_t length = masking_key[0] == 0 ? 0 : (masking_key[1] == 0 ? 1 : (masking_key[2] == 0 ? 2 : (masking_key[3] == 0 ? 3 : 4)));
-            ssize_t length = bytes_index_of((const void *)masking_key, sizeof(masking_key), 0);
+            uint8_t *masking_key = current_state->frame.masking_key;
+            ssize_t length = masking_key[0] == 0 ? 0 : (masking_key[1] == 0 ? 1 : (masking_key[2] == 0 ? 2 : (masking_key[3] == 0 ? 3 : 4)));
+            // ssize_t length = bytes_index_of((const void *)masking_key, sizeof(masking_key), 0);
 
             if (length == -1)
             {

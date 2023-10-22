@@ -1,4 +1,4 @@
-#include "web/server.h"
+#include "./include/web/server.h"
 
 #include "tests/tcp/test001.c"
 #include "tests/tcp/test002.c"
@@ -39,7 +39,7 @@ int http_handling_moment(struct web_server *server, struct web_client *client, s
 
 void ws_start_handling_moment(struct web_server *server, struct web_client *client, struct http_request request)
 {
-    if (ws_server_upgrade_connection(server, client, &request) == -1) netc_perror("Dang nabbit.");;
+    if (ws_server_upgrade_connection(server, client, &request) == -1) netc_perror("Dang nabbit.");
     else printf("ws connected sexd...\n");
 };
 

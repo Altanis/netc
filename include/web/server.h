@@ -1,16 +1,16 @@
 #ifndef SERVER_CONNECTION_H
 #define SERVER_CONNECTION_H
 
-#include "tcp/server.h"
-#include "web/client.h"
+#include "../tcp/server.h"
+#include "../web/client.h"
 
-#include "http/common.h"
-#include "http/server.h"
+#include "../http/common.h"
+#include "../http/server.h"
 
-#include "ws/server.h"
-#include "ws/common.h"
+#include "../ws/server.h"
+#include "../ws/common.h"
 
-#include "utils/map.h"
+#include "../utils/map.h"
 
 /** A structure representing a server connection over HTTP/WS. */
 struct web_server

@@ -1,5 +1,7 @@
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
+#include <sys/errno.h>
 
 #include "../../include/web/client.h"
 

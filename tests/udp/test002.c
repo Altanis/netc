@@ -5,9 +5,9 @@
  * TEST CASE 1: nonblocking server and client
 */
 
-#include "udp/server.h"
-#include "udp/client.h"
-#include "utils/error.h"
+#include "../../include/udp/server.h"
+#include "../../include/udp/client.h"
+#include "../../include/utils/error.h"
 
 #include <string.h>
 #include <stdlib.h>
