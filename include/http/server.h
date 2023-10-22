@@ -4,7 +4,7 @@
 struct web_server;
 struct web_client;
 
-#include "http/common.h"
+#include "./common.h"
 
 /** Sends chunked data to the client. */
 int http_server_send_chunked_data(struct web_server *server, struct web_client *client, char *data, size_t data_length);

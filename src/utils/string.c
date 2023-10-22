@@ -1,4 +1,4 @@
-#include "utils/string.h"
+#include "../../include/utils/string.h"
 
 #include <stdio.h>
 #include <string.h>

@@ -1,7 +1,7 @@
 #ifndef TCP_CLIENT_H
 #define TCP_CLIENT_H
 
-#include "tcp/server.h"
+#include "./server.h"
 
 /** The main loop of a nonblocking TCP client. */
 int tcp_client_main_loop(struct tcp_client *client);

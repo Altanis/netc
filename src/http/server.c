@@ -1,5 +1,5 @@
-#include "web/server.h"
-#include "http/server.h"
+#include "../../include/web/server.h"
+#include "../../include/http/server.h"
 
 #include <stddef.h>
 #include <stdlib.h>

@@ -1,8 +1,8 @@
 #ifndef HTTP_HELPER_COMMON_H
 #define HTTP_HELPER_COMMON_H
 
-#include "utils/vector.h"
-#include "utils/string.h"
+#include "../utils/vector.h"
+#include "../utils/string.h"
 
 #include <stdint.h>
 

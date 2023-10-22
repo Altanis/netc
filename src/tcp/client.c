@@ -1,5 +1,5 @@
-#include "tcp/client.h"
-#include "utils/error.h"
+#include "../../include/tcp/client.h"
+#include "../../include/utils/error.h"
 
 #include <stdlib.h>
 #include <unistd.h>

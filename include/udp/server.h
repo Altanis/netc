@@ -1,9 +1,8 @@
 #ifndef UDP_SERVER_H
 #define UDP_SERVER_H
 
-#include "utils/error.h"
-#include "tcp/server.h"
-#include "socket.h"
+#include "../utils/error.h"
+#include "../socket.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN

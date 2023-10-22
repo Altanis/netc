@@ -1,5 +1,5 @@
-#include "web/server.h"
-#include "utils/error.h"
+#include "../../include/web/server.h"
+#include "../../include/utils/error.h"
 
 #include <stdio.h>
 #include <stdlib.h>

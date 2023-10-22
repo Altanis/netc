@@ -1,8 +1,8 @@
 #ifndef TCP_SERVER_H
 #define TCP_SERVER_H
 
-#include "utils/vector.h"
-#include "socket.h"
+#include "../utils/vector.h"
+#include "../socket.h"
 
 #ifdef _WIN32
 #define WIN32_LEAN_AND_MEAN
