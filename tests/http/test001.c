@@ -107,15 +107,15 @@ static void http_test001_server_on_connect(struct web_server *server, struct web
     http_test001_server_connect = 1;
 
     char *ip = calloc(INET6_ADDRSTRLEN, sizeof(char));
-    if (client->client->sockaddr.sa_family == AF_INET)
+    if (client->tcp_client->sockaddr.sa_family == AF_INET)
     {
-        struct sockaddr_in *addr = (struct sockaddr_in *)&client->client->sockaddr;
-        inet_ntop(AF_INET, &addr->sin_addr, ip, client->client->sockfd);
+        struct sockaddr_in *addr = (struct sockaddr_in *)&client->tcp_client->sockaddr;
+        inet_ntop(AF_INET, &addr->sin_addr, ip, client->tcp_client->sockfd);
     }
     else
     {
-        struct sockaddr_in6 *addr = (struct sockaddr_in6 *)&client->client->sockaddr;
-        inet_ntop(AF_INET6, &addr->sin6_addr, ip, client->client->sockfd);
+        struct sockaddr_in6 *addr = (struct sockaddr_in6 *)&client->tcp_client->sockaddr;
+        inet_ntop(AF_INET6, &addr->sin6_addr, ip, client->tcp_client->sockfd);
     };
 
     client->data = ip;
@@ -124,7 +124,7 @@ static void http_test001_server_on_connect(struct web_server *server, struct web
 
 static void http_test001_server_on_data(struct web_server *server, struct web_client *client, struct http_request request)
 {
-    socket_t sockfd = client->client->sockfd;
+    socket_t sockfd = client->tcp_client->sockfd;
 
     ++http_test001_server_data;
     
@@ -142,17 +142,7 @@ static void http_test001_server_on_data(struct web_server *server, struct web_cl
     };
 
     struct http_response response = {0};
-    http_response_set_version(&response, "HTTP/1.1");
-    response.status_code = 200;
-    http_response_set_status_message(&response, "OK");
-
-    struct http_header content_type = {0};
-    http_header_set_name(&content_type, "Content-Type");
-    http_header_set_value(&content_type, "text/plain");
-
-
-    vector_init(&response.headers, 2, sizeof(struct http_header));
-    vector_push(&response.headers, &content_type);
+    http_response_build(&response, "HTTP/1.1", 200, (char *[][2]){ {"Content-Type", "text/plain"} }, 1);    
 
     if (http_test001_server_data == 8)
     {
@@ -220,7 +210,7 @@ static void http_test001_server_on_data(struct web_server *server, struct web_cl
 
 static void http_test001_server_on_data_wrong_route(struct web_server *server, struct web_client *client, struct http_request request)
 {
-    socket_t sockfd = client->client->sockfd;
+    socket_t sockfd = client->tcp_client->sockfd;
 
     ++http_test001_server_data;
     printf("Sending \"later\"\n");
@@ -247,13 +237,13 @@ static void http_test001_server_on_data_wildcard_route(struct web_server *server
 
 static void http_test001_server_on_http_malformed_request(struct web_server *server, struct web_client *client, enum parse_request_error_types error)
 {
-    socket_t sockfd = client->client->sockfd;
+    socket_t sockfd = client->tcp_client->sockfd;
     printf("[HTTP TEST CASE 001] server could not process request from %s\n", client->data);
 };
 
 static void http_test001_server_on_disconnect(struct web_server *server, socket_t sockfd, int is_error)
 {
-    if (sockfd == server->server->sockfd)
+    if (sockfd == server->tcp_server->sockfd)
     {
         http_test001_server_disconnect = 1;
         printf("[HTTP TEST CASE 001] server disconnected from from %d\n", sockfd);

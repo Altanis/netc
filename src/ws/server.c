@@ -1,9 +1,14 @@
+#include <string.h>
+#include <stdbool.h>
+#include <openssl/sha.h>
+
+#include "web/server.h"
 #include "ws/server.h"
 #include "tcp/server.h"
 
 int ws_server_upgrade_connection(struct web_server *server, struct web_client *client, struct http_request *request)
 {
-    socket_t sockfd = client->client->sockfd;
+    socket_t sockfd = client->tcp_client->sockfd;
 
     struct http_header *sec_websocket_key = http_request_get_header(request, "Sec-WebSocket-Key");
     struct http_header *sec_websocket_version = http_request_get_header(request, "Sec-WebSocket-Version");
@@ -20,7 +25,7 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
             "Invalid Sec-WebSocket-Key header.";
 
         tcp_server_send(sockfd, (char *)badrequest_message, strlen(badrequest_message), 0);
-        tcp_server_close_client(server->server, sockfd, 0);
+        tcp_server_close_client(server->tcp_server, sockfd, 0);
 
         return -1;
     };
@@ -37,36 +42,229 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
             "Unsupported Sec-WebSocket-Version header.";
 
         tcp_server_send(sockfd, (char *)badrequest_message, strlen(badrequest_message), 0);
-        tcp_server_close_client(server->server, sockfd, 0);
+        tcp_server_close_client(server->tcp_server, sockfd, 0);
 
         return -1;
     };
 
-    struct http_response response = {0};
-    sso_string_set(&response.version, "HTTP/1.1");
-    response.status_code = 101;
-    sso_string_set(&response.status_message, http_status_messages[HTTP_STATUS_CODE_101]);
+    size_t guid_len = strlen(WEBSOCKET_HANDSHAKE_GUID);
+    char websocket_key_id[sec_websocket_key->value.length + guid_len];
+    sso_string_copy_buffer(websocket_key_id, &sec_websocket_key->value);
+    for (size_t i = 0; i < guid_len; ++i)
+    {
+        websocket_key_id[sec_websocket_key->value.length + i] = WEBSOCKET_HANDSHAKE_GUID[i];
+    };
 
-    vector_init(&response.headers, 4, sizeof(struct http_header));
+    char websocket_accept_id[SHA_DIGEST_LENGTH];
+    SHA1(websocket_key_id, sizeof(websocket_key_id), websocket_accept_id);
 
-    struct http_header connection = {0};
-    sso_string_set(&connection.name, "Connection");
-    sso_string_set(&connection.value, "upgrade");
-    vector_push(&response.headers, &connection);
+    char websocket_accept_id_base64[((4 * sizeof(websocket_accept_id) / 3) + 3) & ~3];
+    http_base64_encode(websocket_accept_id, sizeof(websocket_accept_id), websocket_accept_id_base64);
 
-    struct http_header upgrade = {0};
-    sso_string_set(&upgrade.name, "Upgrade");
-    sso_string_set(&upgrade.value, "websocket");
-    vector_push(&response.headers, &upgrade);
+    char* headers[][2] =
+    {
+        { "Connection", "upgrade" },
+        { "Upgrade", "websocket" },
+        { "Sec-WebSocket-Accept", websocket_accept_id_base64 }
+    };
+
+    struct http_response response;
+    http_response_build(
+        &response,
+        "HTTP/1.1", 
+        101, 
+        headers,
+        3
+    );
 
     if (sec_websocket_protocol != NULL)
     {
-        struct http_header protocol = {0};
-        sso_string_set(&protocol.name, "Sec-WebSocket-Protocol");
-        sso_string_set(&protocol.value, sso_string_get(&sec_websocket_protocol->value));
+        struct http_header protocol;
+        http_header_init(&protocol, "Sec-WebSocket-Protocol", sso_string_get(&sec_websocket_protocol->value));
         vector_push(&response.headers, &protocol);
     };
 
-    struct http_header accept = {0};
-    sso_string_set(&accept.name, "Sec-WebSocket-Accept");
+    int result = http_server_send_response(server, client, &response, NULL, 0);
+    if (result == 0)
+    {
+        client->path = strdup(sso_string_get(&request->path));
+        client->connection_type = CONNECTION_WS;
+        return 0;
+    } else return -1;
+};
+
+int ws_server_parse_frame(struct web_server *server, struct web_client *client, struct ws_frame_parsing_state *current_state)
+{
+    socket_t sockfd = client->tcp_client->sockfd;
+
+    size_t MAX_PAYLOAD_LENGTH = server->ws_server_config.max_payload_len || 65536;
+
+parse_start:
+    printf("%d\n", current_state->parsing_state);
+    switch (current_state->parsing_state)
+    {
+        case -1:
+        {
+            current_state->parsing_state = WS_FRAME_PARSING_STATE_FIRST_BYTE;
+            goto parse_start;
+        };
+        case WS_FRAME_PARSING_STATE_FIRST_BYTE:
+        {
+            uint8_t byte;
+            ssize_t byte_received = recv(sockfd, &byte, 1, 0);
+
+            if (byte_received <= 0)
+            {
+                if (errno == EWOULDBLOCK) return 1;
+                else return WS_FRAME_PARSE_ERROR_RECV;
+            };
+
+            current_state->frame.fin = (byte & 0b10000000) >> 7;
+            current_state->frame.rsv1 = (byte & 0b01000000) >> 6;
+            current_state->frame.rsv2 = (byte & 0b00100000) >> 5;
+            current_state->frame.rsv3 = (byte & 0b00010000) >> 4;
+            current_state->frame.opcode = byte & 0b00001111;
+
+            if (current_state->frame.opcode != WS_OPCODE_CONTINUE)
+                current_state->message.opcode = current_state->frame.opcode;
+
+            current_state->parsing_state = WS_FRAME_PARSING_STATE_SECOND_BYTE;
+            goto parse_start;
+        };
+        case WS_FRAME_PARSING_STATE_SECOND_BYTE:
+        {
+            uint8_t byte;
+            ssize_t byte_received = recv(sockfd, &byte, 1, 0);
+
+            if (byte_received <= 0)
+            {
+                if (errno == EWOULDBLOCK) return 1;
+                else return WS_FRAME_PARSE_ERROR_RECV;
+            };
+
+            current_state->frame.mask = (byte & 0b10000000) >> 7;
+            current_state->frame.payload_length = byte & 0b01111111;
+
+            current_state->real_payload_length = 0;
+            current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_LENGTH;
+
+            goto parse_start;
+        };
+        case WS_FRAME_PARSING_STATE_PAYLOAD_LENGTH:
+        {
+            void *ptr_to_null = memchr((const void *)current_state->real_payload_length, 0x00, sizeof(current_state->real_payload_length));
+            if (ptr_to_null == NULL)
+            {
+                if (current_state->frame.mask == 1)
+                {
+                    memset(current_state->frame.masking_key, 0, sizeof(current_state->frame.masking_key));
+                    current_state->parsing_state = WS_FRAME_PARSING_STATE_MASKING_KEY;
+                } else current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_DATA;
+
+                goto parse_start;
+            };
+
+            size_t length = (const uint8_t *)ptr_to_null - (const uint8_t *)current_state->real_payload_length;
+            size_t num_bytes_recv = 0;
+
+            if (current_state->frame.payload_length <= 125) 
+            {
+                current_state->real_payload_length = current_state->frame.payload_length;
+                current_state->message.buffer = calloc(current_state->real_payload_length);
+                current_state->message.payload_length = current_state->real_payload_length;
+
+                if (current_state->frame.mask == 1)
+                {
+                    memset(current_state->frame.masking_key, 0, sizeof(current_state->frame.masking_key));
+                    current_state->parsing_state = WS_FRAME_PARSING_STATE_MASKING_KEY;
+                } else current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_DATA;
+
+                goto parse_start;
+            }
+            else if (current_state->frame.payload_length == 126) num_bytes_recv = 2;
+            else if (current_state->frame.payload_length == 127) num_bytes_recv = 8;
+            else return WS_FRAME_PARSE_ERROR_INVALID_FRAME_LENGTH;
+
+            if (num_bytes_recv - length <= 0)
+            {
+                current_state->parsing_state = WS_FRAME_PARSING_STATE_MASKING_KEY;
+                goto parse_start;
+            };
+
+            uint64_t value = 0;
+            ssize_t bytes_received = recv(sockfd, &value, num_bytes_recv - length, 0);
+
+            if (bytes_received <= 0)
+            {
+                if (errno == EWOULDBLOCK) return 1;
+                else return WS_FRAME_PARSE_ERROR_RECV;
+            };
+
+            for (size_t i = 0; i < bytes_received; ++i)
+            {
+                current_state->real_payload_length <<= 8;
+                current_state->real_payload_length |= (value >> (8 * (bytes_received - i - 1))) & 0xFF;
+            };
+
+            if (bytes_received == num_bytes_recv - length)
+            {
+                current_state->message.buffer = calloc(current_state->real_payload_length);
+                current_state->message.payload_length = current_state->real_payload_length;
+
+                if (current_state->frame.mask == 1)
+                {
+                    memset(current_state->frame.masking_key, 0, sizeof(current_state->frame.masking_key));
+                    current_state->parsing_state = WS_FRAME_PARSING_STATE_MASKING_KEY;
+                } else current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_DATA;
+
+                goto parse_start;
+            };
+        };
+        case WS_FRAME_PARSING_STATE_MASKING_KEY:
+        {
+            uint8_t masking_key[4] = current_state->frame.masking_key;
+            //ssize_t length = masking_key[0] == 0 ? 0 : (masking_key[1] == 0 ? 1 : (masking_key[2] == 0 ? 2 : (masking_key[3] == 0 ? 3 : 4)));
+            ssize_t length = bytes_index_of((const void *)masking_key, sizeof(masking_key), 0);
+
+            if (length == -1)
+            {
+                current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_DATA;
+                goto parse_start;
+            };
+
+            ssize_t bytes_received = recv(sockfd, masking_key, 4 - length, 0);
+            if (bytes_received <= 0)
+            {
+                if (errno == EWOULDBLOCK) return 1;
+                else return WS_FRAME_PARSE_ERROR_RECV;
+            };
+
+            if (length + bytes_received == 4) current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_DATA;
+
+            goto parse_start;
+        };
+        case WS_FRAME_PARSING_STATE_PAYLOAD_DATA:
+        {
+            uint64_t received_length = current_state->received_length;
+
+            ssize_t bytes_received = recv(sockfd, current_state->message.buffer, current_state->real_payload_length - received_length, 0);
+            if (bytes_received <= 0)
+            {
+                if (errno == EWOULDBLOCK) return 1;
+                else return WS_FRAME_PARSE_ERROR_RECV;
+            };
+
+            current_state->received_length += bytes_received;
+            if (bytes_received == current_state->real_payload_length - received_length) break;
+            else return 1;
+        };
+    };
+
+    current_state->parsing_state = -1;
+    current_state->real_payload_length = 0;
+    current_state->received_length = 0;
+    memset(&current_state->frame, 0, sizeof(current_state->frame));
+
+    if (current_state->frame.fin == 1) return 0;
+    else return 1;
 };

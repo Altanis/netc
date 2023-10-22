@@ -19,7 +19,7 @@ int http_server_send_chunked_data(struct web_server *server, struct web_client *
     char length_str[16] = {0};
     sprintf(length_str, "%zx\r\n", data_length);
 
-    socket_t sockfd = client->client->sockfd;
+    socket_t sockfd = client->tcp_client->sockfd;
 
     int send_result = 0;
 
@@ -28,7 +28,7 @@ int http_server_send_chunked_data(struct web_server *server, struct web_client *
     if ((send_result = tcp_server_send(sockfd, "\r\n", 2, 0)) <= 2) return send_result;
 
     if (data_length == 0 && client->server_close_flag)
-        tcp_server_close_client(server->server, client->client->sockfd, 0);
+        tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, 0);
 
     // combine them all into one char buffer
     // char buffer[length + strlen(length_str) + 2];
@@ -45,9 +45,9 @@ int http_server_send_chunked_data(struct web_server *server, struct web_client *
 
 int http_server_send_response(struct web_server *server, struct web_client *client, struct http_response *response, const char *data, size_t data_length)
 {
-    socket_t sockfd = client->client->sockfd;
+    socket_t sockfd = client->tcp_client->sockfd;
 
-    string_t response_str = {0};
+    string_t response_str;
     sso_string_init(&response_str, "");
 
     sso_string_concat_buffer(&response_str, sso_string_get(&response->version));
@@ -83,9 +83,7 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
         sso_string_concat_buffer(&response_str, "\r\n");
     };
 
-    printf("should we close this connection? %s", client->server_close_flag ? "yes.." : "no..");
-
-    if (chunked == 0)
+    if (chunked == 0 && data_length != 0)
     {
         char length_str[16] = {0};
         sprintf(length_str, "%zu", data_length);
@@ -100,6 +98,8 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
 
     sso_string_concat_buffer(&response_str, "\r\n");
 
+    print_bytes(sso_string_get(&response_str), response_str.length);
+
     ssize_t first_send = tcp_server_send(sockfd, (char *)sso_string_get(&response_str), response_str.length, 0);
     if (first_send <= 0) return first_send;
 
@@ -111,16 +111,16 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
         if (second_send <= 0) return second_send;
 
         if (client->server_close_flag)
-            tcp_server_close_client(server->server, client->client->sockfd, 0);
+            tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, 0);
     };
 
-    return first_send + second_send;
+    return 0;
 };
 
 // todo: optimize by using msg_peek calls
 int http_server_parse_request(struct web_server *server, struct web_client *client, struct http_server_parsing_state *current_state)
 {
-    socket_t sockfd = client->client->sockfd;
+    socket_t sockfd = client->tcp_client->sockfd;
 
     char boffy[4096] = {0};
     int x = recv(sockfd, boffy, 4095, MSG_PEEK);

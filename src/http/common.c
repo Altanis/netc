@@ -5,26 +5,30 @@
 #include <string.h>
 #include <stdio.h>
 
-void http_request_init(struct http_request *request)
+const char *http_status_code_to_message(int status_code)
 {
-    sso_string_init(&request->method, "");
-    sso_string_init(&request->path, "");
-    sso_string_init(&request->version, "");
+    switch (status_code)
+    {
+#define X(code, message) case code: return message;
+        HTTP_STATUS_CODES
+#undef X
+    };
+
+    return NULL;
 };
 
-void http_request_build(struct http_request *request, char *method, char *path, char *version, const char *headers[][2])
+void http_request_build(struct http_request *request, char *method, char *path, char *version, const char *headers[][2], size_t headers_length)
 {
     sso_string_init(&request->method, method);
     sso_string_init(&request->path, path);
     sso_string_init(&request->version, version);
 
-    vector_init(&request->headers, 2, sizeof(struct http_header));
+    vector_init(&request->headers, headers_length, sizeof(struct http_header));
 
-    size_t headers_length = sizeof(headers) / sizeof(headers[0]);
     for (size_t i = 0; i < headers_length; ++i)
     {
-        char *name = headers[headers_length][0];
-        char *value = headers[headers_length][1];
+        char *name = headers[i][0];
+        char *value = headers[i][1];
 
         struct http_header header = {0};
         sso_string_init(&header.name, name);
@@ -34,16 +38,28 @@ void http_request_build(struct http_request *request, char *method, char *path, 
     };
 };
 
+void http_request_free(struct http_request *request)
+{
+    free(request->body);
+
+    vector_free(&request->headers);
+    vector_free(&request->query);
+
+    sso_string_free(&request->method);
+    sso_string_free(&request->path);
+    sso_string_free(&request->version);
+};
+
 const char *http_request_get_method(const struct http_request *request) { return sso_string_get(&request->method); };
 const char *http_request_get_path(const struct http_request *request) { return sso_string_get(&request->path); };
 const char *http_request_get_version(const struct http_request *request) { return sso_string_get(&request->version); };
-const char *http_request_get_header(const struct http_request *request, const char *name)
+struct http_header *http_request_get_header(const struct http_request *request, const char *name)
 {
     for (size_t i = 0; i < request->headers.size; ++i)
     {
         struct http_header *header = vector_get(&request->headers, i);
         if (strcasecmp(sso_string_get(&header->name), name) == 0)
-            return sso_string_get(&header->value);
+            return header;
     };
 
     return NULL;
@@ -55,26 +71,21 @@ void http_request_set_method(struct http_request *request, const char *method) {
 void http_request_set_path(struct http_request *request, const char *path) { sso_string_set(&request->path, path); };
 void http_request_set_version(struct http_request *request, const char *version) { sso_string_set(&request->version, version); };
 
-void http_response_init(struct http_response *response)
-{
-    sso_string_init(&response->version, "");
-    sso_string_init(&response->status_message, "");
-};
-
-void http_response_build(struct http_response *response, char *version, int status_code, const char *headers[][2])
+void http_response_build(struct http_response *response, char *version, int status_code, const char *headers[][2], size_t headers_length)
 {
     sso_string_init(&response->version, version);
     response->status_code = status_code;
+
     const char *status_message = http_status_code_to_message(status_code);
+    printf("[stat] %s\n", status_message);
     sso_string_init(&response->status_message, status_message);
 
-    vector_init(&response->headers, 2, sizeof(struct http_header));
+    vector_init(&response->headers, headers_length, sizeof(struct http_header));
 
-    size_t headers_length = sizeof(headers) / sizeof(headers[0]);
     for (size_t i = 0; i < headers_length; ++i)
     {
-        char *name = headers[headers_length][0];
-        char *value = headers[headers_length][1];
+        char *name = headers[i][0];
+        char *value = headers[i][1];
 
         struct http_header header = {0};
         sso_string_init(&header.name, name);
@@ -82,6 +93,16 @@ void http_response_build(struct http_response *response, char *version, int stat
 
         vector_push(&response->headers, &header);
     };  
+};
+
+void http_response_free(struct http_response *response)
+{
+    free(response->body);
+
+    vector_free(&response->headers);
+
+    sso_string_free(&response->status_message);
+    sso_string_free(&response->version);
 };
 
 const char *http_response_get_version(const struct http_response *response) { return sso_string_get(&response->version); };
@@ -102,7 +123,12 @@ const char *http_response_get_body(const struct http_response *response) { retur
 void http_response_set_version(struct http_response *response, const char *version) { sso_string_set(&response->version, version); };
 void http_response_set_status_message(struct http_response *response, const char *status_message) { sso_string_set(&response->status_message, status_message); };
 
-void http_header_init(const struct http_header *header) { sso_string_init(&header->name, ""); sso_string_init(&header->value, ""); };
+void http_header_init(const struct http_header *header, char *name, char *value) { sso_string_init(&header->name, name); sso_string_init(&header->value, value); };
+void http_header_free(struct http_header *header)
+{
+    sso_string_free(&header->name);
+    sso_string_free(&header->value);
+};
 
 const char *http_header_get_name(const struct http_header *header) { return sso_string_get(&header->name); };
 const char *http_header_get_value(const struct http_header *header) { return sso_string_get(&header->value); };
@@ -169,4 +195,55 @@ void http_url_percent_decode(char *url, char *decoded)
     };
 
     *decoded_ptr = '\0';
+};
+
+void http_base64_encode(const char *bytes, size_t bytes_len, char *encoded)
+{
+    static const char *base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    char *encoded_ptr = encoded;
+
+    for (size_t i = 0; i < bytes_len; i += 3)
+    {
+        char b1 = bytes[i];
+        char b2 = i + 1 < bytes_len ? bytes[i + 1] : 0;
+        char b3 = i + 2 < bytes_len ? bytes[i + 2] : 0;
+
+        char b1_1 = (b1 & 0xFC) >> 2;
+        char b1_2 = (b1 & 0x03) << 4 | (b2 & 0xF0) >> 4;
+        char b2_1 = (b2 & 0x0F) << 2 | (b3 & 0xC0) >> 6;
+        char b2_2 = (b3 & 0x3F);
+
+        *encoded_ptr++ = base64_chars[b1_1];
+        *encoded_ptr++ = base64_chars[b1_2];
+        *encoded_ptr++ = i + 1 < bytes_len ? base64_chars[b2_1] : '=';
+        *encoded_ptr++ = i + 2 < bytes_len ? base64_chars[b2_2] : '=';
+    };
+
+    *encoded_ptr = '\0';
+};
+
+void http_base64_decode(const char *encoded, char *bytes, size_t *bytes_len)
+{
+    static const char *base64_chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+
+    char *bytes_ptr = bytes;
+
+    for (size_t i = 0; i < strlen(encoded); i += 4)
+    {
+        char b1 = strchr(base64_chars, encoded[i]) - base64_chars;
+        char b2 = strchr(base64_chars, encoded[i + 1]) - base64_chars;
+        char b3 = strchr(base64_chars, encoded[i + 2]) - base64_chars;
+        char b4 = strchr(base64_chars, encoded[i + 3]) - base64_chars;
+
+        char b1_1 = (b1 & 0x3F) << 2 | (b2 & 0x30) >> 4;
+        char b1_2 = (b2 & 0x0F) << 4 | (b3 & 0x3C) >> 2;
+        char b2_1 = (b3 & 0x03) << 6 | (b4 & 0x3F);
+
+        *bytes_ptr++ = b1_1;
+        *bytes_ptr++ = b1_2;
+        *bytes_ptr++ = i + 2 < strlen(encoded) ? b2_1 : 0;
+    };
+
+    *bytes_len = bytes_ptr - bytes;
 };

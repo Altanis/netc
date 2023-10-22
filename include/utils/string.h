@@ -39,6 +39,8 @@ void sso_string_backspace(string_t *string, size_t n);
 
 /** Copies a SSO string. */
 void sso_string_copy(string_t *dest, const string_t *src);
+/** Copies a SSO string into a buffer. */
+void sso_string_copy_buffer(char *dest, const string_t *src);
 
 /** Compares two SSO strings. */
 int sso_string_compare(const string_t *string1, const string_t *string2);

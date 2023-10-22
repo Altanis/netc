@@ -2,6 +2,9 @@
 
 A cross-platform networking library for TCP, UDP, HTTP, and WS sockets. Written in C.
 
+## Prerequisites:
+This library requires OpenSSL for SHA1 functionality.
+
 ## Features:
 
 - [X] TCP/UDP Server and Client
@@ -25,6 +28,7 @@ A cross-platform networking library for TCP, UDP, HTTP, and WS sockets. Written 
         - [X] Keep Alive
         - [ ] Compression/Decompression
 - [ ] WebSocket Abstraction
+    - [ ] Permessage-Deflate support
 - [ ] Threadpool
 - [ ] SSL/TLS Support (for HTTP/1.1 and WS Client)
 <!-- In my opinion, there is no point of providing SSL suport for servers due to reverse proxies providing them. -->

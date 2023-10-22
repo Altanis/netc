@@ -32,10 +32,10 @@ void netc_strerror(char *buffer)
 #endif
 };
 
-void netc_perror(const char *message, FILE *stream)
+void netc_perror(const char *message)
 {
     char error[512] = {0};
     netc_strerror(error);
 
-    fprintf(stream == NULL ? stderr : stream, "%s: %s\n", message, error);
+    fprintf(stderr, "%s: %s\n", message, error);
 };

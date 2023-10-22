@@ -51,14 +51,14 @@ static void _tcp_on_connect(struct tcp_server *server)
     struct web_server *http_server = server->data;
 
     struct web_client *client = malloc(sizeof(struct web_client));
-    client->client = malloc(sizeof(struct tcp_client));
+    client->tcp_client = malloc(sizeof(struct tcp_client));
     client->server_close_flag = 0;
     client->connection_type = CONNECTION_HTTP /** default */;
 
-    tcp_server_accept(server, client->client);
+    tcp_server_accept(server, client->tcp_client);
 
-    printf("[sockfd] %d\n", client->client->sockfd);
-    map_set(&http_server->clients, &(socket_t){client->client->sockfd}, client, sizeof(client->client->sockfd));
+    printf("[sockfd] %d\n", client->tcp_client->sockfd);
+    map_set(&http_server->clients, &(socket_t){client->tcp_client->sockfd}, client, sizeof(client->tcp_client->sockfd));
 
     if (http_server->on_connect != NULL)
         http_server->on_connect(http_server, client);
@@ -66,9 +66,9 @@ static void _tcp_on_connect(struct tcp_server *server)
 
 static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 {
-    struct web_server *http_server = server->data;
+    struct web_server *web_server = server->data;
     printf("[sockfd data] %d\n", sockfd);
-    struct web_client *client = map_get(&http_server->clients, &sockfd, sizeof(sockfd));
+    struct web_client *client = map_get(&web_server->clients, &sockfd, sizeof(sockfd));
 
     if (client == NULL) printf("what.\n");
 
@@ -76,25 +76,49 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
     {
         case CONNECTION_WS:
         {
-            printf("websocket data.\n");
+            struct ws_frame_parsing_state ws_parsing_state = client->ws_parsing_state;
+            struct web_server_route *route = web_server_find_route(web_server, client->path);
+
+            int result = 0;
+
+            if ((result = ws_server_parse_frame(server, client, &ws_parsing_state)) != 0)
+            {
+                if (result < 0)
+                {
+                    /** Malformed request. */
+                    if (route->on_ws_malformed_frame)
+                    {
+                        /** TODO(Altanis): Fix one WS request partitioned into two causing two event calls. */
+                        printf("[ws] malformed request: %d\n", result);
+                        route->on_ws_malformed_frame(server, client, result);
+                    };
+                };
+
+                printf("WAITING FOR INCOMING DATA...\n");
+                return;
+            };
+
+            route->on_ws_message(server, client, ws_parsing_state.message);
+
+            memset(&ws_parsing_state, 0, sizeof(ws_parsing_state));
             break;
         };
 
         case CONNECTION_HTTP:
         {
-            struct http_server_parsing_state current_state = client->server_parsing_state;
+            struct http_server_parsing_state http_parsing_state = client->http_server_parsing_state;
 
             int result = 0;
-            if ((result = http_server_parse_request(http_server, client, &current_state)) != 0)
+            if ((result = http_server_parse_request(web_server, client, &http_parsing_state)) != 0)
             {
                 if (result < 0)
                 {
                     /** Malformed request. */
-                    if (http_server->on_http_malformed_request)
+                    if (web_server->on_http_malformed_request)
                     {
                         /** TODO(Altanis): Fix one HTTP request partitioned into two causing two event calls. */
-                        printf("malformed request: %d\n", result);
-                        http_server->on_http_malformed_request(http_server, client, result);
+                        printf("[http] malformed request: %d\n", result);
+                        web_server->on_http_malformed_request(web_server, client, result);
                     }
                 };
 
@@ -103,14 +127,14 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 return;
             };
 
-            char *path = strdup(sso_string_get(&current_state.request.path));
+            char *path = strdup(sso_string_get(&http_parsing_state.request.path));
             /** Check for query strings to parse. */
             char *query_string = strchr(path, '?');
             if (query_string != NULL)
             {
                 path[query_string - path] = '\0';
 
-                vector_init(&current_state.request.query, 8, sizeof(struct http_query));
+                vector_init(&http_parsing_state.request.query, 8, sizeof(struct http_query));
 
                 char *token = strtok(query_string + 1, "&");
                 while (token != NULL)
@@ -127,11 +151,11 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     sso_string_set(&query.key, token);
                     sso_string_set(&query.value, value + 1);
 
-                    vector_push(&current_state.request.query, &query);
+                    vector_push(&http_parsing_state.request.query, &query);
                 };
             };
 
-            struct web_server_route *route = web_server_find_route(http_server, path);
+            struct web_server_route *route = web_server_find_route(web_server, path);
             if (route == NULL)
             {
                 // That comedian...
@@ -143,15 +167,15 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 
                 tcp_server_send(sockfd, (char *)notfound_message, strlen(notfound_message), 0);
                 
-                memset(&current_state.request, 0, sizeof(current_state.request));
-                current_state.parsing_state = -1;
+                memset(&http_parsing_state.request, 0, sizeof(http_parsing_state.request));
+                http_parsing_state.parsing_state = -1;
 
                 free(path);
 
                 return;        
             };
 
-            if (current_state.request.upgrade_websocket == 1)
+            if (http_parsing_state.request.upgrade_websocket == 1)
             {
                 void (*handshake_request_cb)(struct web_server *server, struct web_client *client, struct http_request request) = route->on_ws_handshake_request;
                 if (handshake_request_cb == NULL)
@@ -166,18 +190,19 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     
                     tcp_server_send(sockfd, (char *)badrequest_message, strlen(badrequest_message), 0);
                 }
-                else handshake_request_cb(http_server, client, current_state.request);
+                else handshake_request_cb(web_server, client, http_parsing_state.request);
             }
             else
             {
                 void (*callback)(struct web_server *server, struct web_client *client, struct http_request request) = route->on_http_message;
-                if (callback != NULL) callback(http_server, client, current_state.request);
+                if (callback != NULL) callback(web_server, client, http_parsing_state.request);
             };
 
-            memset(&current_state.request, 0, sizeof(current_state.request));
-            current_state.parsing_state = -1;
+            memset(&http_parsing_state.request, 0, sizeof(http_parsing_state.request));
+            http_parsing_state.parsing_state = -1;
 
             free(path);
+            http_request_free(&http_parsing_state.request);
 
             break;
         };
@@ -219,14 +244,14 @@ int web_server_init(struct web_server *http_server, struct sockaddr address, int
     tcp_server->on_data = _tcp_on_data;
     tcp_server->on_disconnect = _tcp_on_disconnect;
 
-    http_server->server = tcp_server;
+    http_server->tcp_server = tcp_server;
 
     return 0;
 };
 
 int web_server_start(struct web_server *server)
 {
-    return tcp_server_main_loop(server->server);
+    return tcp_server_main_loop(server->tcp_server);
 };
 
 void web_server_create_route(struct web_server *server, struct web_server_route *route)
@@ -236,19 +261,14 @@ void web_server_create_route(struct web_server *server, struct web_server_route 
 
 struct web_server_route *web_server_find_route(struct web_server *server, const char *path)
 {
-    struct web_server_route *return_route = NULL;
-
     for (size_t i = 0; i < server->routes.size; ++i)
     {
         struct web_server_route *route = vector_get(&server->routes, i);
         if (_path_matches(path, route->path))
-        {
-            return_route = route;
-            break;
-        };
+            return route;
     };
 
-    return return_route;
+    return NULL;
 };
 
 void web_server_remove_route(struct web_server *server, const char *path)
@@ -266,10 +286,10 @@ void web_server_remove_route(struct web_server *server, const char *path)
 
 int web_server_close(struct web_server *server)
 {
-    return tcp_server_close_self(server->server);
+    return tcp_server_close_self(server->tcp_server);
 };
 
 int web_server_close_client(struct web_server *server, struct web_client *client)
 {
-    return tcp_server_close_client(server->server, client->client->sockfd, 0);
+    return tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, 0);
 };

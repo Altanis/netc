@@ -37,7 +37,7 @@ int init_result = udp_server_init(&server, *(struct sockaddr *)&sockaddr, 1 /** 
 if (init_result != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 
@@ -46,7 +46,7 @@ int bind_result = udp_server_bind(&server);
 if (bind_result != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 
@@ -55,7 +55,7 @@ int r = udp_server_main_loop(&server); /** This function will block. */
 if (r != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 ```
@@ -80,7 +80,7 @@ void on_data(struct udp_server *server)
     if (r == -1) 
     {
         /** Handle error. */
-        netc_perror("failure", NULL);
+        netc_perror("failure");
         return 1;
     }
     else
@@ -90,7 +90,7 @@ void on_data(struct udp_server *server)
         if (r == -1) 
         {
             /** Handle error. */
-            netc_perror("failure", NULL);
+            netc_perror("failure");
             return 1;
         }
         else
@@ -120,7 +120,7 @@ int r = udp_server_receive(server, buffer, 1024 /** sizeof buffer */, 0 /** flag
 if (r == -1) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 
@@ -155,7 +155,7 @@ int init_result = udp_client_init(&client, 0 *(struct sockaddr *)&sockaddr, 1 /*
 if (init_result != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 
@@ -164,7 +164,7 @@ int connect_result = udp_client_connect(&client);
 if (connect_result != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 ```
@@ -190,7 +190,7 @@ void on_data(struct udp_client *client)
     if (r == -1) 
     {
         /** Handle error. */
-        netc_perror("failure", NULL);
+        netc_perror("failure");
         return 1;
     }
     else
@@ -200,7 +200,7 @@ void on_data(struct udp_client *client)
         if (r == -1) 
         {
             /** Handle error. */
-            netc_perror("failure", NULL);
+            netc_perror("failure");
             return 1;
         }
         else

@@ -3,15 +3,20 @@
 
 #include "tcp/server.h"
 #include "web/client.h"
+
 #include "http/common.h"
 #include "http/server.h"
+
+#include "ws/server.h"
+#include "ws/common.h"
+
 #include "utils/map.h"
 
 /** A structure representing a server connection over HTTP/WS. */
 struct web_server
 {
     /** The underlying TCP server. */
-    struct tcp_server *server;
+    struct tcp_server *tcp_server;
 
     /** A vector storing all the HTTP routes to their callbacks. */
     struct vector routes; // <server_route>
@@ -22,7 +27,7 @@ struct web_server
     /** User defined data to be passed to the event callbacks. */
     void *data;
 
-    /** [HTTP ONLY] A structure representing the configuration for the HTTP server. */
+    /** [HTTP ONLY] A structure representing the configuration for a HTTP server. */
     struct
     {
         /** The maximum length of the HTTP method. Defaults to `7`. */
@@ -46,6 +51,13 @@ struct web_server
         /** The amount of time for waiting on the completion of parsing the HTTP body. Defaults to `10`. */
         size_t body_timeout_seconds;
     } http_server_config;
+
+    /** [WS ONLY] A structure representing the configuration for a WebSocket server. */
+    struct
+    {
+        /** The maximum number of bytes of one payload/message. */
+        size_t max_payload_len;
+    } ws_server_config;
     
     /** The callback for when a client connects, for both HTTP and WS. */
     void (*on_connect)(struct web_server *server, struct web_client *client);
@@ -68,7 +80,7 @@ struct web_server_route
     /** THe callback for when a WebSocket client sends a message to the server. */
     void (*on_ws_message)(struct web_server *server, struct web_client *client, struct ws_message message);
     /** The callback for when a request is malformed for WS. */
-    void (*on_ws_malformed_request)();
+    void (*on_ws_malformed_frame)(struct web_server *server, struct web_client *client, enum ws_frame_parsing_errors error);
 
     /** The path pattern. */
     char *path;

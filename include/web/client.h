@@ -3,19 +3,19 @@
 
 #include "tcp/client.h"
 #include "http/client.h"
+#include "ws/common.h"
 
 /** A structure representing a client connection over HTTP/WS. */
 struct web_client
 {
     /** The underlying TCP client. */
-    struct tcp_client *client;
+    struct tcp_client *tcp_client;
+    
     /** The type of client. */
     enum connection_types connection_type;
 
     /** [WS ONLY] The path the client is connected to. */
     char *path;
-    /** [WS ONLY] Whether or not the handshake has completed. */
-    int handshake_completed;
 
     /** User defined data to be passed to the event callbacks. */
     void *data;
@@ -45,14 +45,20 @@ struct web_client
          * Specific to a server using this struct as a client representation.
          * The parsing state of the server's incoming request.
         */
-        struct http_server_parsing_state server_parsing_state;
+        struct http_server_parsing_state http_server_parsing_state;
 
         /** 
          * [HTTP ONLY]
          * Specific to a client using this struct as a client representation.
          * The parsing state of the client's incoming response.
         */
-        struct http_client_parsing_state client_parsing_state;
+        struct http_client_parsing_state http_client_parsing_state;
+
+        /**
+         * [WS ONLY]
+         * The parsing state of a connection's message.
+        */
+       struct ws_frame_parsing_state ws_parsing_state;
     };
 
     /** The callback for when a client connects. */

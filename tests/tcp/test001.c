@@ -63,7 +63,7 @@ static void *tcp_test001_server_thread_nonblocking_main(void *arg)
 {
     struct tcp_server *server = (struct tcp_server *)arg;
     int r = tcp_server_main_loop(server);
-    if (r != 0) netc_perror(ANSI_RED "[TCP TEST CASE 001] server main loop aborted", stderr);
+    if (r != 0) netc_perror(ANSI_RED "[TCP TEST CASE 001] server main loop aborted");;
 
     return NULL;
 };
@@ -84,7 +84,7 @@ static void tcp_test001_server_on_data(struct tcp_server *server, socket_t sockf
     int recv_result = tcp_server_receive(sockfd, buffer, 17, 0);
     if (recv_result != 17)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to receive", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to receive");;
         return;
     };
     printf("[TCP TEST CASE 001] message received. socket id: %d, message: %s\n", sockfd, buffer);
@@ -92,7 +92,7 @@ static void tcp_test001_server_on_data(struct tcp_server *server, socket_t sockf
     int send_result = tcp_server_send(sockfd, "hello from server", 17, 0);
     if (send_result != 17)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to send", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to send");;
         return;
     };
 
@@ -110,7 +110,7 @@ static void *tcp_test001_client_thread_nonblocking_main(void *arg)
 {
     struct tcp_client *client = (struct tcp_client *)arg;
     int r = tcp_client_main_loop(client);
-    if (r != 0) netc_perror(ANSI_RED "[TCP TEST CASE 001] client main loop aborted", stderr);
+    if (r != 0) netc_perror(ANSI_RED "[TCP TEST CASE 001] client main loop aborted");;
 
     return NULL;
 };
@@ -123,7 +123,7 @@ static void tcp_tet001_client_on_connect(struct tcp_client *client)
     int send_result = tcp_client_send(client, "hello from client", 17, 0);
     if (send_result != 17)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to send", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to send");;
         return;
     }
 };
@@ -135,7 +135,7 @@ static void tcp_test001_client_on_data(struct tcp_client *client)
     int recv_result = tcp_client_receive(client, buffer, 17, 0);
     if (recv_result != 17)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to receive", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to receive");;
         return;
     };
 
@@ -145,7 +145,7 @@ static void tcp_test001_client_on_data(struct tcp_client *client)
     int close_result = 0;
     if ((close_result = tcp_client_close(client, 0)) != 0)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to close", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to close");;
         return;
     };
 };
@@ -172,28 +172,28 @@ static int tcp_test001()
     int init_result = 0;
     if ((init_result = tcp_server_init(server, *(struct sockaddr *)&saddr, SERVER_NON_BLOCKING)) != 0)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to initialize", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to initialize");;
         return 1;
     };
 
     int optval = 1;
     if (setsockopt(server->sockfd, SOL_SOCKET, SO_REUSEADDR, (char *)&optval, sizeof(optval)) != 0)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to set socket options", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to set socket options");;
         return 1;
     };
 
     int bind_result = 0;
     if ((bind_result = tcp_server_bind(server)) != 0)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to bind", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to bind");;
         return 1;
     };
 
     int listen_result = 0;
     if ((listen_result = tcp_server_listen(server, BACKLOG)) != 0)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to listen", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to listen");;
         return 1;
     };
 
@@ -213,14 +213,14 @@ static int tcp_test001()
 
     if (inet_pton(AF_INET, IP, &(addr.sin_addr)) <= 0)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to convert IP address", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to convert IP address");;
         return 1;
     };
 
     int client_init_result = 0;
     if ((client_init_result = tcp_client_init(client, *(struct sockaddr *)&addr, CLIENT_NON_BLOCKING)) != 0)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to initialize", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to initialize");;
         return 1;
     };
 
@@ -231,7 +231,7 @@ static int tcp_test001()
     int client_connect_result = 0;
     if ((client_connect_result = tcp_client_connect(client)) != 0)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to connect", stderr);
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to connect");;
         return 1;
     };
 

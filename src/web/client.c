@@ -15,7 +15,7 @@ static void _tcp_on_connect(struct tcp_client *client)
 static void _tcp_on_data(struct tcp_client *client)
 {
     struct web_client *http_client = client->data;
-    struct http_client_parsing_state current_state = http_client->client_parsing_state;
+    struct http_client_parsing_state current_state = http_client->http_client_parsing_state;
 
     int result = 0;
     if ((result = http_client_parse_response(http_client, &current_state)) != 0)
@@ -23,7 +23,7 @@ static void _tcp_on_data(struct tcp_client *client)
         if (result < 0)
         {
             if (http_client->on_malformed_response != NULL)
-            http_client->on_malformed_response(http_client, result);
+                http_client->on_malformed_response(http_client, result);
             return;
         };
 
@@ -36,6 +36,8 @@ static void _tcp_on_data(struct tcp_client *client)
 
     if (http_client->client_close_flag)
         tcp_client_close(client, 0);
+
+    http_response_free(&current_state.response);
 };
 
 static void _tcp_on_disconnect(struct tcp_client *client, int is_error)
@@ -65,7 +67,7 @@ int web_client_init(struct web_client *client, struct sockaddr address, enum con
     tcp_client->on_data = _tcp_on_data;
     tcp_client->on_disconnect = _tcp_on_disconnect;
 
-    client->client = tcp_client;
+    client->tcp_client = tcp_client;
     client->client_close_flag = 0;
     client->connection_type = connection_type;
 
@@ -74,10 +76,10 @@ int web_client_init(struct web_client *client, struct sockaddr address, enum con
 
 int web_client_start(struct web_client *client)
 {
-    return tcp_client_main_loop(client->client);
+    return tcp_client_main_loop(client->tcp_client);
 };
 
 int web_client_close(struct web_client *client)
 {
-    return tcp_client_close(client->client, 0);
+    return tcp_client_close(client->tcp_client, 0);
 };

@@ -173,6 +173,12 @@ void sso_string_copy(string_t *dest, const string_t *src)
     sso_string_ensure_null_terminated(dest);
 };
 
+void sso_string_copy_buffer(char *dest, const string_t *src)
+{
+    memcpy(dest, sso_string_get(src), src->length);
+    dest[src->length] = '\0';
+};
+
 size_t sso_string_length(const string_t *string)
 {
     return string->length;

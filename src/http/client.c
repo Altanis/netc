@@ -10,9 +10,9 @@ int http_client_send_chunked_data(struct web_client *client, char *data, size_t 
 
     int send_result = 0;
 
-    if ((send_result = tcp_client_send(client->client, length_str, strlen(length_str), 0)) <= 0) return send_result;
-    if (data_length != 0 && ((send_result = tcp_client_send(client->client, data_length == 0 ? "" : data, data_length, 0)) <= 0)) return send_result;    
-    if ((send_result = tcp_client_send(client->client, "\r\n", 2, 0)) <= 2) return send_result;
+    if ((send_result = tcp_client_send(client->tcp_client, length_str, strlen(length_str), 0)) <= 0) return send_result;
+    if (data_length != 0 && ((send_result = tcp_client_send(client->tcp_client, data_length == 0 ? "" : data, data_length, 0)) <= 0)) return send_result;    
+    if ((send_result = tcp_client_send(client->tcp_client, "\r\n", 2, 0)) <= 2) return send_result;
 
     return 0;
 };
@@ -51,7 +51,7 @@ int http_client_send_request(struct web_client *client, struct http_request *req
         sso_string_concat_buffer(&request_str, "\r\n");
     };
 
-    if (chunked == 0)
+    if (chunked == 0 && data_length != 0)
     {
         char length_str[16] = {0};
         sprintf(length_str, "%zu", data_length);
@@ -65,12 +65,12 @@ int http_client_send_request(struct web_client *client, struct http_request *req
 
     printf("[BAD THINGS ALWAYS] %s ..\n", sso_string_get(&request_str));
 
-    ssize_t first_send = tcp_client_send(client->client, (char *)sso_string_get(&request_str), request_str.length, 0);
+    ssize_t first_send = tcp_client_send(client->tcp_client, (char *)sso_string_get(&request_str), request_str.length, 0);
     if (first_send <= 0) return first_send;
     
     if (data_length > 0)
     {
-        ssize_t second_send = tcp_client_send(client->client, (char *)data, data_length, 0);
+        ssize_t second_send = tcp_client_send(client->tcp_client, (char *)data, data_length, 0);
         if (second_send <= 0) return second_send;
     };
 
@@ -80,11 +80,11 @@ int http_client_send_request(struct web_client *client, struct http_request *req
 int http_client_parse_response(struct web_client *client, struct http_client_parsing_state *current_state)
 {   
     char our_story[4096] = {0};
-    recv(client->client->sockfd, our_story, 4095, MSG_PEEK);
+    recv(client->tcp_client->sockfd, our_story, 4095, MSG_PEEK);
     printf("LOFFY:\n");
     print_bytes(our_story, 4095);
 
-    socket_t sockfd = client->client->sockfd;
+    socket_t sockfd = client->tcp_client->sockfd;
     vector_init(&current_state->response.headers, 8, sizeof(struct http_header));
 
 parse_start:

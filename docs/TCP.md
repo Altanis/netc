@@ -40,7 +40,7 @@ int init_result = tcp_server_init(&server, *(struct sockaddr *)&sockaddr, 1 /** 
 if (init_result != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 
@@ -49,7 +49,7 @@ int bind_result = tcp_server_bind(&server);
 if (bind_result != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 
@@ -58,7 +58,7 @@ int listen_result = tcp_server_listen(&server, 10 /** backlog */);
 if (listen_result != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 
@@ -67,7 +67,7 @@ int r = tcp_server_main_loop(&server); /** This function will block. */
 if (r != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 ```
@@ -90,7 +90,7 @@ void on_connect(struct tcp_server *server)
     if (r != 0) 
     {
         /** Handle error. */
-        netc_perror("failure", NULL);
+        netc_perror("failure");
         return 1;
     }
 
@@ -109,7 +109,7 @@ void on_data(struct tcp_server *server, socket_t sockfd)
     if (r == -1) 
     {
         /** Handle error. */
-        netc_perror("failure", NULL);
+        netc_perror("failure");
         return 1;
     }
     else
@@ -120,7 +120,7 @@ void on_data(struct tcp_server *server, socket_t sockfd)
         if (r == -1) 
         {
             /** Handle error. */
-            netc_perror("failure", NULL);
+            netc_perror("failure");
             return 1;
         }
         else
@@ -197,7 +197,7 @@ int init_result = tcp_client_init(&client, *(struct sockaddr *)&sockaddr, 1 /** 
 if (init_result != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 
@@ -206,7 +206,7 @@ int connect_result = tcp_client_connect(&client);
 if (connect_result != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 
@@ -215,7 +215,7 @@ int r = tcp_client_main_loop(&client); /** This function will block. */
 if (r != 0) 
 {
     /** Handle error. */
-    netc_perror("failure", NULL);
+    netc_perror("failure");
     return 1;
 }
 ```
@@ -245,7 +245,7 @@ void on_data(struct tcp_client *client)
     if (r == -1) 
     {
         /** Handle error. */
-        netc_perror("failure", NULL);
+        netc_perror("failure");
         return 1;
     }
     else
@@ -256,7 +256,7 @@ void on_data(struct tcp_client *client)
         if (r == -1) 
         {
             /** Handle error. */
-            netc_perror("failure", NULL);
+            netc_perror("failure");
             return 1;
         }
         else

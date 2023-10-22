@@ -28,28 +28,19 @@ const char *BANNER = "\
 
 int http_handling_moment(struct web_server *server, struct web_client *client, struct http_request request)
 {
+    struct http_header *content_type = http_request_get_header(&request, "Content-Type");
+    char *text_plain_maybe = content_type == NULL ? "text/plain" : sso_string_get(&content_type->value);
+
     struct http_response response;
-    http_response_set_version(&response, "HTTP/1.1");
-    response.status_code = 200;
-    http_response_set_status_message(&response, http_status_messages[HTTP_STATUS_CODE_200]);
-
-    char *content_type = http_request_get_header(&request, "Content-Type");
-
-    struct http_header header;
-    http_header_init(&header);
-
-    http_header_set_name(&header, "Content-Type");
-    http_header_set_value(&header, content_type == NULL ? "text/plain" : content_type);
-
-    vector_init(&response.headers, 1, sizeof(struct http_header));
-    vector_push(&response.headers, &header);
+    http_response_build(&response, "HTTP/1.1", 200, (char *[][2]) { { "Content-Type", text_plain_maybe } }, 1);
 
     http_server_send_response(server, client, &response, http_request_get_body(&request), http_request_get_body_size(&request));
 };
 
 void ws_start_handling_moment(struct web_server *server, struct web_client *client, struct http_request request)
 {
-    printf("lol...\n");
+    if (ws_server_upgrade_connection(server, client, &request) == -1) netc_perror("Dang nabbit.");;
+    else printf("ws connected sexd...\n");
 };
 
 int main()
@@ -97,7 +88,7 @@ int main()
 
     if (web_server_init(&server, *(struct sockaddr *)&server_address, BACKLOG) != 0) 
     {
-        netc_perror("web_server_init", stderr);
+        netc_perror("web_server_init");;
         return 1;
     };
 
