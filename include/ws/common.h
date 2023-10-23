@@ -35,6 +35,7 @@
 #define WS_OPCODE_PING     0b1001
 #define WS_OPCODE_PONG     0b1010
 
+// todo: not all err codes encapsulated by enum
 /** An enum of WebSocket close codes. */
 enum ws_close_codes
 {
@@ -52,7 +53,7 @@ enum ws_close_codes
     SERVICE_RESTART = 1012,
     TRY_AGAIN_LATER = 1013,
     BAD_GATEWAY = 1014,
-    TLS_HANDSHAKE_FAILURE = 1015
+    TLS_HANDSHAKE_FAILURE = 1015,
 };
 
 /** An enum of errors when parsing a frame. */

@@ -194,8 +194,8 @@ parse_start:
 
                 goto parse_start;
             }
-            else if (current_state->frame.payload_length == 126) num_bytes_recv = 2;
-            else if (current_state->frame.payload_length == 127) num_bytes_recv = 8;
+            else if (current_state->frame.payload_length == 126) num_bytes_recv = 2; // not work
+            else if (current_state->frame.payload_length == 127) num_bytes_recv = 8; // not work
             else return WS_FRAME_PARSE_ERROR_INVALID_FRAME_LENGTH;
 
             if (num_bytes_recv - length <= 0)
