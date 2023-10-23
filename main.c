@@ -99,7 +99,7 @@ int main()
 
     if (web_server_init(&server, *(struct sockaddr *)&server_address, BACKLOG) != 0) 
     {
-        netc_perror("web_server_init");;
+        netc_perror("web_server_init");
         return 1;
     };
 

@@ -297,11 +297,14 @@ parse_start:
         };
         case REQUEST_PARSING_STATE_CHUNK_SIZE:
         {
+            printf("WOW\n");
             if (current_state->request.body == NULL) 
             {
                 current_state->chunk_size = -1;
                 current_state->request.body = calloc(MAX_HTTP_BODY_LEN + 2 /** crlf */ + 1 /** \0 */, sizeof(char));
             };
+
+            printf("chunk size %d\n", current_state->chunk_size);
 
             if (current_state->chunk_size == -1)
             {
@@ -321,6 +324,8 @@ parse_start:
                 current_state->chunk_size = strtoul(current_state->chunk_length, NULL, 16);
                 memset(&current_state->chunk_length, 0, sizeof(current_state->chunk_length));
             };
+
+            printf("chunk size %d\n", current_state->chunk_size);
 
             if (current_state->chunk_size == 0)
             {

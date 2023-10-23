@@ -5,7 +5,6 @@
 #include <errno.h>
 #include <openssl/sha.h>
 
-
 #include "../../include/web/server.h"
 #include "../../include/ws/server.h"
 #include "../../include/tcp/server.h"
@@ -98,11 +97,12 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     } else return -1;
 };
 
+// todo: fails to parse a close frame
 int ws_server_parse_frame(struct web_server *server, struct web_client *client, struct ws_frame_parsing_state *current_state)
 {
     socket_t sockfd = client->tcp_client->sockfd;
 
-    size_t MAX_PAYLOAD_LENGTH = server->ws_server_config.max_payload_len || 65536;
+    size_t MAX_PAYLOAD_LENGTH = server->ws_server_config.max_payload_len ? server->ws_server_config.max_payload_len : 65536;
 
     char lookahead[4096];
     int size = recv(sockfd, lookahead, 4096, MSG_PEEK);
@@ -196,8 +196,8 @@ parse_start:
 
                 goto parse_start;
             }
-            else if (current_state->frame.payload_length == 126) num_bytes_recv = 2; // not work
-            else if (current_state->frame.payload_length == 127) num_bytes_recv = 8; // not work
+            else if (current_state->frame.payload_length == 126) num_bytes_recv = 2;
+            else if (current_state->frame.payload_length == 127) num_bytes_recv = 8;
             else return WS_FRAME_PARSE_ERROR_INVALID_FRAME_LENGTH;
 
             if (num_bytes_recv - length <= 0)
@@ -218,16 +218,20 @@ parse_start:
 
             printf("current payload len: %d\n", current_state->real_payload_length);
 
-            for (size_t i = 0; i < bytes_received; ++i)
+            // TODO(Altanis): Make consistent with endianness.
+            for (ssize_t i = 0; i < bytes_received; ++i)
             {
                 current_state->real_payload_length <<= 8;
-                current_state->real_payload_length |= (value >> (8 * (bytes_received - i - 1))) & 0xFF;
+                current_state->real_payload_length |= (value >> (8 * i)) & 0xFF;
             };
 
             if (bytes_received == num_bytes_recv - length)
             {
-                printf("%d\n", current_state->real_payload_length);
-                if (current_state->real_payload_length > MAX_PAYLOAD_LENGTH) return WS_FRAME_PARSE_ERROR_PAYLOAD_TOO_BIG;
+                if (current_state->real_payload_length > MAX_PAYLOAD_LENGTH)
+                {
+                    printf("%d %d\n", current_state->real_payload_length, MAX_PAYLOAD_LENGTH);
+                    return WS_FRAME_PARSE_ERROR_PAYLOAD_TOO_BIG;
+                };
 
                 if (current_state->frame.opcode == WS_OPCODE_TEXT) current_state->message.buffer = calloc(current_state->real_payload_length + 1, sizeof(char));
                 else current_state->message.buffer = calloc(current_state->real_payload_length, sizeof(char));

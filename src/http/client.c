@@ -233,6 +233,8 @@ parse_start:
                 memset(&current_state->chunk_length, 0, sizeof(current_state->chunk_length));
             };
 
+            printf("current state %d\n", current_state->chunk_size);
+
             if (current_state->chunk_size == 0)
             {
                 char crlf[2] = {0};
