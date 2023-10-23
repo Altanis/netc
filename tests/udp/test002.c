@@ -21,7 +21,7 @@
 #include <winsock2.h>
 #include <ws2tcpip.h>
 #else
-#include <sys/errno.h>
+#include <errno.h>
 #include <sys/_endian.h>
 #endif
 

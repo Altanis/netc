@@ -5,7 +5,7 @@
 #define WIN32_LEAN_AND_MEAN
 #include <winsock2.h>
 #else
-#include <sys/errno.h>
+#include <errno.h>
 #endif
 
 #include <stdio.h>

@@ -8,6 +8,8 @@
 #include <sys/fcntl.h>
 
 #ifdef _WIN32
+    #include <winsock2.h>
+
     typedef int socklen_t;
     typedef SOCKET socket_t;
     typedef SSIZE_T ssize_t;
