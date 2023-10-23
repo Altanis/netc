@@ -17,7 +17,7 @@
 
 #ifndef _WIN32
 #include <sys/socket.h>
-#include <sys/errno.h>
+#include <errno.h>
 #endif
 
 int tcp_server_main_loop(struct tcp_server *server)

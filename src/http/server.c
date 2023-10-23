@@ -5,7 +5,7 @@
 #include <stddef.h>
 #include <stdlib.h>
 #include <string.h>
-#include <sys/errno.h>
+#include <errno.h>
 
 #ifdef __linux__
 #include <sys/epoll.h>

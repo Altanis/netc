@@ -2,8 +2,9 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdbool.h>
-#include <sys/errno.h>
+#include <errno.h>
 #include <openssl/sha.h>
+
 
 #include "../../include/web/server.h"
 #include "../../include/ws/server.h"
@@ -60,6 +61,7 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
 
     char websocket_accept_id[SHA_DIGEST_LENGTH];
     SHA1(websocket_key_id, sizeof(websocket_key_id), websocket_accept_id);
+
 
     char websocket_accept_id_base64[((4 * sizeof(websocket_accept_id) / 3) + 3) & ~3];
     http_base64_encode(websocket_accept_id, sizeof(websocket_accept_id), websocket_accept_id_base64);
