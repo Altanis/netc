@@ -35,13 +35,35 @@
 #define WS_OPCODE_PING     0b1001
 #define WS_OPCODE_PONG     0b1010
 
+/** An enum of WebSocket close codes. */
+enum ws_close_codes
+{
+    NORMAL_CLOSURE = 1000,
+    GOING_AWAY = 1001,
+    PROTOCOL_ERROR = 1002,
+    UNSUPPORTED_DATA = 1003,
+    NO_STATUS_RCVD = 1005,
+    ABNORMAL_CLOSURE = 1006,
+    INVALID_PAYLOAD = 1007,
+    POLICY_VIOLATION = 1008,
+    MESSAGE_TOO_BIG = 1009,
+    MANDATORY_EXT = 1010,
+    INTERNAL_ERROR = 1011,
+    SERVICE_RESTART = 1012,
+    TRY_AGAIN_LATER = 1013,
+    BAD_GATEWAY = 1014,
+    TLS_HANDSHAKE_FAILURE = 1015
+};
+
 /** An enum of errors when parsing a frame. */
 enum ws_frame_parsing_errors
 {
     /** The `recv` syscall failed. */
-    WS_FRAME_PARSE_ERROR_RECV,
+    WS_FRAME_PARSE_ERROR_RECV = -1,
     /** The payload length for the frame is invalid. */
-    WS_FRAME_PARSE_ERROR_INVALID_FRAME_LENGTH
+    WS_FRAME_PARSE_ERROR_INVALID_FRAME_LENGTH = -2,
+    /** The payload length is too big. */
+    WS_FRAME_PARSE_ERROR_PAYLOAD_TOO_BIG = -3
 };
 
 /** The parsing state of a frame. */
@@ -88,7 +110,7 @@ struct ws_message
     /** The opcode for the message. */
     uint8_t opcode;
     /** The buffer of data. */
-    char *buffer;
+    uint8_t *buffer;
     /** The size of the buffer. */
     size_t payload_length;
 };

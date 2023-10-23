@@ -98,9 +98,33 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 return;
             };
 
-            route->on_ws_message(server, client, ws_parsing_state.message);
+            if (ws_parsing_state.message.opcode == WS_OPCODE_CLOSE && route->on_ws_close)
+            {
+                size_t message_size = ws_parsing_state.message.payload_length - 2 + 1;
+                uint16_t close_code = 1000;
+                char message[message_size > 0 ? message_size : 1];
+
+                if (ws_parsing_state.message.payload_length >= 2)
+                {
+                    close_code = (uint16_t)ws_parsing_state.message.buffer[0] << 8 | (uint16_t)ws_parsing_state.message.buffer[1];
+                    printf("a%d\n", (unsigned char)ws_parsing_state.message.buffer[2]);
+                    printf("b%d\n", (unsigned char)ws_parsing_state.message.buffer[3]);
+                    printf("c%d\n", (unsigned char)ws_parsing_state.message.buffer[3]);
+                    printf("d%d\n", (unsigned char)ws_parsing_state.message.buffer[5]);
+
+                    if (ws_parsing_state.message.payload_length > 2)
+                    {
+                        memcpy(message, ws_parsing_state.message.buffer + 2, ws_parsing_state.message.payload_length - 2);
+                        message[ws_parsing_state.message.payload_length - 2] = '\0';
+                    }
+                } else message[0] = '\0';
+
+                route->on_ws_close(server, client, close_code, message);
+            } else if (route->on_ws_message != NULL) route->on_ws_message(server, client, ws_parsing_state.message);
 
             memset(&ws_parsing_state, 0, sizeof(ws_parsing_state));
+            free(ws_parsing_state.message.buffer);
+
             break;
         };
 
@@ -291,5 +315,10 @@ int web_server_close(struct web_server *server)
 
 int web_server_close_client(struct web_server *server, struct web_client *client)
 {
-    return tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, 0);
+    switch (client->connection_type)
+    {
+        // case CONNECTION_HTTP: return http_close_client();
+        // case CONNECTION_WS: return ws_close_client();
+        default: return tcp_client_close(client->tcp_client, 0);
+    };
 };

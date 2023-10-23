@@ -77,10 +77,12 @@ struct web_server_route
 
     /** The callback for when a client requests an upgrade to websocket. Set to NULL if you want to reject upgrades. */
     void (*on_ws_handshake_request)(struct web_server *server, struct web_client *client, struct http_request request);
-    /** THe callback for when a WebSocket client sends a message to the server. */
+    /** The callback for when a WebSocket client sends a message to the server. */
     void (*on_ws_message)(struct web_server *server, struct web_client *client, struct ws_message message);
     /** The callback for when a request is malformed for WS. */
     void (*on_ws_malformed_frame)(struct web_server *server, struct web_client *client, enum ws_frame_parsing_errors error);
+    /** The callback for when a WebSocket connection closes. */
+    void (*on_ws_close)(struct web_server *server, struct web_client *client, enum ws_close_codes code, char *reason);
 
     /** The path pattern. */
     char *path;

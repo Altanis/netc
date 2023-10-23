@@ -34,13 +34,24 @@ int http_handling_moment(struct web_server *server, struct web_client *client, s
     struct http_response response;
     http_response_build(&response, "HTTP/1.1", 200, (char *[][2]) { { "Content-Type", text_plain_maybe } }, 1);
 
-    http_server_send_response(server, client, &response, http_request_get_body(&request), http_request_get_body_size(&request));
+    http_server_send_response(server, client, &response, "ok", 2);
 };
 
 void ws_start_handling_moment(struct web_server *server, struct web_client *client, struct http_request request)
 {
     if (ws_server_upgrade_connection(server, client, &request) == -1) netc_perror("Dang nabbit.");
     else printf("ws connected sexd...\n");
+};
+
+void ws_start_handling_messages_moment(struct web_server *server, struct web_client *client, struct ws_message message)
+{
+    printf("%s\n", message.buffer);
+};
+
+void ws_start_handling_closes_moment(struct web_server *server, struct web_client *client, enum ws_close_codes code, char *reason)
+{
+    printf("ws closed sexd... [%d] %s\n", code, reason);
+    printf("done.\n");
 };
 
 int main()
@@ -96,6 +107,8 @@ int main()
         .path = "/", 
         .on_http_message = http_handling_moment,
         .on_ws_handshake_request = ws_start_handling_moment,
+        .on_ws_message = ws_start_handling_messages_moment,
+        .on_ws_close = ws_start_handling_closes_moment,
     };
 
     web_server_create_route(&server, &main);

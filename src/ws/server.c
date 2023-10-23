@@ -102,6 +102,11 @@ int ws_server_parse_frame(struct web_server *server, struct web_client *client, 
 
     size_t MAX_PAYLOAD_LENGTH = server->ws_server_config.max_payload_len || 65536;
 
+    char lookahead[4096];
+    int size = recv(sockfd, lookahead, 4096, MSG_PEEK);
+    for (int i = 0; i < size; ++i) printf("%x ", (unsigned char)lookahead[i]);
+    printf("\n");
+
 parse_start:
     printf("%d\n", current_state->parsing_state);
     switch (current_state->parsing_state)
@@ -155,7 +160,8 @@ parse_start:
         };
         case WS_FRAME_PARSING_STATE_PAYLOAD_LENGTH:
         {
-            void *ptr_to_null = memchr((const void *)current_state->real_payload_length, 0x00, sizeof(current_state->real_payload_length));
+            void *ptr_to_null = memchr((const void *)&current_state->real_payload_length, 0x00, sizeof(uint64_t));
+
             if (ptr_to_null == NULL)
             {
                 if (current_state->frame.mask == 1)
@@ -167,13 +173,17 @@ parse_start:
                 goto parse_start;
             };
 
-            size_t length = (const uint8_t *)ptr_to_null - (const uint8_t *)current_state->real_payload_length;
+            size_t length = (const uint8_t *)ptr_to_null - (const uint8_t *)&current_state->real_payload_length;
+            printf("[length[ %d\n", length);
             size_t num_bytes_recv = 0;
 
             if (current_state->frame.payload_length <= 125) 
             {
                 current_state->real_payload_length = current_state->frame.payload_length;
-                current_state->message.buffer = calloc(current_state->real_payload_length, sizeof(char));
+                
+                if (current_state->frame.opcode == WS_OPCODE_TEXT) current_state->message.buffer = calloc(current_state->real_payload_length + 1, sizeof(char));
+                else current_state->message.buffer = calloc(current_state->real_payload_length, sizeof(char));
+                
                 current_state->message.payload_length = current_state->real_payload_length;
 
                 if (current_state->frame.mask == 1)
@@ -211,6 +221,7 @@ parse_start:
 
             if (bytes_received == num_bytes_recv - length)
             {
+                if (current_state->real_payload_length > MAX_PAYLOAD_LENGTH) return WS_FRAME_PARSE_ERROR_PAYLOAD_TOO_BIG;
                 current_state->message.buffer = calloc(current_state->real_payload_length, sizeof(char));
                 current_state->message.payload_length = current_state->real_payload_length;
 
@@ -227,7 +238,6 @@ parse_start:
         {
             uint8_t *masking_key = current_state->frame.masking_key;
             ssize_t length = masking_key[0] == 0 ? 0 : (masking_key[1] == 0 ? 1 : (masking_key[2] == 0 ? 2 : (masking_key[3] == 0 ? 3 : 4)));
-            // ssize_t length = bytes_index_of((const void *)masking_key, sizeof(masking_key), 0);
 
             if (length == -1)
             {
@@ -257,17 +267,29 @@ parse_start:
                 else return WS_FRAME_PARSE_ERROR_RECV;
             };
 
+            if (current_state->frame.mask == 1)
+            {
+                for (size_t i = 0; i < bytes_received; ++i)
+                {
+                    current_state->message.buffer[i] ^= current_state->frame.masking_key[(received_length + i) % 4];
+                };
+            };
+
+            printf("[wow!] %s\n", current_state->message.buffer);
+
             current_state->received_length += bytes_received;
             if (bytes_received == current_state->real_payload_length - received_length) break;
             else return 1;
         };
     };
 
+    uint8_t old_fin = current_state->frame.fin;
+
     current_state->parsing_state = -1;
     current_state->real_payload_length = 0;
     current_state->received_length = 0;
     memset(&current_state->frame, 0, sizeof(current_state->frame));
 
-    if (current_state->frame.fin == 1) return 0;
+    if (old_fin == 1) return 0;
     else return 1;
 };
