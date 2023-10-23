@@ -85,11 +85,12 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
             {
                 if (result < 0)
                 {
+                    /** TODO(Altanis): Fix one WS request partitioned into two causing two event calls. */
+                    printf("[ws] malformed request: %d\n", result);
+
                     /** Malformed request. */
                     if (route->on_ws_malformed_frame)
                     {
-                        /** TODO(Altanis): Fix one WS request partitioned into two causing two event calls. */
-                        printf("[ws] malformed request: %d\n", result);
                         route->on_ws_malformed_frame(server, client, result);
                     };
                 };
@@ -144,7 +145,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                         printf("[http] malformed request: %d\n", result);
                         web_server->on_http_malformed_request(web_server, client, result);
                     }
-                };
+                }
 
                 // > 0 means the http request is incomplete and waiting for incoming data
                 printf("WAITING FOR INCOMING DATA...\n");

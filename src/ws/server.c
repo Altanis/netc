@@ -209,9 +209,12 @@ parse_start:
 
             if (bytes_received <= 0)
             {
+                printf("recv <= 0\n");
                 if (errno == EWOULDBLOCK) return 1;
                 else return WS_FRAME_PARSE_ERROR_RECV;
             };
+
+            printf("current payload len: %d\n", current_state->real_payload_length);
 
             for (size_t i = 0; i < bytes_received; ++i)
             {
@@ -221,8 +224,12 @@ parse_start:
 
             if (bytes_received == num_bytes_recv - length)
             {
+                printf("%d\n", current_state->real_payload_length);
                 if (current_state->real_payload_length > MAX_PAYLOAD_LENGTH) return WS_FRAME_PARSE_ERROR_PAYLOAD_TOO_BIG;
-                current_state->message.buffer = calloc(current_state->real_payload_length, sizeof(char));
+
+                if (current_state->frame.opcode == WS_OPCODE_TEXT) current_state->message.buffer = calloc(current_state->real_payload_length + 1, sizeof(char));
+                else current_state->message.buffer = calloc(current_state->real_payload_length, sizeof(char));
+
                 current_state->message.payload_length = current_state->real_payload_length;
 
                 if (current_state->frame.mask == 1)
@@ -232,10 +239,11 @@ parse_start:
                 } else current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_DATA;
 
                 goto parse_start;
-            };
+            } else return 1;
         };
         case WS_FRAME_PARSING_STATE_MASKING_KEY:
         {
+            printf("WHAT IS THE STATE OF OUR NATION?\n");
             uint8_t *masking_key = current_state->frame.masking_key;
             ssize_t length = masking_key[0] == 0 ? 0 : (masking_key[1] == 0 ? 1 : (masking_key[2] == 0 ? 2 : (masking_key[3] == 0 ? 3 : 4)));
 
@@ -258,6 +266,7 @@ parse_start:
         };
         case WS_FRAME_PARSING_STATE_PAYLOAD_DATA:
         {
+            printf("wow.\n");
             uint64_t received_length = current_state->received_length;
 
             ssize_t bytes_received = recv(sockfd, current_state->message.buffer, current_state->real_payload_length - received_length, 0);
