@@ -97,7 +97,6 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     } else return -1;
 };
 
-// todo: fails to parse a close frame
 int ws_server_parse_frame(struct web_server *server, struct web_client *client, struct ws_frame_parsing_state *current_state)
 {
     socket_t sockfd = client->tcp_client->sockfd;
@@ -110,7 +109,7 @@ int ws_server_parse_frame(struct web_server *server, struct web_client *client, 
     printf("\n");
 
 parse_start:
-    printf("%d\n", current_state->parsing_state);
+    printf("state: %d\n", current_state->parsing_state);
     switch (current_state->parsing_state)
     {
         case -1:
@@ -272,7 +271,8 @@ parse_start:
         };
         case WS_FRAME_PARSING_STATE_PAYLOAD_DATA:
         {
-            printf("wow.\n");
+            if (current_state->message.payload_length == 0) break;
+            
             uint64_t received_length = current_state->received_length;
 
             ssize_t bytes_received = recv(sockfd, current_state->message.buffer, current_state->real_payload_length - received_length, 0);

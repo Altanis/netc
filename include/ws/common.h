@@ -74,10 +74,10 @@ enum ws_frame_parsing_states
     WS_FRAME_PARSING_STATE_FIRST_BYTE,
     /** The second byte is being parsed. */
     WS_FRAME_PARSING_STATE_SECOND_BYTE,
-    /** The masking key is being parsed. */
-    WS_FRAME_PARSING_STATE_MASKING_KEY,
     /** The payload length is going through further review. */
     WS_FRAME_PARSING_STATE_PAYLOAD_LENGTH,
+    /** The masking key is being parsed. */
+    WS_FRAME_PARSING_STATE_MASKING_KEY,
     /** The payload data is being parsed. */
     WS_FRAME_PARSING_STATE_PAYLOAD_DATA
 };
