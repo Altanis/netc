@@ -80,12 +80,7 @@ int http_client_send_request(struct web_client *client, struct http_request *req
 };
 
 int http_client_parse_response(struct web_client *client, struct http_client_parsing_state *current_state)
-{   
-    char our_story[4096] = {0};
-    recv(client->tcp_client->sockfd, our_story, 4095, MSG_PEEK);
-    printf("LOFFY:\n");
-    print_bytes(our_story, 4095);
-
+{
     socket_t sockfd = client->tcp_client->sockfd;
     vector_init(&current_state->response.headers, 8, sizeof(struct http_header));
 
@@ -222,24 +217,28 @@ parse_start:
                 size_t length = 16 + 2 - preexisting_chunk_length;
                 char *delimiter = length == 1 ? "\n" : "\r\n";
 
-                ssize_t bytes_received = socket_recv_until_fixed(sockfd, current_state->chunk_length + preexisting_chunk_length, length, delimiter, 1);
+                int bytes_received = socket_recv_until_fixed(sockfd, current_state->chunk_length + preexisting_chunk_length, length, delimiter, 1);
+                printf("[by recv] %d\n", bytes_received);
                 if (bytes_received <= 0)
                 {
+                    printf("CCURR STATE %d\n", current_state->parsing_state);
                     if (errno == EWOULDBLOCK) return 1;
                     else return RESPONSE_PARSE_ERROR_RECV;
                 };
+
+                print_bytes(current_state->chunk_length, bytes_received);
 
                 current_state->chunk_size = strtoul(current_state->chunk_length, NULL, 16);
                 memset(&current_state->chunk_length, 0, sizeof(current_state->chunk_length));
             };
 
-            printf("current state %d\n", current_state->chunk_size);
+            printf("current chunk size %d\n", current_state->chunk_size);
 
             if (current_state->chunk_size == 0)
             {
                 char crlf[2] = {0};
                 ssize_t check_crlf = recv(sockfd, crlf, sizeof(crlf), MSG_PEEK);
-
+                printf("CCURR STATE %d\n", current_state->parsing_state);
                 if (memcmp(crlf, "\r\n", 2) == 0)
                 {
                     if (recv(sockfd, crlf, sizeof(crlf), 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
@@ -248,14 +247,25 @@ parse_start:
             };
 
             current_state->parsing_state = RESPONSE_PARSING_STATE_CHUNK_DATA;
+            goto parse_start;
         };
         case RESPONSE_PARSING_STATE_CHUNK_DATA:
         {
             size_t preexisting_chunk_data = current_state->chunk_data.size - current_state->response.body_size;
             size_t length = current_state->chunk_size + 2 - preexisting_chunk_data;
 
+            printf("i view my acxtions with %d\n", length);
+
             char buffer[length];
             ssize_t bytes_received = recv(sockfd, buffer, length, 0);
+            printf("[bytrecv] %d\n", bytes_received);
+            // recv everything after
+            printf("WOW\n");
+            char bufffy[3904] = {0};
+            recv(sockfd, bufffy, 3903, MSG_PEEK);
+            print_bytes(bufffy, 3904);
+            printf("WOW\n");
+
             if (bytes_received <= 0)
             {
                 if (errno == EWOULDBLOCK) return 1;
@@ -265,7 +275,7 @@ parse_start:
             for (size_t i = 0; i < bytes_received; ++i) vector_push(&current_state->chunk_data, buffer + i);
             if (bytes_received == length)
             {
-               size_t vec_size = current_state->chunk_data.size;
+                size_t vec_size = current_state->chunk_data.size;
 
                 vector_delete(&current_state->chunk_data, vec_size - 1); // delete \n
                 vector_delete(&current_state->chunk_data, vec_size - 2); // delete \r
@@ -289,6 +299,7 @@ parse_start:
             ssize_t bytes_received = recv(sockfd, buffer, length, 0);
             if (bytes_received <= 0)
             {
+                printf("WHATS HAPPENED??? %d %d\n", length, bytes_received);
                 if (errno == EWOULDBLOCK) return 1;
                 else return RESPONSE_PARSE_ERROR_RECV;
             };

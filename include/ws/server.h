@@ -11,5 +11,7 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
 
 /** Parses an incoming websocket frame. */
 int ws_server_parse_frame(struct web_server *server, struct web_client *client, struct ws_frame_parsing_state *current_state);
+/** Sends a WebSocket message. */
+// int ws_server_send_message(sturc)
 
 #endif // WS_SERVER_H

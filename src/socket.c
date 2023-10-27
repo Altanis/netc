@@ -13,7 +13,7 @@
 #include <sys/socket.h>
 #endif
 
-ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char *bytes, int remove_delimiter, size_t max_bytes_received)
+int socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char *bytes, int remove_delimiter, size_t max_bytes_received)
 {
     size_t bytes_len = bytes == NULL ? 0 : strlen(bytes);
     ssize_t bytes_received = 0;
@@ -53,13 +53,13 @@ ssize_t socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char 
     return bytes_received;
 };
 
-ssize_t socket_recv_until_fixed(socket_t sockfd, char *buffer, size_t buffer_size, char *bytes, int remove_delimiter)
+int socket_recv_until_fixed(socket_t sockfd, char *buffer, size_t buffer_size, char *bytes, int remove_delimiter)
 {
     size_t bytes_len = bytes == NULL ? 0 : strlen(bytes);
     size_t bytes_received = 0;
 
     int has_pattern = 0;
-
+    
     while ((bytes_received + bytes_len) < buffer_size)
     {
         ssize_t recv_result = recv(sockfd, buffer + bytes_received, 1, 0);

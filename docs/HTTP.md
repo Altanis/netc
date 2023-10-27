@@ -14,3 +14,5 @@
     3. [Sending Requests](#sending-requests)
     4. [Sending Files](#sending-files-client)
     5. [Keep Alive](#keep-alive-client)
+
+<!-- ensure to mention closing http client from server could be done manually (sending header) or setting client->server_close_flag to 1 and sending a normal request. -->

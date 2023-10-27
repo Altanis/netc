@@ -48,7 +48,7 @@ void ws_start_handling_messages_moment(struct web_server *server, struct web_cli
     printf("%s\n", message.buffer);
 };
 
-void ws_start_handling_closes_moment(struct web_server *server, struct web_client *client, enum ws_close_codes code, char *reason)
+void ws_start_handling_closes_moment(struct web_server *server, struct web_client *client, uint16_t code, char *reason)
 {
     printf("ws closed sexd... [%d] %s\n", code, reason);
     printf("done.\n");

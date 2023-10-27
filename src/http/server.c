@@ -76,7 +76,7 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
             chunked = 1;
         else if (!chunked && strcasecmp(name, "Content-Length") == 0)
             chunked = -1;
-        else if (client->server_close_flag && strcasecmp(name, "Connection") == 0 && strcasecmp(name, "close") == 0)
+        else if (strcasecmp(name, "Connection") == 0 && strcasecmp(name, "close") == 0)
             has_connection_close = 1;
 
         sso_string_concat_buffer(&response_str, name);
@@ -112,7 +112,7 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
         second_send = tcp_server_send(sockfd, (char *)data, data_length, 0);
         if (second_send <= 0) return second_send;
 
-        if (client->server_close_flag)
+        if (has_connection_close)
             tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, 0);
     };
 
@@ -312,7 +312,7 @@ parse_start:
                 size_t length = 16 + 2 - preexisting_chunk_length;
                 char *delimiter = length == 1 ? "\n" : "\r\n";
 
-                ssize_t bytes_received_chunk_length = socket_recv_until_fixed(sockfd, current_state->chunk_length + preexisting_chunk_length, length, delimiter, 1);
+                int bytes_received_chunk_length = socket_recv_until_fixed(sockfd, current_state->chunk_length + preexisting_chunk_length, length, delimiter, 1);
                 printf("bytes recv chunk len");
                 print_bytes(current_state->chunk_length, length);
                 if (bytes_received_chunk_length <= 0)

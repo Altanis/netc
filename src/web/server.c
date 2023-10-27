@@ -102,7 +102,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
             if (ws_parsing_state.message.opcode == WS_OPCODE_CLOSE && route->on_ws_close)
             {
                 size_t message_size = ws_parsing_state.message.payload_length - 2 + 1;
-                uint16_t close_code = 1000;
+                uint16_t close_code = 0;
                 char message[message_size > 0 ? message_size : 1];
 
                 if (ws_parsing_state.message.payload_length >= 2)
@@ -312,14 +312,4 @@ void web_server_remove_route(struct web_server *server, const char *path)
 int web_server_close(struct web_server *server)
 {
     return tcp_server_close_self(server->tcp_server);
-};
-
-int web_server_close_client(struct web_server *server, struct web_client *client)
-{
-    switch (client->connection_type)
-    {
-        // case CONNECTION_HTTP: return http_close_client();
-        // case CONNECTION_WS: return ws_close_client();
-        default: return tcp_client_close(client->tcp_client, 0);
-    };
 };

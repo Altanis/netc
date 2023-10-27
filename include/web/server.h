@@ -82,7 +82,7 @@ struct web_server_route
     /** The callback for when a request is malformed for WS. */
     void (*on_ws_malformed_frame)(struct web_server *server, struct web_client *client, enum ws_frame_parsing_errors error);
     /** The callback for when a WebSocket connection closes. */
-    void (*on_ws_close)(struct web_server *server, struct web_client *client, enum ws_close_codes code, char *reason);
+    void (*on_ws_close)(struct web_server *server, struct web_client *client, uint16_t code, char *reason);
 
     /** The path pattern. */
     char *path;
@@ -102,7 +102,5 @@ void web_server_remove_route(struct web_server *server, const char *path);
 
 /** Closes the HTTP server. */
 int web_server_close(struct web_server *server);
-/** Closes a HTTP client connection. */
-int web_server_close_client(struct web_server *server, struct web_client *client);
 
 #endif // SERVER_CONNECTION_H

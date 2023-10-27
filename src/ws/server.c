@@ -248,7 +248,6 @@ parse_start:
         };
         case WS_FRAME_PARSING_STATE_MASKING_KEY:
         {
-            printf("WHAT IS THE STATE OF OUR NATION?\n");
             uint8_t *masking_key = current_state->frame.masking_key;
             ssize_t length = masking_key[0] == 0 ? 0 : (masking_key[1] == 0 ? 1 : (masking_key[2] == 0 ? 2 : (masking_key[3] == 0 ? 3 : 4)));
 
@@ -272,7 +271,7 @@ parse_start:
         case WS_FRAME_PARSING_STATE_PAYLOAD_DATA:
         {
             if (current_state->message.payload_length == 0) break;
-            
+
             uint64_t received_length = current_state->received_length;
 
             ssize_t bytes_received = recv(sockfd, current_state->message.buffer, current_state->real_payload_length - received_length, 0);
