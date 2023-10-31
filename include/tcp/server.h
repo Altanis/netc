@@ -1,6 +1,8 @@
 #ifndef TCP_SERVER_H
 #define TCP_SERVER_H
 
+#include <stdbool.h>
+
 #include "../utils/vector.h"
 #include "../socket.h"
 
@@ -70,14 +72,14 @@ struct tcp_server
     /** The callback for when a message is received from a client. */
     void (*on_data)(struct tcp_server *server, socket_t sockfd);
     /** The callback for when a client socket disconnects. */
-    void (*on_disconnect)(struct tcp_server *server, socket_t sockfd, int is_error);
+    void (*on_disconnect)(struct tcp_server *server, socket_t sockfd, bool is_error);
 };
 
 /** The main loop of a nonblocking TCP server. */
 int tcp_server_main_loop(struct tcp_server *server);
 
 /** Initializes a TCP server. */
-int tcp_server_init(struct tcp_server *server, struct sockaddr address, int non_blocking);
+int tcp_server_init(struct tcp_server *server, struct sockaddr address, bool non_blocking);
 /** Binds a TCP server to an address. */
 int tcp_server_bind(struct tcp_server *server);
 /** Starts listening for connections on a TCP server. */
@@ -93,6 +95,6 @@ int tcp_server_receive(socket_t sockfd, char *message, size_t msglen, int flags)
 /** Closes the TCP server. */
 int tcp_server_close_self(struct tcp_server *server);
 /** Closes a client connection. */
-int tcp_server_close_client(struct tcp_server *server, socket_t sockfd, int is_error);
+int tcp_server_close_client(struct tcp_server *server, socket_t sockfd, bool is_error);
 
 #endif // TCP_SERVER_H

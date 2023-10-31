@@ -13,18 +13,22 @@ void vector_init(struct vector *vec, size_t capacity, size_t element_size)
     vec->elements = malloc(element_size * capacity);
 };
 
-int vector_resize(struct vector *vec)
+int vector_resize(struct vector *vec, size_t new_capacity)
 {
-    if (vec->size < vec->capacity) return 0;
+    if (vec->capacity >= new_capacity) return -1;
 
-    vec->capacity *= 2;
-    vec->elements = realloc(vec->elements, vec->element_size * vec->capacity);
+    void *new_elements = realloc(vec->elements, vec->element_size * new_capacity);
+    if (new_elements == NULL) return -1;
+
+    vec->capacity = new_capacity;
+    vec->elements = new_elements;
+
     return 0;
 };
 
 void vector_push(struct vector *vec, void *element)
 {
-    vector_resize(vec);
+    if (vec->size + 1 > vec->capacity) vector_resize(vec, vec->capacity * 2);
 
     void *dest = vec->elements + vec->element_size * vec->size;
     memcpy(dest, element, vec->element_size);
@@ -34,6 +38,11 @@ void vector_push(struct vector *vec, void *element)
 void *vector_get(struct vector *vec, size_t index)
 {
     return vec->elements + vec->element_size * index;
+};
+
+void *vector_get_buffer(struct vector *vec)
+{
+    return vec->elements + (vec->element_size * vec->size);
 };
 
 void vector_delete(struct vector *vec, size_t index)

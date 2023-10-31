@@ -25,6 +25,14 @@ static void _tcp_on_data(struct tcp_client *client)
             printf("%d\n", result);
             if (http_client->on_malformed_response != NULL)
                 http_client->on_malformed_response(http_client, result);
+                        
+            http_response_free(&http_client->http_client_parsing_state.response);
+
+            memset(&http_client_parsing_state->response, 0, sizeof(http_client_parsing_state->response));
+            memset(http_client_parsing_state, 0, sizeof(*http_client_parsing_state));
+
+            http_client_parsing_state->parsing_state = -1;
+            
             return;
         };
 
@@ -38,14 +46,15 @@ static void _tcp_on_data(struct tcp_client *client)
     if (http_client->client_close_flag)
         tcp_client_close(client, 0);
 
+    http_response_free(&http_client->http_client_parsing_state.response);
+
     memset(&http_client_parsing_state->response, 0, sizeof(http_client_parsing_state->response));
     memset(http_client_parsing_state, 0, sizeof(*http_client_parsing_state));
 
     http_client_parsing_state->parsing_state = -1;
-    http_response_free(&http_client->http_client_parsing_state.response);
 };
 
-static void _tcp_on_disconnect(struct tcp_client *client, int is_error)
+static void _tcp_on_disconnect(struct tcp_client *client, bool is_error)
 {
     struct web_client *http_client = client->data;
     if (http_client->on_disconnect != NULL)

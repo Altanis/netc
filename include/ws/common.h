@@ -3,6 +3,7 @@
 
 #include <stdint.h>
 #include <stddef.h>
+#include <stdbool.h>
 
 /**
  0                   1                   2                   3
@@ -61,8 +62,8 @@ enum ws_frame_parsing_states
     WS_FRAME_PARSING_STATE_PAYLOAD_DATA
 };
 
-/** A structure representing a WebSocket frame. */
-struct ws_frame
+/** The first byte of a WebSocket frame. */
+struct ws_header
 {
     /** Whether or not this is the last frame for the entire message. */
     uint8_t fin:     1;
@@ -74,9 +75,16 @@ struct ws_frame
 
     /** The operational code informing what this frame is doing. */
     uint8_t opcode:  4;
+};
+
+/** A structure representing a WebSocket frame. */
+struct ws_frame
+{
+    /** The first byte. */
+    struct ws_header header;
 
     /** Whether or not the payload is masked. */
-    uint8_t mask:    1;
+    bool mask;
     /** The masking key to bitwise XOR the payload data. */
     uint8_t masking_key[4];
 

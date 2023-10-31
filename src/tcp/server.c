@@ -117,7 +117,7 @@ int tcp_server_main_loop(struct tcp_server *server)
     return 0;
 };
 
-int tcp_server_init(struct tcp_server *server, struct sockaddr address, int non_blocking)
+int tcp_server_init(struct tcp_server *server, struct sockaddr address, bool non_blocking)
 {
     if (server == NULL) return -1;
 
@@ -246,7 +246,7 @@ int tcp_server_close_self(struct tcp_server *server)
     return 0;
 };
 
-int tcp_server_close_client(struct tcp_server *server, socket_t sockfd, int is_error)
+int tcp_server_close_client(struct tcp_server *server, socket_t sockfd, bool is_error)
 {
     if (server->on_disconnect != NULL) server->on_disconnect(server, sockfd, is_error);
 

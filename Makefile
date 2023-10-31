@@ -1,6 +1,6 @@
 # Compiler settings
 CC := clang
-CFLAGS := -Ofast
+CFLAGS := -g -O0
 LDLIBS := -lcrypto
 
 # Source file directories

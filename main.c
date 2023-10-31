@@ -39,13 +39,38 @@ int http_handling_moment(struct web_server *server, struct web_client *client, s
 
 void ws_start_handling_moment(struct web_server *server, struct web_client *client, struct http_request request)
 {
-    if (ws_server_upgrade_connection(server, client, &request) == -1) netc_perror("Dang nabbit.");
+    int r = 0;
+    if ((r = ws_server_upgrade_connection(server, client, &request)) < 0) netc_perror("Dang nabbit. %d", r);
     else printf("ws connected sexd...\n");
+};
+
+void ws_start_failing_moment(struct web_server *server, struct web_client *client, enum ws_frame_parsing_errors error)
+{
+    // todo: ws_server_close();
 };
 
 void ws_start_handling_messages_moment(struct web_server *server, struct web_client *client, struct ws_message message)
 {
     printf("%s\n", message.buffer);
+
+    struct ws_header header =
+    {
+        .fin = 0, // does NOT matter
+        .rsv1 = 0,
+        .rsv2 = 0,
+        .rsv3 = 0,
+        .opcode = WS_OPCODE_TEXT
+    };
+
+    struct ws_frame frame = 
+    {
+        .header = header,
+        .mask = 0,
+        .payload_length = 10
+    };
+
+    if (ws_server_send_frame(server, client, &frame, "aaabbbcccd", 2) < 0) netc_perror("WTF");
+    else printf("couldnt.\n");
 };
 
 void ws_start_handling_closes_moment(struct web_server *server, struct web_client *client, uint16_t code, char *reason)
@@ -90,6 +115,8 @@ int main()
         printf(ANSI_RED "\n\nTEST SUITE FAILED! fix me.\n%s", ANSI_RESET);
     };
 
+    // return 0;
+
     struct web_server server = {0};
     struct sockaddr_in server_address = {
         .sin_family = AF_INET,
@@ -107,6 +134,7 @@ int main()
         .path = "/", 
         .on_http_message = http_handling_moment,
         .on_ws_handshake_request = ws_start_handling_moment,
+        .on_ws_malformed_frame = ws_start_failing_moment,
         .on_ws_message = ws_start_handling_messages_moment,
         .on_ws_close = ws_start_handling_closes_moment,
     };

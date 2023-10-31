@@ -9,6 +9,12 @@
 #include "../../include/ws/server.h"
 #include "../../include/tcp/server.h"
 
+#if __has_include(<endian.h>)
+    #include <endian.h>
+#elif __has_include(<machine/endian.h>)
+    #include <machine/endian.h>
+#endif
+
 int ws_server_upgrade_connection(struct web_server *server, struct web_client *client, struct http_request *request)
 {
     socket_t sockfd = client->tcp_client->sockfd;
@@ -89,7 +95,7 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     };
 
     int result = http_server_send_response(server, client, &response, NULL, 0);
-    if (result == 0)
+    if (result > 0)
     {
         client->path = strdup(sso_string_get(&request->path));
         client->connection_type = CONNECTION_WS;
@@ -97,6 +103,86 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     } else return -1;
 };
 
+int ws_server_send_frame(struct web_server *server, struct web_client *client, struct ws_frame *frame, const char *payload_data, size_t num_frames)
+{
+    socket_t sockfd = client->tcp_client->sockfd;
+
+    uint64_t frame_sizes[num_frames];
+    uint64_t remainder = frame->payload_length % num_frames;
+    uint64_t split_payload_len = frame->payload_length / num_frames;
+
+    for (size_t i = 0; i < num_frames; ++i)
+    {
+        frame_sizes[i] = i == num_frames - 1 ? split_payload_len + remainder : split_payload_len;
+    };
+
+    size_t num_bytes_passed = 0;
+
+    for (size_t i = 0; i < num_frames; ++i)
+    {
+        uint8_t header = 0;
+        header |= (((i + 1 == num_frames) ? 1 : 0) << 7);
+        header |= (frame->header.rsv1 << 6);
+        header |= (frame->header.rsv2 << 5);
+        header |= (frame->header.rsv3 << 4);
+        header |= i == 0 ? frame->header.opcode : WS_OPCODE_CONTINUE;
+
+        printf("header: %x\n", header);
+
+        uint64_t frame_payload_length = frame_sizes[i];
+        uint8_t payload_encoded = (frame_payload_length <= 125 ? frame_payload_length : (frame_payload_length <= 0xFFFF ? 126 : 127));
+
+        uint8_t payload_length = 0;
+        payload_length |= (frame->mask << 7);
+        payload_length |= payload_encoded;
+
+        // TODO(Altanis): Ensure endianness.
+        uint8_t payload_length_encoded[8] = {0};
+        if (payload_encoded == 126)
+        {
+            payload_length_encoded[0] = (frame_payload_length >> 8) & 0xFF;
+            payload_length_encoded[1] = frame_payload_length & 0xFF;
+        } else if (payload_encoded == 127)
+        {
+            for (int i = 0; i < 8; ++i)
+            {
+                payload_length_encoded[i] = (frame_payload_length >> (8 * (7 - i))) & 0xFF;
+            };
+        };
+
+        const char *payload_masking_key = frame->mask == 1 ? (const char *)frame->masking_key : NULL;
+        const char *payload_data_encoded = payload_data;
+        
+        if (payload_masking_key != NULL)
+        {
+            payload_data_encoded = strdup(payload_data);
+            for (size_t i = 0; i < frame_payload_length; ++i)
+            {
+                ((char *)payload_data_encoded)[i] ^= payload_masking_key[i % 4];
+            };
+        };
+
+        ssize_t result = 0;
+        char frame_data[sizeof(header) + sizeof(payload_length) + (payload_encoded == 126 ? 2 : (payload_encoded == 127 ? 8 : 0)) + (payload_masking_key != NULL ? 4 : 0) + frame_payload_length];
+
+        memcpy(frame_data, &header, sizeof(header));
+        memcpy(frame_data + sizeof(header), &payload_length, sizeof(payload_length));
+
+        if (payload_encoded == 126) memcpy(frame_data + sizeof(header) + sizeof(payload_length), payload_length_encoded, 2);
+        else if (payload_encoded == 127) memcpy(frame_data + sizeof(header) + sizeof(payload_length), payload_length_encoded, 8);
+        if (payload_masking_key != NULL) memcpy(frame_data + sizeof(header) + sizeof(payload_length) + (payload_encoded == 126 ? 2 : (payload_encoded == 127 ? 8 : 0)), payload_masking_key, 4);
+        
+        memcpy(frame_data + sizeof(header) + sizeof(payload_length) + (payload_encoded == 126 ? 2 : (payload_encoded == 127 ? 8 : 0)) + (payload_masking_key != NULL ? 4 : 0), payload_data_encoded + num_bytes_passed, frame_payload_length);
+        num_bytes_passed += frame_payload_length;
+
+        if (payload_masking_key != NULL) free(payload_data_encoded);
+        if ((result = tcp_server_send(sockfd, frame_data, sizeof(frame_data), 0)) <= 0) return result;
+    };
+
+    return 1;
+};
+
+// error frames fail (reproduce by sending an invalid frame)
 int ws_server_parse_frame(struct web_server *server, struct web_client *client, struct ws_frame_parsing_state *current_state)
 {
     socket_t sockfd = client->tcp_client->sockfd;
@@ -105,6 +191,7 @@ int ws_server_parse_frame(struct web_server *server, struct web_client *client, 
 
     char lookahead[4096];
     int size = recv(sockfd, lookahead, 4096, MSG_PEEK);
+    printf("lookahead: ");
     for (int i = 0; i < size; ++i) printf("%x ", (unsigned char)lookahead[i]);
     printf("\n");
 
@@ -128,14 +215,14 @@ parse_start:
                 else return WS_FRAME_PARSE_ERROR_RECV;
             };
 
-            current_state->frame.fin = (byte & 0b10000000) >> 7;
-            current_state->frame.rsv1 = (byte & 0b01000000) >> 6;
-            current_state->frame.rsv2 = (byte & 0b00100000) >> 5;
-            current_state->frame.rsv3 = (byte & 0b00010000) >> 4;
-            current_state->frame.opcode = byte & 0b00001111;
+            current_state->frame.header.fin = (byte & 0b10000000) >> 7;
+            current_state->frame.header.rsv1 = (byte & 0b01000000) >> 6;
+            current_state->frame.header.rsv2 = (byte & 0b00100000) >> 5;
+            current_state->frame.header.rsv3 = (byte & 0b00010000) >> 4;
+            current_state->frame.header.opcode = byte & 0b00001111;
 
-            if (current_state->frame.opcode != WS_OPCODE_CONTINUE)
-                current_state->message.opcode = current_state->frame.opcode;
+            if (current_state->frame.header.opcode != WS_OPCODE_CONTINUE)
+                current_state->message.opcode = current_state->frame.header.opcode;
 
             current_state->parsing_state = WS_FRAME_PARSING_STATE_SECOND_BYTE;
             goto parse_start;
@@ -180,9 +267,10 @@ parse_start:
 
             if (current_state->frame.payload_length <= 125) 
             {
+                printf("payload len: %d\n", current_state->frame.payload_length);
                 current_state->real_payload_length = current_state->frame.payload_length;
                 
-                if (current_state->frame.opcode == WS_OPCODE_TEXT) current_state->message.buffer = calloc(current_state->real_payload_length + 1, sizeof(char));
+                if (current_state->frame.header.opcode == WS_OPCODE_TEXT) current_state->message.buffer = calloc(current_state->real_payload_length + 1, sizeof(char));
                 else current_state->message.buffer = calloc(current_state->real_payload_length, sizeof(char));
                 
                 current_state->message.payload_length = current_state->real_payload_length;
@@ -217,12 +305,19 @@ parse_start:
 
             printf("current payload len: %d\n", current_state->real_payload_length);
 
-            // TODO(Altanis): Make consistent with endianness.
+#if __BYTE_ORDER__ == __BIG_ENDIAN
             for (ssize_t i = 0; i < bytes_received; ++i)
             {
                 current_state->real_payload_length <<= 8;
                 current_state->real_payload_length |= (value >> (8 * i)) & 0xFF;
             };
+#else
+            for (ssize_t i = bytes_received - 1; i >= 0; --i)
+            {
+                current_state->real_payload_length |= ((uint64_t)(value & 0xFF) << (8 * i));
+                value >>= 8;
+            };
+#endif
 
             if (bytes_received == num_bytes_recv - length)
             {
@@ -232,7 +327,7 @@ parse_start:
                     return WS_FRAME_PARSE_ERROR_PAYLOAD_TOO_BIG;
                 };
 
-                if (current_state->frame.opcode == WS_OPCODE_TEXT) current_state->message.buffer = calloc(current_state->real_payload_length + 1, sizeof(char));
+                if (current_state->frame.header.opcode == WS_OPCODE_TEXT) current_state->message.buffer = calloc(current_state->real_payload_length + 1, sizeof(char));
                 else current_state->message.buffer = calloc(current_state->real_payload_length, sizeof(char));
 
                 current_state->message.payload_length = current_state->real_payload_length;
@@ -251,12 +346,6 @@ parse_start:
             uint8_t *masking_key = current_state->frame.masking_key;
             ssize_t length = masking_key[0] == 0 ? 0 : (masking_key[1] == 0 ? 1 : (masking_key[2] == 0 ? 2 : (masking_key[3] == 0 ? 3 : 4)));
 
-            if (length == -1)
-            {
-                current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_DATA;
-                goto parse_start;
-            };
-
             ssize_t bytes_received = recv(sockfd, masking_key, 4 - length, 0);
             if (bytes_received <= 0)
             {
@@ -273,6 +362,7 @@ parse_start:
             if (current_state->message.payload_length == 0) break;
 
             uint64_t received_length = current_state->received_length;
+            printf("recvvvvv length: %d\n", current_state->real_payload_length);
 
             ssize_t bytes_received = recv(sockfd, current_state->message.buffer, current_state->real_payload_length - received_length, 0);
             if (bytes_received <= 0)
@@ -290,6 +380,7 @@ parse_start:
             };
 
             printf("[wow!] %s\n", current_state->message.buffer);
+            printf("%d %d\n", bytes_received, current_state->real_payload_length, received_length);
 
             current_state->received_length += bytes_received;
             if (bytes_received == current_state->real_payload_length - received_length) break;
@@ -297,7 +388,7 @@ parse_start:
         };
     };
 
-    uint8_t old_fin = current_state->frame.fin;
+    uint8_t old_fin = current_state->frame.header.fin;
 
     current_state->parsing_state = -1;
     current_state->real_payload_length = 0;

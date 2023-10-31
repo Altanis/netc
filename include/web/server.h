@@ -1,6 +1,8 @@
 #ifndef SERVER_CONNECTION_H
 #define SERVER_CONNECTION_H
 
+#include <stdbool.h>
+
 #include "../tcp/server.h"
 #include "../web/client.h"
 
@@ -44,12 +46,6 @@ struct web_server
         size_t max_header_count;
         /** The maximum length of the body. Defaults to `65536`. */
         size_t max_body_len;
-        /** The amount of time for waiitng on the completion of parsing method, path, and version. Defaults to `10`. */
-        size_t request_line_timeout_seconds;
-        /** The amount of time for waiting on the completion of parsing HTTP headers. Defaults to `10`. */
-        size_t headers_timeout_seconds;
-        /** The amount of time for waiting on the completion of parsing the HTTP body. Defaults to `10`. */
-        size_t body_timeout_seconds;
     } http_server_config;
 
     /** [WS ONLY] A structure representing the configuration for a WebSocket server. */
@@ -66,7 +62,7 @@ struct web_server
     void (*on_http_malformed_request)(struct web_server *server, struct web_client *client, enum parse_request_error_types error);
 
     /** The callback for when a client disconnects. */
-    void (*on_disconnect)(struct web_server *server, socket_t sockfd, int is_error);
+    void (*on_disconnect)(struct web_server *server, socket_t sockfd, bool is_error);
 };
 
 /** A structure representing a route. */

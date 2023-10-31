@@ -9,6 +9,7 @@
 #endif
 
 #include <stdio.h>
+#include <stdarg.h>
 
 #ifdef _WIN32
 /** Sets the error code for netc, and returns the current errno. */
@@ -45,6 +46,6 @@ extern __thread int netc_errno_reason;
 /** Writes the error to a buffer. */
 void netc_strerror(char *buffer);
 /** Prints the error to a file stream. */
-void netc_perror(const char *message);
+void netc_perror(const char *message, ...);
 
 #endif // ERROR_H

@@ -16,7 +16,7 @@ int http_client_send_chunked_data(struct web_client *client, char *data, size_t 
     if (data_length != 0 && ((send_result = tcp_client_send(client->tcp_client, data_length == 0 ? "" : data, data_length, 0)) <= 0)) return send_result;    
     if ((send_result = tcp_client_send(client->tcp_client, "\r\n", 2, 0)) <= 2) return send_result;
 
-    return 0;
+    return 1;
 };
 
 int http_client_send_request(struct web_client *client, struct http_request *request, const char *data, size_t data_length)
@@ -76,7 +76,7 @@ int http_client_send_request(struct web_client *client, struct http_request *req
         if (second_send <= 0) return second_send;
     };
 
-    return 0;
+    return 1;
 };
 
 int http_client_parse_response(struct web_client *client, struct http_client_parsing_state *current_state)
@@ -254,31 +254,22 @@ parse_start:
             size_t preexisting_chunk_data = current_state->chunk_data.size - current_state->response.body_size;
             size_t length = current_state->chunk_size + 2 - preexisting_chunk_data;
 
-            printf("i view my acxtions with %d\n", length);
+            vector_resize(&current_state->chunk_data, current_state->chunk_data.size + length); // Reserve space in the vector
 
-            char buffer[length];
-            ssize_t bytes_received = recv(sockfd, buffer, length, 0);
-            printf("[bytrecv] %d\n", bytes_received);
-            // recv everything after
-            printf("WOW\n");
-            char bufffy[3904] = {0};
-            recv(sockfd, bufffy, 3903, MSG_PEEK);
-            print_bytes(bufffy, 3904);
-            printf("WOW\n");
+            char* buffer_ptr = current_state->chunk_data.elements + current_state->chunk_data.size;
+            ssize_t bytes_received = recv(sockfd, buffer_ptr, length, 0);
 
             if (bytes_received <= 0)
             {
                 if (errno == EWOULDBLOCK) return 1;
                 else return RESPONSE_PARSE_ERROR_RECV;
-            };
+            }
 
-            for (size_t i = 0; i < bytes_received; ++i) vector_push(&current_state->chunk_data, buffer + i);
-            if (bytes_received == length)
+            current_state->chunk_data.size += bytes_received;
+
+            if (current_state->chunk_data.size >= current_state->response.body_size + current_state->chunk_size + 2)
             {
-                size_t vec_size = current_state->chunk_data.size;
-
-                vector_delete(&current_state->chunk_data, vec_size - 1); // delete \n
-                vector_delete(&current_state->chunk_data, vec_size - 2); // delete \r
+                current_state->chunk_data.size -= 2; // Remove trailing \r\n
             } else return 1;
 
             current_state->response.body_size += current_state->chunk_size;
@@ -289,24 +280,18 @@ parse_start:
         };
         case RESPONSE_PARSING_STATE_BODY:
         {
-            if (current_state->chunk_data.size == 0)
-                vector_init(&current_state->chunk_data, 128, sizeof(char));
+            current_state->response.body = (char *)malloc(current_state->content_length + 1);
+            current_state->response.body[current_state->content_length] = '\0';
 
-            size_t preexisting_body_data = current_state->chunk_data.size;
-            size_t length = current_state->content_length - preexisting_body_data;
-
-            char buffer[length];
-            ssize_t bytes_received = recv(sockfd, buffer, length, 0);
+            ssize_t bytes_received = recv(sockfd, current_state->response.body, current_state->content_length, 0);
             if (bytes_received <= 0)
             {
-                printf("WHATS HAPPENED??? %d %d\n", length, bytes_received);
+                printf("WHATS HAPPENED??? %d %d\n", current_state->content_length, bytes_received);
                 if (errno == EWOULDBLOCK) return 1;
                 else return RESPONSE_PARSE_ERROR_RECV;
             };
 
-            for (size_t i = 0; i < bytes_received; ++i) vector_push(&current_state->chunk_data, buffer + i);
-
-            if (bytes_received == length) break;
+            if (bytes_received == current_state->content_length) break;
             else return 1;
         };
     };

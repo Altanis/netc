@@ -193,7 +193,7 @@ int tcp_client_receive(struct tcp_client *client, char *message, size_t msglen, 
     return result;
 };
 
-int tcp_client_close(struct tcp_client *client, int is_error)
+int tcp_client_close(struct tcp_client *client, bool is_error)
 {
     if (client->on_disconnect != NULL) client->on_disconnect(client, is_error);
 

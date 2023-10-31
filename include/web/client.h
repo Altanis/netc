@@ -1,6 +1,8 @@
 #ifndef CLIENT_CONNECTION_H
 #define CLIENT_CONNECTION_H
 
+#include <stdbool.h>
+
 #include "../tcp/client.h"
 #include "../http/client.h"
 #include "../ws/common.h"
@@ -68,7 +70,7 @@ struct web_client
     /** The callback for when a response is malformed. */
     void (*on_malformed_response)(struct web_client *client, enum parse_response_error_types error);
     /** The callback for when a client disconnects. */
-    void (*on_disconnect)(struct web_client *client, int is_error);
+    void (*on_disconnect)(struct web_client *client, bool is_error);
 };
 
 /** Initializes the client. */

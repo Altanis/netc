@@ -36,10 +36,15 @@ void netc_strerror(char *buffer)
 #endif
 };
 
-void netc_perror(const char *message)
+void netc_perror(const char *message, ...)
 {
     char error[1024] = {0};
     netc_strerror(error);
 
-    fprintf(stderr, "%s: %s\n", message, error);
+    va_list args;
+    va_start(args, message);
+    vfprintf(stderr, message, args);
+    va_end(args);
+
+    fprintf(stderr, ": %s\n", error);
 };

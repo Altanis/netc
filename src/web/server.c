@@ -103,7 +103,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
             {
                 size_t message_size = ws_parsing_state.message.payload_length - 2 + 1;
                 uint16_t close_code = 0;
-                char message[message_size > 0 ? message_size : 1];
+                char message[message_size];
 
                 if (ws_parsing_state.message.payload_length >= 2)
                 {
@@ -117,8 +117,8 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     {
                         memcpy(message, ws_parsing_state.message.buffer + 2, ws_parsing_state.message.payload_length - 2);
                         message[ws_parsing_state.message.payload_length - 2] = '\0';
-                    }
-                } else message[0] = '\0';
+                    } else message[0] = '\0';
+                };
 
                 route->on_ws_close(server, client, close_code, message);
             } else if (route->on_ws_message != NULL) route->on_ws_message(server, client, ws_parsing_state.message);
@@ -196,6 +196,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 http_parsing_state.parsing_state = -1;
 
                 free(path);
+                http_request_free(&http_parsing_state.request);
 
                 return;        
             };
@@ -234,13 +235,13 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
     };
 };
 
-static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, int is_error)
+static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool is_error)
 {
-    struct web_server *http_server = server->data;
-    struct web_client *client = map_get(&http_server->clients, &sockfd, sizeof(sockfd));
+    struct web_server *web_server = server->data;
+    struct web_client *web_client = map_get(&web_server->clients, &sockfd, sizeof(sockfd));
 
-    if (http_server->on_disconnect != NULL)
-        http_server->on_disconnect(http_server, sockfd, is_error);
+    if (web_server->on_disconnect != NULL && web_client->connection_type == CONNECTION_HTTP)
+        web_server->on_disconnect(web_server, sockfd, is_error);
 };
 
 int web_server_init(struct web_server *http_server, struct sockaddr address, int backlog)

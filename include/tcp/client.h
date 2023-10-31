@@ -1,6 +1,8 @@
 #ifndef TCP_CLIENT_H
 #define TCP_CLIENT_H
 
+#include <stdbool.h>
+
 #include "./server.h"
 
 /** The main loop of a nonblocking TCP client. */
@@ -16,6 +18,6 @@ int tcp_client_send(struct tcp_client *client, char *message, size_t msglen, int
 int tcp_client_receive(struct tcp_client *client, char *message, size_t msglen, int flags);
 
 /** Closes the TCP client. */
-int tcp_client_close(struct tcp_client *client, int is_error);
+int tcp_client_close(struct tcp_client *client, bool is_error);
 
 #endif // TCP_CLIENT_H

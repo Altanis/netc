@@ -19,12 +19,14 @@ struct vector
 /** Initializes the vector. */
 void vector_init(struct vector *vec, size_t capacity, size_t element_size);
 /** Resizes the vector. Returns a `0` if a resize is required, or a `-1` if not. */
-int vector_resize(struct vector *vec);
+int vector_resize(struct vector *vec, size_t new_capacity);
 
 /** Pushes an element to the vector. */
 void vector_push(struct vector *vec, void *element);
 /** Gets an element from the vector. */
 void *vector_get(struct vector *vec, size_t index);
+/** Returns a pointer to a writable buffer. */
+void *vector_get_buffer(struct vector *vec);
 /** Removes an element from the vector. */
 void vector_delete(struct vector *vec, size_t index);
 

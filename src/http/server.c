@@ -25,6 +25,7 @@ int http_server_send_chunked_data(struct web_server *server, struct web_client *
 
     int send_result = 0;
 
+    // TODO(Altanis): Concat strings.
     if ((send_result = tcp_server_send(sockfd, length_str, strlen(length_str), 0)) <= 0) return send_result;
     if (data_length != 0 && ((send_result = tcp_server_send(sockfd, data_length == 0 ? "" : data, data_length, 0)) <= 0)) return send_result;    
     if ((send_result = tcp_server_send(sockfd, "\r\n", 2, 0)) <= 2) return send_result;
@@ -42,7 +43,7 @@ int http_server_send_chunked_data(struct web_server *server, struct web_client *
     // printf("sent ");
     // print_bytes(buffer, length + strlen(length_str) + 2);
 
-    return 0;
+    return 1;
 };
 
 int http_server_send_response(struct web_server *server, struct web_client *client, struct http_response *response, const char *data, size_t data_length)
@@ -102,6 +103,7 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
 
     print_bytes(sso_string_get(&response_str), response_str.length);
 
+    // TODO(Altanis): Concat strings.
     ssize_t first_send = tcp_server_send(sockfd, (char *)sso_string_get(&response_str), response_str.length, 0);
     if (first_send <= 0) return first_send;
 
@@ -116,7 +118,7 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
             tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, 0);
     };
 
-    return 0;
+    return 1;
 };
 
 // todo: optimize by using msg_peek calls
@@ -135,10 +137,6 @@ int http_server_parse_request(struct web_server *server, struct web_client *clie
     size_t MAX_HTTP_HEADER_VALUE_LEN = (server->http_server_config.max_header_value_len ? server->http_server_config.max_header_value_len : 4096);
     size_t MAX_HTTP_HEADER_COUNT = server->http_server_config.max_header_count ? server->http_server_config.max_header_count : 24;
     size_t MAX_HTTP_BODY_LEN = (server->http_server_config.max_body_len ? server->http_server_config.max_body_len : 65536);
-
-    size_t HTTP_REQUEST_LINE_TIMEOUT_SECONDS = server->http_server_config.request_line_timeout_seconds ? server->http_server_config.request_line_timeout_seconds : 10;
-    size_t HTTP_HEADERS_TIMEOUT_SECONDS = server->http_server_config.headers_timeout_seconds ? server->http_server_config.headers_timeout_seconds : 10;
-    size_t HTTP_BODY_TIMEOUT_SECONDS = server->http_server_config.body_timeout_seconds ? server->http_server_config.body_timeout_seconds : 10;
 
     vector_init(&current_state->request.headers, 8, sizeof(struct http_header));
 
