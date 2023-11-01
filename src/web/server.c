@@ -48,6 +48,7 @@ int _path_matches(const char *path, const char *pattern)
 
 static void _tcp_on_connect(struct tcp_server *server)
 {
+    printf("dedi.\n");
     struct web_server *http_server = server->data;
 
     struct web_client *client = malloc(sizeof(struct web_client));

@@ -28,6 +28,7 @@ static void _tcp_on_data(struct tcp_client *client)
             int result = 0;
             if ((result = http_client_parse_response(web_client, http_client_parsing_state)) != 0)
             {
+                printf("no more stlal.\n");
                 if (result < 0)
                 {
                     printf("%d\n", result);

@@ -5,6 +5,7 @@
 
 #include "../tcp/client.h"
 #include "../http/client.h"
+#include "../ws/client.h"
 #include "../ws/common.h"
 
 /** A structure representing a client connection over HTTP/WS. */

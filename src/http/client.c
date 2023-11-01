@@ -172,6 +172,8 @@ parse_start:
                 else return RESPONSE_PARSE_ERROR_RECV;
             };
 
+            printf("cli header %s\n", sso_string_get(&header->name));
+
             if (strcasecmp(sso_string_get(&header->name), "Sec-WebSocket-Accept") == 0)
                 current_state->response.accept_websocket = true;
 
@@ -190,6 +192,8 @@ parse_start:
                 if (bytes_received == -2 || errno == EWOULDBLOCK) return 1;
                 else return RESPONSE_PARSE_ERROR_RECV;
             };
+
+            printf("cli value %s\n", sso_string_get(&header->value));
 
             if (strcasecmp(sso_string_get(&header->name), "Content-Length") == 0)
                 current_state->content_length = atoi(sso_string_get(&header->value));

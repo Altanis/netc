@@ -5,6 +5,7 @@
 #include "../utils/string.h"
 
 #include <stdint.h>
+#include <stdbool.h>
 
 #define HTTP_STATUS_CODES \
     X(100, "Continue") \

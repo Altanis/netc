@@ -1,4 +1,5 @@
 #include "./include/web/server.h"
+#include "./include/web/client.h"
 
 #include "tests/tcp/test001.c"
 #include "tests/tcp/test002.c"
@@ -46,7 +47,7 @@ void ws_start_handling_moment(struct web_server *server, struct web_client *clie
 
 void ws_start_failing_moment(struct web_server *server, struct web_client *client, enum ws_frame_parsing_errors error)
 {
-    // todo: ws_server_close();
+    ws_server_close_client(server, client, 1000, "Malformed frame.");
 };
 
 void ws_start_handling_messages_moment(struct web_server *server, struct web_client *client, struct ws_message message)
@@ -79,6 +80,50 @@ void ws_start_handling_closes_moment(struct web_server *server, struct web_clien
 {
     printf("ws closed sexd... [%d] %s\n", code, reason);
     printf("done.\n");
+};
+
+void ws_client_on_http_connect(struct web_client *client)
+{
+    printf("dedi im wow.\n");
+
+    int r = 0;
+    if ((r = ws_client_connect(client, "localhost:5001", "/ziggy", NULL) != 1))
+        printf("wtf %d\n", r);
+};
+
+void ws_client_on_ws_connect(struct web_client *client)
+{
+    printf("AHHHHHHHH.\n");
+};
+
+void ws_client_on_http_malformed_response()
+{
+
+};
+
+void ws_client_on_ws_malformed_frame()
+{
+
+};
+
+void ws_client_on_ws_message()
+{
+
+};
+
+void ws_client_on_http_response()
+{
+    printf("oops i wow.\n");
+};
+
+void ws_client_on_close()
+{
+
+};
+
+void *ws_server_start(void *arg)
+{
+    return web_server_start(arg);
 };
 
 int main()
@@ -133,7 +178,7 @@ int main()
     };
 
     struct web_server_route main = { 
-        .path = "/", 
+        .path = "/ziggy",
         .on_http_message = http_handling_moment,
         .on_ws_handshake_request = ws_start_handling_moment,
         .on_ws_malformed_frame = ws_start_failing_moment,
@@ -142,7 +187,30 @@ int main()
     };
 
     web_server_create_route(&server, &main);
-    web_server_start(&server);
+
+    pthread_t thread;
+    pthread_create(&thread, NULL, ws_server_start, &server);
+
+    struct web_client client = {0};
+    client.on_http_connect = ws_client_on_http_connect;
+    client.on_ws_connect = ws_client_on_ws_connect;
+    client.on_http_malformed_response = ws_client_on_http_malformed_response;
+    client.on_ws_malformed_frame = ws_client_on_ws_malformed_frame;
+    client.on_ws_message = ws_client_on_ws_message;
+    client.on_http_response = ws_client_on_http_response;
+    client.on_disconnect = ws_client_on_close;
+
+    struct sockaddr_in cliaddr = {
+        .sin_family = AF_INET,
+        .sin_port = htons(5001)
+    };
+
+    if (inet_pton(AF_INET, "127.0.0.1", &cliaddr.sin_addr) < 0) perror("inet_pton");
+    if (web_client_init(&client, *(struct sockaddr *)&cliaddr) < 0) netc_perror("web_client_init");
+    
+    web_client_start(&client);
+
+    pthread_join(thread, NULL);
 
     return 0;
 };

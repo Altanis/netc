@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include <string.h>
 #include <stdlib.h>
 #include <time.h>
@@ -12,13 +13,15 @@ int ws_client_connect(struct web_client *client, const char *hostname, const cha
     srand(time(NULL));
     
     char rand_bytes[16];
-    for (size_t i = 0; i < rand_bytes; ++i)
+    for (size_t i = 0; i < sizeof(rand_bytes); ++i)
     {
         rand_bytes[i] = rand();
     };
 
     char websocket_key[((4 * sizeof(rand_bytes) / 3) + 3) & ~3];
     http_base64_encode(rand_bytes, sizeof(rand_bytes), websocket_key);
+
+    printf("%s\n", websocket_key);
 
     const char *headers[5][2] =
     {
@@ -30,7 +33,7 @@ int ws_client_connect(struct web_client *client, const char *hostname, const cha
     };
 
     struct http_request request;
-    http_request_build(&request, "GET", path, "HTTP/1.1", headers, sizeof(headers));
+    http_request_build(&request, "GET", path, "HTTP/1.1", headers, 5);
 
     int result = 0;
     if ((result = http_client_send_request(client, &request, NULL, 0)) < 1) return result;
