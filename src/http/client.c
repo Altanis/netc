@@ -172,6 +172,9 @@ parse_start:
                 else return RESPONSE_PARSE_ERROR_RECV;
             };
 
+            if (strcasecmp(sso_string_get(&header->name), "Sec-WebSocket-Accept") == 0)
+                current_state->response.accept_websocket = true;
+
             current_state->parsing_state = RESPONSE_PARSING_STATE_HEADER_VALUE;
             goto parse_start;
         };

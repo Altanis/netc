@@ -417,9 +417,9 @@ static int http_test001()
     pthread_create(&servt, NULL, (void *)web_server_start, &server);
 
     struct web_client client = {0};
-    client.on_connect = http_test001_client_on_connect;
-    client.on_malformed_response = http_test001_client_on_malformed_response;
-    client.on_data = http_test001_client_on_data;
+    client.on_http_connect = http_test001_client_on_connect;
+    client.on_http_malformed_response = http_test001_client_on_malformed_response;
+    client.on_http_response = http_test001_client_on_data;
     client.on_disconnect = http_test001_client_on_disconnect;
 
     struct sockaddr_in cliaddr = {
@@ -433,7 +433,7 @@ static int http_test001()
         return 1;
     };
 
-    if (web_client_init(&client, *(struct sockaddr *)&cliaddr, CONNECTION_HTTP) != 0)
+    if (web_client_init(&client, *(struct sockaddr *)&cliaddr) != 0)
     {
         printf(ANSI_RED "[HTTP TEST CASE 001] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;

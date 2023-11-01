@@ -3,6 +3,7 @@
 #include <string.h>
 #include <stdbool.h>
 #include <errno.h>
+#include <time.h>
 #include <openssl/sha.h>
 
 #include "../../include/web/server.h"
@@ -103,6 +104,28 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     } else return -1;
 };
 
+void ws_server_build_masking_key(uint8_t masking_key[4])
+{
+    srand(time(NULL));
+    *((uint8_t *)masking_key) = rand();
+};
+
+void ws_server_build_frame(struct ws_frame *frame, uint8_t fin, uint8_t rsv1, uint8_t rsv2, uint8_t rsv3, uint8_t opcode, uint8_t mask, uint8_t masking_key[4], uint64_t payload_length)
+{
+    frame->header.fin = fin;
+    frame->header.rsv1 = rsv1;
+    frame->header.rsv2 = rsv2;
+    frame->header.rsv3 = rsv3;
+    frame->header.opcode = opcode;
+    frame->mask = mask;
+    frame->payload_length = payload_length;
+
+    if (mask == 1)
+    {
+        memcpy(frame->masking_key, masking_key, sizeof(frame->masking_key));
+    };
+};
+
 int ws_server_send_frame(struct web_server *server, struct web_client *client, struct ws_frame *frame, const char *payload_data, size_t num_frames)
 {
     socket_t sockfd = client->tcp_client->sockfd;
@@ -182,7 +205,6 @@ int ws_server_send_frame(struct web_server *server, struct web_client *client, s
     return 1;
 };
 
-// error frames fail (reproduce by sending an invalid frame)
 int ws_server_parse_frame(struct web_server *server, struct web_client *client, struct ws_frame_parsing_state *current_state)
 {
     socket_t sockfd = client->tcp_client->sockfd;
@@ -397,4 +419,25 @@ parse_start:
 
     if (old_fin == 1) return 0;
     else return 1;
+};
+
+// not work.
+int ws_server_close_client(struct web_server *server, struct web_client *client, uint16_t code, char *reason)
+{
+    size_t reason_len = reason != NULL ? strlen(reason) : 0;
+
+    struct ws_frame frame;
+    ws_server_build_frame(&frame, 1, 0, 0, 0, WS_OPCODE_CLOSE, 0, NULL, 2 + reason_len);
+
+    char payload_data[2 + reason_len];
+    payload_data[0] = (code >> 8) & 0xFF;
+    payload_data[1] = code & 0xFF;
+
+    if (reason != NULL)
+    {
+        memcpy(payload_data + 2, reason, reason_len);
+    };
+
+    ws_server_send_frame(server, client, &frame, payload_data, 1);
+    return tcp_client_close(client->tcp_client, false);
 };

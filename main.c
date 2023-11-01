@@ -71,6 +71,8 @@ void ws_start_handling_messages_moment(struct web_server *server, struct web_cli
 
     if (ws_server_send_frame(server, client, &frame, "aaabbbcccd", 2) < 0) netc_perror("WTF");
     else printf("couldnt.\n");
+
+    ws_server_close_client(server, client, 1002, "ok");
 };
 
 void ws_start_handling_closes_moment(struct web_server *server, struct web_client *client, uint16_t code, char *reason)

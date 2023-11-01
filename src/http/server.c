@@ -283,7 +283,7 @@ parse_start:
                 client->server_close_flag = 1;
 
             if (strcasecmp(sso_string_get(&header->name), "Upgrade") == 0 && strcasecmp(sso_string_get(&header->value), "websocket") == 0)
-                current_state->request.upgrade_websocket = 1;                
+                current_state->request.upgrade_websocket = true;                
 
             printf("[header value]: %s\n", sso_string_get(&header->value));
 

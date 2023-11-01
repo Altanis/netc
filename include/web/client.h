@@ -63,18 +63,27 @@ struct web_client
        struct ws_frame_parsing_state ws_parsing_state;
     };
 
-    /** The callback for when a client connects. */
-    void (*on_connect)(struct web_client *client);
-    /** The callback for when a response is received. */
-    void (*on_data)(struct web_client *client, struct http_response response);
+    /** The callback for when the client connects via HTTP. */
+    void (*on_http_connect)(struct web_client *client);
+    /** The callback for when the client connects via WS. */
+    void (*on_ws_connect)(struct web_client *client);
+
+    /** The callback for when a HTTP response is received. */
+    void (*on_http_response)(struct web_client *client, struct http_response response);
+    /** The callback for when a WS message is received. */
+    void (*on_ws_message)(struct web_client *client, struct ws_message message);
+
     /** The callback for when a response is malformed. */
-    void (*on_malformed_response)(struct web_client *client, enum parse_response_error_types error);
+    void (*on_http_malformed_response)(struct web_client *client, enum parse_response_error_types error);
+    /** The callback for when a frame is malformed. */
+    void (*on_ws_malformed_frame)(struct web_client *client, enum parse_frame_error_types error);
+
     /** The callback for when a client disconnects. */
     void (*on_disconnect)(struct web_client *client, bool is_error);
 };
 
 /** Initializes the client. */
-int web_client_init(struct web_client *client, struct sockaddr address, enum connection_types connection_type);
+int web_client_init(struct web_client *client, struct sockaddr address);
 /** Starts a nonblocking event loop for the client. */
 int web_client_start(struct web_client *client);
 /** Closes the client. */

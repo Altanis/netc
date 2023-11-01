@@ -196,7 +196,7 @@ struct http_request
     size_t body_size;
 
     /** Whether or not the request wants to upgrade to WS protocol. */
-    int upgrade_websocket;
+    bool upgrade_websocket;
 };
 
 /** A structure representing the HTTP response. */
@@ -216,6 +216,9 @@ struct http_response
     char *body;
     /** The size of the HTTP body. */
     size_t body_size;
+
+    /** Whether or not the server is willing to accept a WS connection. */
+    bool accept_websocket;
 };
 
 /** A structure representing the HTTP header. */

@@ -201,7 +201,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 return;        
             };
 
-            if (http_parsing_state.request.upgrade_websocket == 1)
+            if (http_parsing_state.request.upgrade_websocket == true)
             {
                 void (*handshake_request_cb)(struct web_server *server, struct web_client *client, struct http_request request) = route->on_ws_handshake_request;
                 if (handshake_request_cb == NULL)
