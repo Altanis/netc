@@ -121,7 +121,7 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
     return 1;
 };
 
-// todo: optimize by using msg_peek calls
+// TODO: replace calloc with vector
 int http_server_parse_request(struct web_server *server, struct web_client *client, struct http_server_parsing_state *current_state)
 {
     socket_t sockfd = client->tcp_client->sockfd;
@@ -288,7 +288,7 @@ parse_start:
             printf("[header value]: %s\n", sso_string_get(&header->value));
 
             vector_push(headers, header);
-            memset(header, 0, sizeof(*header));
+            memset(header, 0, sizeof(struct http_header));
 
             current_state->parsing_state = REQUEST_PARSING_STATE_HEADER_NAME;
             goto parse_start;
@@ -296,13 +296,13 @@ parse_start:
         case REQUEST_PARSING_STATE_CHUNK_SIZE:
         {
             printf("WOW\n");
-            if (current_state->request.body == NULL) 
+            printf("chunk size %d\n", current_state->chunk_size);
+
+            if (current_state->chunk_data.size == 0)
             {
                 current_state->chunk_size = -1;
-                current_state->request.body = calloc(MAX_HTTP_BODY_LEN + 2 /** crlf */ + 1 /** \0 */, sizeof(char));
+                vector_init(&current_state->chunk_data, 8, sizeof(char));
             };
-
-            printf("chunk size %d\n", current_state->chunk_size);
 
             if (current_state->chunk_size == -1)
             {
@@ -344,43 +344,39 @@ parse_start:
         };
         case REQUEST_PARSING_STATE_CHUNK_DATA:
         {
-            size_t preexisting_chunk_data = current_state->request.body_size + current_state->incomplete_chunk_data_size;
-            size_t length = current_state->chunk_size + 2 - (preexisting_chunk_data - current_state->request.body_size);
+            size_t preexisting_chunk_data = current_state->chunk_data.size - current_state->request.body_size;
+            size_t length = current_state->chunk_size + 2 - preexisting_chunk_data;
 
-            ssize_t bytes_received_chunk_data = recv(sockfd, current_state->request.body + preexisting_chunk_data, length, 0);
-            
-            if (bytes_received_chunk_data <= 0)
+            vector_resize(&current_state->chunk_data, current_state->chunk_data.size + length);
+            char *buffer_ptr = current_state->chunk_data.elements + current_state->chunk_data.size;
+
+            ssize_t bytes_received = recv(sockfd, buffer_ptr, length, 0);
+
+            if (bytes_received <= 0)
             {
-                printf("OH OH OH> %d %d %s?\n", bytes_received_chunk_data, errno, strerror(errno));
-                current_state->incomplete_chunk_data_size += bytes_received_chunk_data;
                 if (errno == EWOULDBLOCK) return 1;
-                else return REQUEST_PARSE_ERROR_RECV;
-            } 
-            else
-            {
-                current_state->incomplete_chunk_data_size = 0;
-                current_state->request.body_size += bytes_received_chunk_data;
+                else return RESPONSE_PARSE_ERROR_RECV;
             };
 
-            if (bytes_received_chunk_data < length) return 1;
-            else
+            current_state->chunk_data.size += bytes_received;
+            if (current_state->chunk_data.size >= current_state->request.body_size + current_state->chunk_size + 2)
             {
-                printf("[sofarsogood] %s\n", current_state->request.body);
-                current_state->request.body_size -= 2 /** crlf */;
-                printf("current body size %d\n", current_state->request.body_size);
-                current_state->request.body[current_state->request.body_size] = '\0';
-                current_state->parsing_state = REQUEST_PARSING_STATE_CHUNK_SIZE;
-            };
+                current_state->chunk_data.size -= 2;
+            } else return 1;
 
-            printf("[cstr] %s\n", current_state->request.body);
+            current_state->request.body_size += current_state->chunk_size;
             current_state->chunk_size = -1;
+            current_state->parsing_state = RESPONSE_PARSING_STATE_CHUNK_SIZE;
 
             goto parse_start;
         };
         case REQUEST_PARSING_STATE_BODY:
         {
             if (current_state->request.body == NULL)
-                current_state->request.body = calloc(current_state->content_length + 1, sizeof(char));
+            {
+                current_state->request.body = malloc(current_state->content_length + 1);
+                current_state->request.body[current_state->content_length] = '\0';
+            };
 
             size_t preexisting_body_data = current_state->request.body_size;
             size_t length = current_state->content_length - preexisting_body_data;
@@ -399,6 +395,12 @@ parse_start:
             if (bytes_received_body < length) return 1;
             else break;
         };
+    };
+
+    if (current_state->request.body_size > 0)
+    {
+        vector_push(&current_state->chunk_data, &(char){'\0'});
+        current_state->request.body = (char *)current_state->chunk_data.elements;
     };
 
     return 0;

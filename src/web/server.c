@@ -77,12 +77,13 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
     {
         case CONNECTION_WS:
         {
-            struct ws_frame_parsing_state ws_parsing_state = client->ws_parsing_state;
+            struct ws_frame_parsing_state *ws_parsing_state = &client->ws_parsing_state;
             struct web_server_route *route = web_server_find_route(web_server, client->path);
 
+            printf("cooooooooked hehhehehehehe %d\n", ws_parsing_state->payload_data.size);
             int result = 0;
 
-            if ((result = ws_server_parse_frame(server, client, &ws_parsing_state)) != 0)
+            if ((result = ws_parse_frame(client, ws_parsing_state, web_server->ws_server_config.max_payload_len ? web_server->ws_server_config.max_payload_len : 65536)) != 0)
             {
                 if (result < 0)
                 {
@@ -90,42 +91,41 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     printf("[ws] malformed request: %d\n", result);
 
                     /** Malformed request. */
-                    if (route->on_ws_malformed_frame)
-                    {
+                    if (route->on_ws_malformed_frame != NULL)
                         route->on_ws_malformed_frame(server, client, result);
-                    };
                 };
 
-                printf("WAITING FOR INCOMING DATA...\n");
+                printf("WAITING FOR INCOMING DATA... %d\n", ws_parsing_state->payload_data.size);
                 return;
             };
 
-            if (ws_parsing_state.message.opcode == WS_OPCODE_CLOSE && route->on_ws_close)
+            if (ws_parsing_state->message.opcode == WS_OPCODE_CLOSE && route->on_ws_close)
             {
-                size_t message_size = ws_parsing_state.message.payload_length - 2 + 1;
+                size_t message_size = ws_parsing_state->message.payload_length - 2 + 1;
                 uint16_t close_code = 0;
                 char message[message_size];
 
-                if (ws_parsing_state.message.payload_length >= 2)
+                if (ws_parsing_state->message.payload_length >= 2)
                 {
-                    close_code = (uint16_t)ws_parsing_state.message.buffer[0] << 8 | (uint16_t)ws_parsing_state.message.buffer[1];
-                    printf("a%d\n", (unsigned char)ws_parsing_state.message.buffer[2]);
-                    printf("b%d\n", (unsigned char)ws_parsing_state.message.buffer[3]);
-                    printf("c%d\n", (unsigned char)ws_parsing_state.message.buffer[3]);
-                    printf("d%d\n", (unsigned char)ws_parsing_state.message.buffer[5]);
+                    close_code = (uint16_t)ws_parsing_state->message.buffer[0] << 8 | (uint16_t)ws_parsing_state->message.buffer[1];
+                    printf("a%d\n", (unsigned char)ws_parsing_state->message.buffer[2]);
+                    printf("b%d\n", (unsigned char)ws_parsing_state->message.buffer[3]);
+                    printf("c%d\n", (unsigned char)ws_parsing_state->message.buffer[3]);
+                    printf("d%d\n", (unsigned char)ws_parsing_state->message.buffer[5]);
 
-                    if (ws_parsing_state.message.payload_length > 2)
+                    if (ws_parsing_state->message.payload_length > 2)
                     {
-                        memcpy(message, ws_parsing_state.message.buffer + 2, ws_parsing_state.message.payload_length - 2);
-                        message[ws_parsing_state.message.payload_length - 2] = '\0';
+                        memcpy(message, ws_parsing_state->message.buffer + 2, ws_parsing_state->message.payload_length - 2);
+                        message[ws_parsing_state->message.payload_length - 2] = '\0';
                     } else message[0] = '\0';
                 };
 
+                tcp_server_close_client(server, sockfd, false);
                 route->on_ws_close(server, client, close_code, message);
-            } else if (route->on_ws_message != NULL) route->on_ws_message(server, client, ws_parsing_state.message);
+            } else if (route->on_ws_message != NULL) route->on_ws_message(web_server, client, ws_parsing_state->message);
 
-            memset(&ws_parsing_state, 0, sizeof(ws_parsing_state));
-            free(ws_parsing_state.message.buffer);
+            free(ws_parsing_state->message.buffer);
+            memset(ws_parsing_state, 0, sizeof(struct ws_frame_parsing_state));
 
             break;
         };
@@ -193,11 +193,10 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 
                 tcp_server_send(sockfd, (char *)notfound_message, strlen(notfound_message), 0);
                 
-                memset(&http_parsing_state.request, 0, sizeof(http_parsing_state.request));
-                http_parsing_state.parsing_state = -1;
-
                 free(path);
                 http_request_free(&http_parsing_state.request);
+                memset(&http_parsing_state.request, 0, sizeof(http_parsing_state.request));
+                http_parsing_state.parsing_state = -1;
 
                 return;        
             };
@@ -225,11 +224,10 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 if (callback != NULL) callback(web_server, client, http_parsing_state.request);
             };
 
-            memset(&http_parsing_state.request, 0, sizeof(http_parsing_state.request));
-            http_parsing_state.parsing_state = -1;
-
             free(path);
             http_request_free(&http_parsing_state.request);
+            memset(&http_parsing_state.request, 0, sizeof(http_parsing_state.request));
+            http_parsing_state.parsing_state = -1;
 
             break;
         };

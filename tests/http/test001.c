@@ -420,7 +420,7 @@ static int http_test001()
     client.on_http_connect = http_test001_client_on_connect;
     client.on_http_malformed_response = http_test001_client_on_malformed_response;
     client.on_http_response = http_test001_client_on_data;
-    client.on_disconnect = http_test001_client_on_disconnect;
+    client.on_http_disconnect = http_test001_client_on_disconnect;
 
     struct sockaddr_in cliaddr = {
         .sin_family = AF_INET,

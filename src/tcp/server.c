@@ -140,7 +140,7 @@ int tcp_server_init(struct tcp_server *server, struct sockaddr address, bool non
     if (server->pfd == -1) return netc_error(EVCREATE);
 
     struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLET;
+    ev.events = EPOLLIN;
     ev.data.fd = server->sockfd;
     if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, server->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32
@@ -152,7 +152,7 @@ int tcp_server_init(struct tcp_server *server, struct sockaddr address, bool non
     if (server->pfd == -1) return netc_error(EVCREATE);
 
     struct kevent ev;
-    EV_SET(&ev, server->sockfd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
+    EV_SET(&ev, server->sockfd, EVFILT_READ, EV_ADD, 0, 0, NULL);
     if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(POLL_FD);
 #endif 
 
@@ -198,7 +198,7 @@ int tcp_server_accept(struct tcp_server *server, struct tcp_client *client)
 
 #ifdef __linux__
     struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLET;
+    ev.events = EPOLLIN;
     ev.data.fd = client->sockfd;
     if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, client->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32
@@ -206,7 +206,7 @@ int tcp_server_accept(struct tcp_server *server, struct tcp_client *client)
     vector_push(&server->events, &event);
 #elif __APPLE__
     struct kevent ev;
-    EV_SET(&ev, client->sockfd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
+    EV_SET(&ev, client->sockfd, EVFILT_READ, EV_ADD, 0, 0, NULL);
     if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(POLL_FD);
 #endif
 

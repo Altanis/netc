@@ -143,7 +143,7 @@ int tcp_client_init(struct tcp_client *client, struct sockaddr addr, int non_blo
     if (client->pfd == -1) return netc_error(EVCREATE);
 
     struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP | EPOLLET;
+    ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP;
     ev.data.fd = client->sockfd;
     if (epoll_ctl(client->pfd, EPOLL_CTL_ADD, client->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32
@@ -153,8 +153,8 @@ int tcp_client_init(struct tcp_client *client, struct sockaddr addr, int non_blo
 
     struct kevent ev[2];
     int events = 0;
-    EV_SET(&ev[events++], client->sockfd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
-    EV_SET(&ev[events++], client->sockfd, EVFILT_WRITE, EV_ADD | EV_CLEAR, 0, 0, NULL);
+    EV_SET(&ev[events++], client->sockfd, EVFILT_READ, EV_ADD, 0, 0, NULL);
+    EV_SET(&ev[events++], client->sockfd, EVFILT_WRITE, EV_ADD, 0, 0, NULL);
     if (kevent(client->pfd, ev, events, NULL, 0, NULL) == -1) return netc_error(POLL_FD);
 #endif
 

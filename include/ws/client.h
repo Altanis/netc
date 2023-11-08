@@ -12,4 +12,6 @@ struct web_client;
  */
 int ws_client_connect(struct web_client *client, const char *hostname, const char *path, const char *protocols[]);
 
+
+
 #endif // WS_CLIENT_H

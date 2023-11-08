@@ -77,10 +77,12 @@ struct web_client
     /** The callback for when a response is malformed. */
     void (*on_http_malformed_response)(struct web_client *client, enum parse_response_error_types error);
     /** The callback for when a frame is malformed. */
-    void (*on_ws_malformed_frame)(struct web_client *client, enum parse_frame_error_types error);
+    void (*on_ws_malformed_frame)(struct web_client *client, enum ws_frame_parsing_errors error);
 
-    /** The callback for when a client disconnects. */
-    void (*on_disconnect)(struct web_client *client, bool is_error);
+    /** The callback for when a HTTP client disconnects. */
+    void (*on_http_disconnect)(struct web_client *client, bool is_error);
+    /** The callback for when a WebSocket client disconnects. */
+    void (*on_ws_disconnect)(struct web_client *client, uint16_t code, char *message);
 };
 
 /** Initializes the client. */

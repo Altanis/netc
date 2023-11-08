@@ -261,6 +261,8 @@ struct http_server_parsing_state
     size_t chunk_size;
     /** The size of the (incomplete) chunk data. */
     size_t incomplete_chunk_data_size;
+    /** The dynamically sized buffer for chunked data. */
+    struct vector chunk_data;
 };
 
 /** A struct representing the current state of parsing a HTTP response. */

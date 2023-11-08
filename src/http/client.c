@@ -204,7 +204,7 @@ parse_start:
                 client->client_close_flag = 1;
 
             vector_push(headers, header);
-            memset(header, 0, sizeof(*header));
+            memset(header, 0, sizeof(struct http_header));
 
             current_state->parsing_state = RESPONSE_PARSING_STATE_HEADER_NAME;
             goto parse_start;  
@@ -261,19 +261,18 @@ parse_start:
             size_t preexisting_chunk_data = current_state->chunk_data.size - current_state->response.body_size;
             size_t length = current_state->chunk_size + 2 - preexisting_chunk_data;
 
-            vector_resize(&current_state->chunk_data, current_state->chunk_data.size + length); // Reserve space in the vector
+            vector_resize(&current_state->chunk_data, current_state->chunk_data.size + length);
+            char *buffer_ptr = current_state->chunk_data.elements + current_state->chunk_data.size;
 
-            char* buffer_ptr = current_state->chunk_data.elements + current_state->chunk_data.size;
             ssize_t bytes_received = recv(sockfd, buffer_ptr, length, 0);
 
             if (bytes_received <= 0)
             {
                 if (errno == EWOULDBLOCK) return 1;
                 else return RESPONSE_PARSE_ERROR_RECV;
-            }
+            };
 
             current_state->chunk_data.size += bytes_received;
-
             if (current_state->chunk_data.size >= current_state->response.body_size + current_state->chunk_size + 2)
             {
                 current_state->chunk_data.size -= 2; // Remove trailing \r\n
@@ -287,7 +286,7 @@ parse_start:
         };
         case RESPONSE_PARSING_STATE_BODY:
         {
-            current_state->response.body = (char *)malloc(current_state->content_length + 1);
+            current_state->response.body = malloc(current_state->content_length + 1);
             current_state->response.body[current_state->content_length] = '\0';
 
             ssize_t bytes_received = recv(sockfd, current_state->response.body, current_state->content_length, 0);

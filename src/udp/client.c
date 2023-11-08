@@ -79,7 +79,7 @@ int udp_client_init(struct udp_client *client, struct sockaddr addr, int non_blo
     if (client->pfd == -1) return netc_error(EVCREATE);
 
     struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLET;
+    ev.events = EPOLLIN;
     ev.data.fd = client->sockfd;
     if (epoll_ctl(client->pfd, EPOLL_CTL_ADD, client->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32
@@ -88,7 +88,7 @@ int udp_client_init(struct udp_client *client, struct sockaddr addr, int non_blo
     if (client->pfd == -1) return netc_error(EVCREATE);
 
     struct kevent ev;
-    EV_SET(&ev, client->sockfd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
+    EV_SET(&ev, client->sockfd, EVFILT_READ, EV_ADD, 0, 0, NULL);
     if (kevent(client->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(POLL_FD);
 #endif
 

@@ -27,6 +27,8 @@ const char *BANNER = "\
 ██║ ╚████║███████╗   ██║   ╚██████╗\n\
 ╚═╝  ╚═══╝╚══════╝   ╚═╝    ╚═════╝\n";
 
+static struct web_server *ws_server = NULL;
+
 int http_handling_moment(struct web_server *server, struct web_client *client, struct http_request request)
 {
     struct http_header *content_type = http_request_get_header(&request, "Content-Type");
@@ -52,7 +54,7 @@ void ws_start_failing_moment(struct web_server *server, struct web_client *clien
 
 void ws_start_handling_messages_moment(struct web_server *server, struct web_client *client, struct ws_message message)
 {
-    printf("%s\n", message.buffer);
+    printf("[zaddy] %s\n", message.buffer);
 
     struct ws_header header =
     {
@@ -70,10 +72,12 @@ void ws_start_handling_messages_moment(struct web_server *server, struct web_cli
         .payload_length = 10
     };
 
-    if (ws_server_send_frame(server, client, &frame, "aaabbbcccd", 2) < 0) netc_perror("WTF");
+    if (ws_send_frame(client, &frame, "aaabbbcccd", 2) < 0) netc_perror("WTF");
     else printf("couldnt.\n");
 
-    ws_server_close_client(server, client, 1002, "ok");
+    int r = 0;
+    if ((r = ws_server_close_client(server, client, 1002, "ok")) == 0) printf("yoasobi.\n");
+    else netc_perror("wow %d\n", netc_errno_reason);
 };
 
 void ws_start_handling_closes_moment(struct web_server *server, struct web_client *client, uint16_t code, char *reason)
@@ -94,21 +98,43 @@ void ws_client_on_http_connect(struct web_client *client)
 void ws_client_on_ws_connect(struct web_client *client)
 {
     printf("AHHHHHHHH.\n");
+
+    struct ws_header header =
+    {
+        .fin = 0, // does NOT matter
+        .rsv1 = 0,
+        .rsv2 = 0,
+        .rsv3 = 0,
+        .opcode = WS_OPCODE_TEXT
+    };
+
+    struct ws_frame frame = 
+    {
+        .header = header,
+        .mask = 0,
+        .payload_length = 10
+    };
+
+    if (ws_send_frame(client, &frame, "wwwxxxyyyz", 2) < 0) netc_perror("WTF");
+    else printf("couldnt.\n");
 };
 
 void ws_client_on_http_malformed_response()
 {
-
+    printf("malformed http resp?\n");
 };
 
 void ws_client_on_ws_malformed_frame()
 {
-
+    printf("malformed ws frame?\n");
 };
 
-void ws_client_on_ws_message()
+void ws_client_on_ws_message(struct web_client *client, struct ws_message message)
 {
-
+    printf("wowwww.\n");
+    printf("ws opcode: %d\n", message.opcode);
+    printf("ws payload: %s\n", message.buffer);
+    printf("ws payload length: %d\n", message.payload_length);
 };
 
 void ws_client_on_http_response()
@@ -118,7 +144,7 @@ void ws_client_on_http_response()
 
 void ws_client_on_close()
 {
-
+    printf("wow.... i didnt know sorry!\n\n");
 };
 
 void *ws_server_start(void *arg)
@@ -190,6 +216,7 @@ int main()
 
     pthread_t thread;
     pthread_create(&thread, NULL, ws_server_start, &server);
+    // pthread_join(thread, NULL);
 
     struct web_client client = {0};
     client.on_http_connect = ws_client_on_http_connect;
@@ -198,7 +225,7 @@ int main()
     client.on_ws_malformed_frame = ws_client_on_ws_malformed_frame;
     client.on_ws_message = ws_client_on_ws_message;
     client.on_http_response = ws_client_on_http_response;
-    client.on_disconnect = ws_client_on_close;
+    client.on_ws_disconnect = ws_client_on_close;
 
     struct sockaddr_in cliaddr = {
         .sin_family = AF_INET,
@@ -209,8 +236,6 @@ int main()
     if (web_client_init(&client, *(struct sockaddr *)&cliaddr) < 0) netc_perror("web_client_init");
     
     web_client_start(&client);
-
-    pthread_join(thread, NULL);
 
     return 0;
 };

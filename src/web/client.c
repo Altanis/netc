@@ -14,17 +14,63 @@ static void _tcp_on_connect(struct tcp_client *client)
 
 static void _tcp_on_data(struct tcp_client *client)
 {
-    struct web_client *web_client = client->data;
-    struct http_client_parsing_state *http_client_parsing_state = &web_client->http_client_parsing_state;
+    printf("and a new data is borne.\n");
 
+    struct web_client *web_client = client->data;
     switch (web_client->connection_type)
     {
         case CONNECTION_WS:
         {
+            struct ws_frame_parsing_state *ws_parsing_state = &web_client->ws_parsing_state;
+            
+            enum ws_frame_parsing_errors result = 0;
+            if ((result = ws_parse_frame(web_client, ws_parsing_state, -1 /** overflows to SIZE_MAX*/)))
+            {
+                if (result < 0)
+                {
+                    if (web_client->on_ws_malformed_frame != NULL)
+                        web_client->on_ws_malformed_frame(web_client, result);
+                };
 
+                printf("WAITING FOR INCOMING DATA.\n");
+                return;
+            };
+
+            if (ws_parsing_state->message.opcode == WS_OPCODE_CLOSE && web_client->on_ws_disconnect)
+            {
+                size_t message_size = ws_parsing_state->message.payload_length - 2 + 1;
+                uint16_t close_code = 0;
+                char message[message_size];
+
+                if (ws_parsing_state->message.payload_length >= 2)
+                {
+                    close_code = (uint16_t)ws_parsing_state->message.buffer[0] << 8 | (uint16_t)ws_parsing_state->message.buffer[1];
+
+                    if (ws_parsing_state->message.payload_length > 2)
+                    {
+                        memcpy(message, ws_parsing_state->message.buffer + 2, ws_parsing_state->message.payload_length - 2);
+                        message[ws_parsing_state->message.payload_length - 2] = '\0';
+                    } else message[0] = '\0';
+                };
+
+                tcp_client_close(client, false);
+                web_client->on_ws_disconnect(client, close_code, message);
+            } else if (web_client->on_ws_message != NULL) web_client->on_ws_message(web_client, ws_parsing_state->message);
+
+            free(ws_parsing_state->message.buffer);
+            memset(ws_parsing_state, 0, sizeof(struct ws_frame_parsing_state));
+                char lookahead[4096];
+                int size = recv(client->sockfd, lookahead, 4096, MSG_PEEK);
+                printf("eyes on the prise man %d:\n", size);
+                for (int i = 0; i < size; ++i) printf("%x ", (uint8_t)lookahead[i]);
+                printf("\n");
+
+            break;
         };
         case CONNECTION_HTTP:
         {
+            struct http_client_parsing_state *http_client_parsing_state = &web_client->http_client_parsing_state;
+
             int result = 0;
             if ((result = http_client_parse_response(web_client, http_client_parsing_state)) != 0)
             {
@@ -38,14 +84,13 @@ static void _tcp_on_data(struct tcp_client *client)
                     http_response_free(&web_client->http_client_parsing_state.response);
 
                     memset(&http_client_parsing_state->response, 0, sizeof(http_client_parsing_state->response));
-                    memset(http_client_parsing_state, 0, sizeof(*http_client_parsing_state));
+                    memset(http_client_parsing_state, 0, sizeof(struct http_client_parsing_state));
 
                     http_client_parsing_state->parsing_state = -1;
-                    
                     return;
                 };
 
-                printf("WAITING.\n");
+                printf("WAITING.??\n");
                 return;
             };
 
@@ -64,7 +109,7 @@ static void _tcp_on_data(struct tcp_client *client)
             http_response_free(&web_client->http_client_parsing_state.response);
 
             memset(&http_client_parsing_state->response, 0, sizeof(http_client_parsing_state->response));
-            memset(http_client_parsing_state, 0, sizeof(*http_client_parsing_state));
+            memset(http_client_parsing_state, 0, sizeof(struct http_client_parsing_state));
 
             http_client_parsing_state->parsing_state = -1;            
             break;
@@ -75,8 +120,8 @@ static void _tcp_on_data(struct tcp_client *client)
 static void _tcp_on_disconnect(struct tcp_client *client, bool is_error)
 {
     struct web_client *http_client = client->data;
-    if (http_client->on_disconnect != NULL)
-        http_client->on_disconnect(http_client, is_error);
+    if (http_client->on_http_disconnect != NULL && http_client->connection_type == CONNECTION_HTTP)
+        http_client->on_http_disconnect(http_client, is_error);
 };
 
 int web_client_init(struct web_client *client, struct sockaddr address)

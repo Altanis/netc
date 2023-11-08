@@ -89,7 +89,7 @@ int udp_server_init(struct udp_server *server, struct sockaddr addr, int non_blo
     if (server->pfd == -1) return netc_error(EVCREATE);
 
     struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLET;
+    ev.events = EPOLLIN;
     ev.data.fd = server->sockfd;
 
     if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, server->sockfd, &ev) == -1) return netc_error(POLL_FD);
@@ -99,7 +99,7 @@ int udp_server_init(struct udp_server *server, struct sockaddr addr, int non_blo
     if (server->pfd == -1) return netc_error(EVCREATE);
 
     struct kevent ev;
-    EV_SET(&ev, server->sockfd, EVFILT_READ, EV_ADD | EV_CLEAR, 0, 0, NULL);
+    EV_SET(&ev, server->sockfd, EVFILT_READ, EV_ADD, 0, 0, NULL);
     if (kevent(server->pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(POLL_FD);
 #endif
     return 0;

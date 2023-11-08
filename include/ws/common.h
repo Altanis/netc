@@ -1,6 +1,8 @@
 #ifndef WS_COMMON_H
 #define WS_COMMON_H
 
+#include "../utils/vector.h"
+
 #include <stdint.h>
 #include <stddef.h>
 #include <stdbool.h>
@@ -95,7 +97,7 @@ struct ws_frame
 /** A structure representing a WebSocket message. */
 struct ws_message
 {
-    /** The opcode for the message. */
+    /** The opcode of the message. */
     uint8_t opcode;
     /** The buffer of data. */
     uint8_t *buffer;
@@ -116,8 +118,20 @@ struct ws_frame_parsing_state
 
     /** The real payload length being filled (if payload length >= 126). */
     uint64_t real_payload_length;
-    /** The amount of bytes received. */
-    uint64_t received_length;
+    /** The dynamically sized payload buffer. */
+    struct vector payload_data;
+    /** Length being received for one frame. */
+    size_t received_length;
 };
+
+/** Builds a WebSocket masking key. */
+void ws_build_masking_key(uint8_t masking_key[4]);
+/** Builds a WebSocket frame. */
+void ws_build_frame(struct ws_frame *frame, uint8_t fin, uint8_t rsv1, uint8_t rsv2, uint8_t rsv3, uint8_t opcode, uint8_t mask, uint8_t masking_key[4], uint64_t payload_length);
+
+/** Sends a WebSocket message. Returns 1, otherwise a failure. */
+int ws_send_frame(struct web_client *client, struct ws_frame *frame, const char *payload_data, size_t num_frames);
+/** Parses an incoming websocket frame. */
+int ws_parse_frame(struct web_client *client, struct ws_frame_parsing_state *current_state, size_t MAX_PAYLOAD_LENGTH);
 
 #endif // WS_COMMON_H

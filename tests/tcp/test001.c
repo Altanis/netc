@@ -130,6 +130,7 @@ static void tcp_tet001_client_on_connect(struct tcp_client *client)
 
 static void tcp_test001_client_on_data(struct tcp_client *client)
 {
+    // printf("wow!\n");
     char *buffer = calloc(18, sizeof(char));
 
     int recv_result = tcp_client_receive(client, buffer, 17, 0);
