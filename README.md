@@ -28,6 +28,9 @@ This library requires OpenSSL for SHA1 functionality.
         - [X] Keep Alive
         - [ ] Compression/Decompression
 - [ ] WebSocket Abstraction
+    - [x] Multi-Framed Messages
+    - [x] Masked Messages
+    - [ ] Protocols
     - [ ] Permessage-Deflate support
 - [ ] Threadpool
 - [ ] SSL/TLS Support (for HTTP/1.1 and WS Client)

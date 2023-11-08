@@ -21,6 +21,7 @@ COMMON_SRC := $(wildcard $(SRC_DIR)/socket.c)
 TEST_HTTP_SRCS := $(wildcard $(TEST_DIR)/http/*.c)
 TEST_TCP_SRCS := $(wildcard $(TEST_DIR)/tcp/*.c)
 TEST_UDP_SRCS := $(wildcard $(TEST_DIR)/udp/*.c)
+TEST_WS_SRCS := $(wildcard $(TEST_DIR)/ws/*.c)
 
 MAIN_SRCS := $(wildcard main.c)
 
@@ -29,7 +30,7 @@ OUTPUT := netc
 
 all: $(OUTPUT)
 
-$(OUTPUT): $(COMMON_SRC) $(TCP_SRCS) $(UDP_SRCS) $(HTTP_HELPERS_SRCS) $(WS_HELPER_SRCS) $(WEB_SRCS) $(UTILS_SRCS) $(TEST_HTTP_SRCS) $(TEST_TCP_SRCS) $(TEST_UDP_SRCS) $(MAIN_SRCS)
+$(OUTPUT): $(COMMON_SRC) $(TCP_SRCS) $(UDP_SRCS) $(HTTP_HELPERS_SRCS) $(WS_HELPER_SRCS) $(WEB_SRCS) $(UTILS_SRCS) $(TEST_HTTP_SRCS) $(TEST_TCP_SRCS) $(TEST_UDP_SRCS) $(TEST_WS_SRCS) $(MAIN_SRCS)
 	$(CC) $(CFLAGS) $^ -o $@ $(LDLIBS)
 
 clean:
