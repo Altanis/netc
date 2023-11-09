@@ -18,8 +18,12 @@
 
 void ws_build_masking_key(uint8_t masking_key[4])
 {
-    srand(time(NULL));
-    *((uint8_t *)masking_key) = rand();
+    __thread uint8_t seed = 0;
+
+    masking_key[0] = seed++ * 97;
+    masking_key[1] = seed++ * 97;
+    masking_key[2] = seed++ * 97;
+    masking_key[3] = seed++ * 97;
 };
 
 void ws_build_frame(struct ws_frame *frame, uint8_t fin, uint8_t rsv1, uint8_t rsv2, uint8_t rsv3, uint8_t opcode, uint8_t mask, uint8_t masking_key[4], uint64_t payload_length)
