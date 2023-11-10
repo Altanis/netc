@@ -70,9 +70,9 @@ struct web_client
     void (*on_ws_connect)(struct web_client *client);
 
     /** The callback for when a HTTP response is received. */
-    void (*on_http_response)(struct web_client *client, struct http_response response);
+    void (*on_http_response)(struct web_client *client, struct http_response *response);
     /** The callback for when a WS message is received. */
-    void (*on_ws_message)(struct web_client *client, struct ws_message message);
+    void (*on_ws_message)(struct web_client *client, struct ws_message *message);
 
     /** The callback for when a response is malformed. */
     void (*on_http_malformed_response)(struct web_client *client, enum parse_response_error_types error);

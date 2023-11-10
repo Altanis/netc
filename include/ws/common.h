@@ -127,7 +127,7 @@ struct ws_frame_parsing_state
 /** Builds a WebSocket masking key. */
 void ws_build_masking_key(uint8_t masking_key[4]);
 /** Builds a WebSocket frame. */
-void ws_build_frame(struct ws_frame *frame, uint8_t fin, uint8_t rsv1, uint8_t rsv2, uint8_t rsv3, uint8_t opcode, uint8_t mask, uint8_t masking_key[4], uint64_t payload_length);
+void ws_build_frame(struct ws_frame *frame, uint8_t rsv1, uint8_t rsv2, uint8_t rsv3, uint8_t opcode, bool masked, uint8_t masking_key[4], uint64_t payload_length);
 
 /** Sends a WebSocket message. Returns 1, otherwise a failure. */
 int ws_send_frame(struct web_client *client, struct ws_frame *frame, const char *payload_data, size_t num_frames);

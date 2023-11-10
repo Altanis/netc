@@ -22,17 +22,17 @@ void ws_build_masking_key(uint8_t masking_key[4])
     *((uint8_t *)masking_key) = rand();
 };
 
-void ws_build_frame(struct ws_frame *frame, uint8_t fin, uint8_t rsv1, uint8_t rsv2, uint8_t rsv3, uint8_t opcode, uint8_t mask, uint8_t masking_key[4], uint64_t payload_length)
+void ws_build_frame(struct ws_frame *frame, uint8_t rsv1, uint8_t rsv2, uint8_t rsv3, uint8_t opcode, bool masked, uint8_t masking_key[4], uint64_t payload_length)
 {
-    frame->header.fin = fin;
+    frame->header.fin = 0;
     frame->header.rsv1 = rsv1;
     frame->header.rsv2 = rsv2;
     frame->header.rsv3 = rsv3;
     frame->header.opcode = opcode;
-    frame->mask = mask;
+    frame->mask = masked;
     frame->payload_length = payload_length;
 
-    if (mask == 1)
+    if (masked == true)
     {
         memcpy(frame->masking_key, masking_key, sizeof(frame->masking_key));
     };
@@ -85,15 +85,21 @@ int ws_send_frame(struct web_client *client, struct ws_frame *frame, const char 
             };
         };
 
-        const char *payload_masking_key = frame->mask == 1 ? (const char *)frame->masking_key : NULL;
-        const char *payload_data_encoded = payload_data;
-        
-        if (payload_masking_key != NULL)
+        const char *payload_masking_key = NULL;
+        const char *payload_data_encoded = NULL;
+
+        if (payload_data != NULL)
         {
-            payload_data_encoded = strdup(payload_data);
-            for (size_t i = 0; i < frame_payload_length; ++i)
+            payload_masking_key = frame->mask == 1 ? (const char *)frame->masking_key : NULL;
+            payload_data_encoded = payload_data;
+            
+            if (payload_masking_key != NULL)
             {
-                ((char *)payload_data_encoded)[i] ^= payload_masking_key[i % 4];
+                payload_data_encoded = strdup(payload_data);
+                for (size_t i = 0; i < frame_payload_length; ++i)
+                {
+                    ((char *)payload_data_encoded)[i] ^= payload_masking_key[i % 4];
+                };
             };
         };
 
@@ -107,8 +113,11 @@ int ws_send_frame(struct web_client *client, struct ws_frame *frame, const char 
         else if (payload_encoded == 127) memcpy(frame_data + sizeof(header) + sizeof(payload_length), payload_length_encoded, 8);
         if (payload_masking_key != NULL) memcpy(frame_data + sizeof(header) + sizeof(payload_length) + (payload_encoded == 126 ? 2 : (payload_encoded == 127 ? 8 : 0)), payload_masking_key, 4);
         
-        memcpy(frame_data + sizeof(header) + sizeof(payload_length) + (payload_encoded == 126 ? 2 : (payload_encoded == 127 ? 8 : 0)) + (payload_masking_key != NULL ? 4 : 0), payload_data_encoded + num_bytes_passed, frame_payload_length);
-        num_bytes_passed += frame_payload_length;
+        if (payload_data_encoded != NULL)
+        {
+            memcpy(frame_data + sizeof(header) + sizeof(payload_length) + (payload_encoded == 126 ? 2 : (payload_encoded == 127 ? 8 : 0)) + (payload_masking_key != NULL ? 4 : 0), payload_data_encoded + num_bytes_passed, frame_payload_length);
+            num_bytes_passed += frame_payload_length;
+        };
 
         if (payload_masking_key != NULL) free(payload_data_encoded);
         if ((result = tcp_server_send(sockfd, frame_data, sizeof(frame_data), 0)) <= 0) return result;

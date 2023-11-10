@@ -80,6 +80,8 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
             struct ws_frame_parsing_state *ws_parsing_state = &client->ws_parsing_state;
             struct web_server_route *route = web_server_find_route(web_server, client->path);
 
+            if (route == NULL) return;
+
             printf("cooooooooked hehhehehehehe %d\n", ws_parsing_state->payload_data.size);
             int result = 0;
 
@@ -120,9 +122,12 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     } else message[0] = '\0';
                 };
 
+                free(client->path);
+                client->path = NULL;
+                
                 tcp_server_close_client(server, sockfd, false);
                 route->on_ws_close(server, client, close_code, message);
-            } else if (route->on_ws_message != NULL) route->on_ws_message(web_server, client, ws_parsing_state->message);
+            } else if (route->on_ws_message != NULL) route->on_ws_message(web_server, client, &ws_parsing_state->message);
 
             free(ws_parsing_state->message.buffer);
             memset(ws_parsing_state, 0, sizeof(struct ws_frame_parsing_state));
@@ -203,7 +208,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 
             if (http_parsing_state.request.upgrade_websocket == true)
             {
-                void (*handshake_request_cb)(struct web_server *server, struct web_client *client, struct http_request request) = route->on_ws_handshake_request;
+                void (*handshake_request_cb)(struct web_server *server, struct web_client *client, struct http_request *request) = route->on_ws_handshake_request;
                 if (handshake_request_cb == NULL)
                 {
                     // That comedian...
@@ -216,7 +221,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     
                     tcp_server_send(sockfd, (char *)badrequest_message, strlen(badrequest_message), 0);
                 }
-                else handshake_request_cb(web_server, client, http_parsing_state.request);
+                else handshake_request_cb(web_server, client, &http_parsing_state.request);
             }
             else
             {
@@ -239,8 +244,17 @@ static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool 
     struct web_server *web_server = server->data;
     struct web_client *web_client = map_get(&web_server->clients, &sockfd, sizeof(sockfd));
 
-    if (web_server->on_disconnect != NULL && web_client->connection_type == CONNECTION_HTTP)
-        web_server->on_disconnect(web_server, sockfd, is_error);
+    if (web_client->connection_type == CONNECTION_HTTP)
+    {
+        if (web_server->on_disconnect != NULL)
+            web_server->on_disconnect(web_server, sockfd, is_error);
+    }
+    else if (web_client->connection_type == CONNECTION_WS)
+    {
+        struct web_server_route *route = web_server_find_route(web_server, web_client->path);
+        if (route != NULL && route->on_ws_close != NULL)
+            route->on_ws_close(web_server, web_client, 0, NULL);
+    };
 };
 
 int web_server_init(struct web_server *http_server, struct sockaddr address, int backlog)

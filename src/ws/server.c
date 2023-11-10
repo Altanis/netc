@@ -103,7 +103,7 @@ int ws_server_close_client(struct web_server *server, struct web_client *client,
     size_t reason_len = reason != NULL ? strlen(reason) : 0;
 
     struct ws_frame frame;
-    ws_build_frame(&frame, 1, 0, 0, 0, WS_OPCODE_CLOSE, 0, NULL, 2 + reason_len);
+    ws_build_frame(&frame, 0, 0, 0, WS_OPCODE_CLOSE, 0, NULL, 2 + reason_len);
 
     char payload_data[2 + reason_len];
     payload_data[0] = (code >> 8) & 0xFF;

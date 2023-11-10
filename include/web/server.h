@@ -61,7 +61,7 @@ struct web_server
     /** The callback for when a request is malformed for HTTP. */
     void (*on_http_malformed_request)(struct web_server *server, struct web_client *client, enum parse_request_error_types error);
 
-    /** The callback for when a client disconnects. */
+    /** The callback for when a HTTP client disconnects. */
     void (*on_disconnect)(struct web_server *server, socket_t sockfd, bool is_error);
 };
 
@@ -69,12 +69,12 @@ struct web_server
 struct web_server_route
 {
     /** The HTTP callback when the path is requested. */
-    void (*on_http_message)(struct web_server *server, struct web_client *client, struct http_request request);
+    void (*on_http_message)(struct web_server *server, struct web_client *client, struct http_request *request);
 
     /** The callback for when a client requests an upgrade to websocket. Set to NULL if you want to reject upgrades. */
-    void (*on_ws_handshake_request)(struct web_server *server, struct web_client *client, struct http_request request);
+    void (*on_ws_handshake_request)(struct web_server *server, struct web_client *client, struct http_request *request);
     /** The callback for when a WebSocket client sends a message to the server. */
-    void (*on_ws_message)(struct web_server *server, struct web_client *client, struct ws_message message);
+    void (*on_ws_message)(struct web_server *server, struct web_client *client, struct ws_message *message);
     /** The callback for when a request is malformed for WS. */
     void (*on_ws_malformed_frame)(struct web_server *server, struct web_client *client, enum ws_frame_parsing_errors error);
     /** The callback for when a WebSocket connection closes. */

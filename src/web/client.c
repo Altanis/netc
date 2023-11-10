@@ -55,7 +55,7 @@ static void _tcp_on_data(struct tcp_client *client)
 
                 tcp_client_close(client, false);
                 web_client->on_ws_disconnect(client, close_code, message);
-            } else if (web_client->on_ws_message != NULL) web_client->on_ws_message(web_client, ws_parsing_state->message);
+            } else if (web_client->on_ws_message != NULL) web_client->on_ws_message(web_client, &ws_parsing_state->message);
 
             free(ws_parsing_state->message.buffer);
             memset(ws_parsing_state, 0, sizeof(struct ws_frame_parsing_state));
@@ -101,7 +101,7 @@ static void _tcp_on_data(struct tcp_client *client)
                     web_client->on_ws_connect(web_client);
             }
             else if (web_client->on_http_response != NULL)
-                web_client->on_http_response(web_client, http_client_parsing_state->response);
+                web_client->on_http_response(web_client, &http_client_parsing_state->response);
 
             if (web_client->client_close_flag)
                 tcp_client_close(client, 0);

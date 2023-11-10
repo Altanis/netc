@@ -31,6 +31,7 @@ This library requires OpenSSL for SHA1 functionality.
     - [x] Multi-Framed Messages
     - [x] Masked Messages
     - [ ] Protocols
+    - [ ] Ping/Pong
     - [ ] Permessage-Deflate support
 - [ ] Threadpool
 - [ ] SSL/TLS Support (for HTTP/1.1 and WS Client)
