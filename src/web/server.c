@@ -254,6 +254,7 @@ static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool 
         struct web_server_route *route = web_server_find_route(web_server, web_client->path);
         if (route != NULL && route->on_ws_close != NULL)
             route->on_ws_close(web_server, web_client, 0, NULL);
+        web_client->path = NULL;
     };
 };
 
@@ -300,6 +301,8 @@ void web_server_create_route(struct web_server *server, struct web_server_route 
 
 struct web_server_route *web_server_find_route(struct web_server *server, const char *path)
 {
+    if (path == NULL) return NULL;
+
     for (size_t i = 0; i < server->routes.size; ++i)
     {
         struct web_server_route *route = vector_get(&server->routes, i);

@@ -16,10 +16,10 @@
 #include "../../include/ws/server.h"
 #include "../../include/tcp/server.h"
 
+static __thread seed = 0;
+
 void ws_build_masking_key(uint8_t masking_key[4])
 {
-    __thread uint8_t seed = 0;
-
     masking_key[0] = seed++ * 97;
     masking_key[1] = seed++ * 97;
     masking_key[2] = seed++ * 97;
@@ -100,9 +100,9 @@ int ws_send_frame(struct web_client *client, struct ws_frame *frame, const char 
             if (payload_masking_key != NULL)
             {
                 payload_data_encoded = strdup(payload_data);
-                for (size_t i = 0; i < frame_payload_length; ++i)
+                for (size_t j = 0; j < frame_payload_length; ++j)
                 {
-                    ((char *)payload_data_encoded)[i] ^= payload_masking_key[i % 4];
+                    ((char *)payload_data_encoded)[num_bytes_passed + j] ^= payload_masking_key[j % 4];
                 };
             };
         };
@@ -227,7 +227,7 @@ parse_start:
                 {
                     vector_init(&current_state->payload_data, current_state->real_payload_length + (current_state->message.opcode == WS_OPCODE_TEXT ? 1 : 0), sizeof(uint8_t));
                     printf("initialised!!!\n");
-                }
+                };
                 current_state->message.payload_length = current_state->real_payload_length;
 
                 if (current_state->frame.mask == 1)
@@ -308,7 +308,11 @@ parse_start:
                 else return WS_FRAME_PARSE_ERROR_RECV;
             };
 
-            if (length + bytes_received == 4) current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_DATA;
+            if (length + bytes_received == 4)
+            {
+                current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_DATA;
+                printf("masking key: %d %d %d %d\n", masking_key[0], masking_key[1], masking_key[2], masking_key[3]);
+            };
 
             goto parse_start;
         };
@@ -321,8 +325,12 @@ parse_start:
 
             printf("payload size: %D\n", current_state->payload_data.size);
             
+            vector_resize(&current_state->payload_data, current_state->payload_data.size + current_state->real_payload_length - received_length);
+            printf("resizing to %d, currently using %d\n", current_state->payload_data.capacity, current_state->payload_data.size);
             char *buffer_ptr = current_state->payload_data.elements + current_state->payload_data.size;
+
             ssize_t bytes_received = recv(sockfd, buffer_ptr, current_state->real_payload_length - received_length, 0);
+            printf("tell me why %s\n", buffer_ptr);
             
             current_state->payload_data.size += bytes_received;
             current_state->received_length += bytes_received;
@@ -335,13 +343,14 @@ parse_start:
 
             if (current_state->frame.mask == 1)
             {
+                printf("maskin????g\n");
                 for (size_t i = 0; i < bytes_received; ++i)
                 {
                     buffer_ptr[i] ^= current_state->frame.masking_key[(received_length + i) % 4];
                 };
             };
 
-            printf("FOREVER %s\n", vector_get(&current_state->payload_data, 0));
+            printf("FOREVERs? %s\n", vector_get(&current_state->payload_data, 0));
             printf("[wow!] currecv: %s notcurrrecv: %s\n", buffer_ptr, current_state->payload_data.elements);
             printf("%d %d\n", bytes_received, current_state->real_payload_length, received_length);
 
@@ -361,11 +370,11 @@ parse_start:
 
     if (old_fin == 1)
     {
-        printf("FOREVER %s\n", vector_get(&current_state->payload_data, 0));
+        printf("[bef] FOREVER [%d] %s\n", current_state->payload_data.size, current_state->payload_data.elements);
         if (current_state->message.opcode == WS_OPCODE_TEXT) vector_push(&current_state->payload_data, &(char){'\0'});
+        printf("[aft] FOREVER [%d] %s\n", current_state->payload_data.size, current_state->payload_data.elements);
         current_state->message.payload_length = current_state->payload_data.size;
         current_state->message.buffer = current_state->payload_data.elements;
-        printf("%d\n", current_state->message.buffer);
 
         return 0;
     } else {

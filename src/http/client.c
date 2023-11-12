@@ -273,6 +273,8 @@ parse_start:
             };
 
             current_state->chunk_data.size += bytes_received;
+            vector_resize(&current_state->chunk_data, current_state->chunk_data.size);
+
             if (current_state->chunk_data.size >= current_state->response.body_size + current_state->chunk_size + 2)
             {
                 current_state->chunk_data.size -= 2; // Remove trailing \r\n

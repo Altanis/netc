@@ -74,6 +74,7 @@ static void ws_server_on_connect(struct web_server *server, struct web_client *c
 
 static void ws_server_on_message(struct web_server *server, struct web_client *client, struct ws_message *h_message)
 {
+    printf("[WS TEST CASE 001] server received unspecified message %s\n", h_message->buffer);
     struct ws_message message = *h_message;
 
     if (strcmp(message.buffer, "hello server basic") == 0)
@@ -180,6 +181,8 @@ static void ws_client_on_connect(struct web_client *client)
 
 static void ws_client_on_message(struct web_client *client, struct ws_message *h_message)
 {
+    printf("[WS TEST CASE 001] client received unspecified message\n");
+
     struct ws_message message = *h_message;
     
     if (strcmp(message.buffer, "hello client basic") == 0)
@@ -418,5 +421,5 @@ static int ws_test001()
         printf(ANSI_RED "[WS TEST CASE 001] send_close_client failed\n" ANSI_RESET);
     };
 
-    return (int)(on_connect_server == 1 && send_basic_server == 1 && send_multiple_frames_server == 1 && send_masked_server == 1 && send_multiple_frames_masked_server == 1 && send_close_server == 1 && on_open_client == 1 && send_basic_client == 1 && send_multiple_frames_client == 1 && send_masked_client == 1 && send_multiple_frames_masked_client == 1 && send_close_client == 1);
+    return (int)!(on_connect_server == 1 && send_basic_server == 1 && send_multiple_frames_server == 1 && send_masked_server == 1 && send_multiple_frames_masked_server == 1 && send_close_server == 1 && on_open_client == 1 && send_basic_client == 1 && send_multiple_frames_client == 1 && send_masked_client == 1 && send_multiple_frames_masked_client == 1 && send_close_client == 1);
 };

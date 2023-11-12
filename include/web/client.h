@@ -17,8 +17,10 @@ struct web_client
     /** The type of client. */
     enum connection_types connection_type;
 
-    /** [WS ONLY] The path the client is connected to. */
+    /** [WS SERVER ONLY] The path the client is connected to. */
     char *path;
+    /** [WS CLIENT ONLY] Whether or not the client has already closed. */
+    bool is_closed;
 
     /** User defined data to be passed to the event callbacks. */
     void *data;

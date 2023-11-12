@@ -95,8 +95,12 @@ int tcp_client_main_loop(struct tcp_client *client)
         struct kevent ev = events[0];
         socket_t sockfd = ev.ident;
 
-        if (ev.filter == EVFILT_READ && client->on_data != NULL)
-                client->on_data(client);
+        if (ev.flags & EV_ERROR || ev.flags & EV_EOF)
+        {
+            if (tcp_client_close(client, ev.flags & EV_ERROR) != 0) return netc_error(CLOSE);
+        }
+        else if (ev.filter == EVFILT_READ && client->on_data != NULL)
+            client->on_data(client);
         else if (ev.filter == EVFILT_WRITE)
         {
             int error = 0;
@@ -105,16 +109,11 @@ int tcp_client_main_loop(struct tcp_client *client)
 
             if (result == -1 || error != 0)
                 return netc_error(HANGUP);
-            else if (client->on_connect != NULL)
-                    client->on_connect(client);
+            else if (client->on_connect != NULL) client->on_connect(client);
 
             // deregister event
             EV_SET(&ev, sockfd, EVFILT_WRITE, EV_DELETE, 0, 0, NULL);
             if (kevent(pfd, &ev, 1, NULL, 0, NULL) == -1) return netc_error(POLL_FD);
-        }
-        else if (ev.flags & EV_ERROR || ev.flags & EV_EOF)
-        {
-            if (tcp_client_close(client, ev.flags & EV_ERROR) != 0) return netc_error(CLOSE);
         }
 #endif
     };

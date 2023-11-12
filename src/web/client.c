@@ -55,6 +55,7 @@ static void _tcp_on_data(struct tcp_client *client)
 
                 tcp_client_close(client, false);
                 web_client->on_ws_disconnect(client, close_code, message);
+                web_client->is_closed = true;
             } else if (web_client->on_ws_message != NULL) web_client->on_ws_message(web_client, &ws_parsing_state->message);
 
             free(ws_parsing_state->message.buffer);
@@ -119,9 +120,17 @@ static void _tcp_on_data(struct tcp_client *client)
 
 static void _tcp_on_disconnect(struct tcp_client *client, bool is_error)
 {
-    struct web_client *http_client = client->data;
-    if (http_client->on_http_disconnect != NULL && http_client->connection_type == CONNECTION_HTTP)
-        http_client->on_http_disconnect(http_client, is_error);
+    struct web_client *web_client = client->data;
+
+    printf("wankers.\n");
+
+    if (web_client->on_http_disconnect != NULL && web_client->connection_type == CONNECTION_HTTP)
+        web_client->on_http_disconnect(web_client, is_error);
+    else if (web_client->on_ws_disconnect != NULL && web_client->is_closed == false && web_client->connection_type == CONNECTION_WS)
+    {
+        web_client->on_ws_disconnect(web_client, 0, NULL);
+        web_client->is_closed = true;
+    };
 };
 
 int web_client_init(struct web_client *client, struct sockaddr address)

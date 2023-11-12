@@ -29,131 +29,6 @@ const char *BANNER = "\
 ██║ ╚████║███████╗   ██║   ╚██████╗\n\
 ╚═╝  ╚═══╝╚══════╝   ╚═╝    ╚═════╝\n";
 
-// static struct web_server *ws_server = NULL;
-
-// int http_handling_moment(struct web_server *server, struct web_client *client, struct http_request request)
-// {
-//     struct http_header *content_type = http_request_get_header(&request, "Content-Type");
-//     char *text_plain_maybe = content_type == NULL ? "text/plain" : sso_string_get(&content_type->value);
-
-//     struct http_response response;
-//     http_response_build(&response, "HTTP/1.1", 200, (char *[][2]) { { "Content-Type", text_plain_maybe } }, 1);
-
-//     http_server_send_response(server, client, &response, "ok", 2);
-// };
-
-// void ws_start_handling_moment(struct web_server *server, struct web_client *client, struct http_request request)
-// {
-//     int r = 0;
-//     if ((r = ws_server_upgrade_connection(server, client, &request)) < 0) netc_perror("Dang nabbit. %d", r);
-//     else printf("ws connected sexd...\n");
-// };
-
-// void ws_start_failing_moment(struct web_server *server, struct web_client *client, enum ws_frame_parsing_errors error)
-// {
-//     ws_server_close_client(server, client, 1000, "Malformed frame.");
-// };
-
-// void ws_start_handling_messages_moment(struct web_server *server, struct web_client *client, struct ws_message message)
-// {
-//     printf("[zaddy] %s\n", message.buffer);
-
-//     struct ws_header header =
-//     {
-//         .fin = 0, // does NOT matter
-//         .rsv1 = 0,
-//         .rsv2 = 0,
-//         .rsv3 = 0,
-//         .opcode = WS_OPCODE_TEXT
-//     };
-
-//     struct ws_frame frame = 
-//     {
-//         .header = header,
-//         .mask = 0,
-//         .payload_length = 0
-//     };
-
-//     if (ws_send_frame(client, &frame, NULL, 1) < 0) netc_perror("WTF");
-//     else printf("couldnt.\n");
-
-//     int r = 0;
-//     if ((r = ws_server_close_client(server, client, 1002, "ok")) == 0) printf("yoasobi.\n");
-//     else netc_perror("wow %d\n", netc_errno_reason);
-// };
-
-// void ws_start_handling_closes_moment(struct web_server *server, struct web_client *client, uint16_t code, char *reason)
-// {
-//     printf("ws closed sexd... [%d] %s\n", code, reason);
-//     printf("done.\n");
-// };
-
-// void ws_client_on_http_connect(struct web_client *client)
-// {
-//     printf("dedi im wow.\n");
-
-//     int r = 0;
-//     if ((r = ws_client_connect(client, "localhost:5001", "/ziggy", NULL) != 1))
-//         printf("wtf %d\n", r);
-// };
-
-// void ws_client_on_ws_connect(struct web_client *client)
-// {
-//     printf("AHHHHHHHH.\n");
-
-//     struct ws_header header =
-//     {
-//         .fin = 0, // does NOT matter
-//         .rsv1 = 0,
-//         .rsv2 = 0,
-//         .rsv3 = 0,
-//         .opcode = WS_OPCODE_TEXT
-//     };
-
-//     struct ws_frame frame = 
-//     {
-//         .header = header,
-//         .mask = 0,
-//         .payload_length = 10
-//     };
-
-//     if (ws_send_frame(client, &frame, "wwwxxxyyyz", 2) < 0) netc_perror("WTF");
-//     else printf("couldnt.\n");
-// };
-
-// void ws_client_on_http_malformed_response()
-// {
-//     printf("malformed http resp?\n");
-// };
-
-// void ws_client_on_ws_malformed_frame()
-// {
-//     printf("malformed ws frame?\n");
-// };
-
-// void ws_client_on_ws_message(struct web_client *client, struct ws_message message)
-// {
-//     printf("wowwww.\n");
-//     printf("ws opcode: %d\n", message.opcode);
-//     printf("ws payload: %s\n", message.buffer);
-//     printf("ws payload length: %d\n", message.payload_length);
-// };
-
-// void ws_client_on_http_response()
-// {
-//     printf("oops i wow.\n");
-// };
-
-// void ws_client_on_close()
-// {
-//     printf("wow.... i didnt know sorry!\n\n");
-// };
-
-// void *ws_server_start(void *arg)
-// {
-//     return web_server_start(arg);
-// };
-
 int main()
 {
     int testsuite_result[6] = {0};
@@ -169,7 +44,7 @@ int main()
     printf("\n\n\n---RESULTS---\n");
 
     int testsuite_passed = 1;
-    for (int i = 0; i < sizeof(testsuite_result); ++i)
+    for (int i = 0; i < 6; ++i)
     {
         if (testsuite_result[i] == 1)
         {
@@ -184,7 +59,7 @@ int main()
 
     if (testsuite_passed == 1)
     {
-        printf(ANSI_GREEN "\n\nTEST SUITE PASSED! good job.\n%s", ANSI_RESET);
+        printf(ANSI_GREEN "\n\nTEST SUITE PASSED! i fucking love you and it breaks my heart when i see you talk to someone else i just want to be your boyfriend and put a heart in my profile linking to your profile and have a bunch of dms of you saying cute things i want to play video games talk in discord all night and watch a movie together but you just seem so uninterested in me it fucking kills me and i cant take it anymore i want to remove you but i care too much about you so please i'm begging you to either love me back or remove me and NEVER contact me again it hurts so much to say this because i need you by my side but if you don't love me then i want you to leave because seeing your icon in my friendlist would kill me everyday of my pathetic life..\n%s", ANSI_RESET);
     }
     else
     {
