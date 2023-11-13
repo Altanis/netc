@@ -62,7 +62,6 @@ static void _tcp_on_connect(struct tcp_server *server)
     *sockfd = client->tcp_client->sockfd;
 
     map_set(&http_server->clients, sockfd, client, sizeof(client->tcp_client->sockfd));
-    printf("sockfd itsuka %d\n", client->tcp_client->sockfd);
 
     if (http_server->on_connect != NULL)
         http_server->on_connect(http_server, client);
@@ -72,7 +71,6 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 {
     struct web_server *web_server = server->data;
     struct web_client *client = map_get(&web_server->clients, &sockfd, sizeof(sockfd));
-    // printf("sockfd %d\n", sockfd);
     if (client == NULL) return;
 
     switch (client->connection_type)
@@ -248,10 +246,6 @@ static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool 
     }
     else if (web_client->connection_type == CONNECTION_WS)
     {
-        printf("sockfd %d\n", sockfd);
-        printf("server sockfd %d\n", server->sockfd);
-        printf("client sockfd %d\n", web_client->tcp_client->sockfd);
-
         struct web_server_route *route = web_server_find_route(web_server, web_client->path);
         if (route != NULL && route->on_ws_close != NULL)
             route->on_ws_close(web_server, web_client, 0, NULL);

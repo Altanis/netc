@@ -5,8 +5,6 @@
 #include <stdint.h>
 #include <string.h>
 
-static int wow = 0;
-
 /** Jenkins hash algorithm. */
 size_t map_hash(void *key, size_t key_size)
 {
@@ -76,12 +74,10 @@ void map_set(struct map *map, void *key, void *value, size_t key_size)
         if (index == start) return;
     };
 
-    printf("stored at idx %zu\n", index);
     if (map->entries[index].key == NULL) ++map->size;
 
     map->entries[index].key = key;
     map->entries[index].value = value;
-    printf("%p\n", map->entries[index].value);
 };
 
 void map_delete(struct map *map, void *key, size_t key_size)

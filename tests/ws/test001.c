@@ -283,6 +283,8 @@ static int ws_test001()
         .sin_addr.s_addr = inet_addr(IP)
     };
 
+    ws_server.on_disconnect = NULL; // callback for when server disconnects
+
     if (web_server_init(&ws_server, *(struct sockaddr *)&addr, BACKLOG) != 0)
     {
         netc_perror("web_server_init");
