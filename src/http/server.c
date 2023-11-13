@@ -25,23 +25,13 @@ int http_server_send_chunked_data(struct web_server *server, struct web_client *
 
     int send_result = 0;
 
-    // TODO(Altanis): Concat strings.
-    if ((send_result = tcp_server_send(sockfd, length_str, strlen(length_str), 0)) <= 0) return send_result;
-    if (data_length != 0 && ((send_result = tcp_server_send(sockfd, data_length == 0 ? "" : data, data_length, 0)) <= 0)) return send_result;    
-    if ((send_result = tcp_server_send(sockfd, "\r\n", 2, 0)) <= 2) return send_result;
-
-    if (data_length == 0 && client->server_close_flag)
-        tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, 0);
-
     // combine them all into one char buffer
-    // char buffer[length + strlen(length_str) + 2];
-    // memcpy(buffer, length_str, strlen(length_str));
-    // memcpy(buffer + strlen(length_str), data, length);
-    // memcpy(buffer + strlen(length_str) + length, "\r\n", 2);
+    char buffer[data_length + strlen(length_str) + 2];
+    memcpy(buffer, length_str, strlen(length_str));
+    memcpy(buffer + strlen(length_str), data, data_length);
+    memcpy(buffer + strlen(length_str) + data_length, "\r\n", 2);
 
-    // if ((send_result = tcp_server_send(sockfd, buffer, length + strlen(length_str) + 2, 0)) <= 0) return send_result;
-    // printf("sent ");
-    // print_bytes(buffer, length + strlen(length_str) + 2);
+    if ((send_result = tcp_server_send(sockfd, buffer, data_length + strlen(length_str) + 2, 0)) <= 0) return send_result;
 
     return 1;
 };
@@ -101,22 +91,21 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
 
     sso_string_concat_buffer(&response_str, "\r\n");
 
-    print_bytes(sso_string_get(&response_str), response_str.length);
-
     // TODO(Altanis): Concat strings.
-    ssize_t first_send = tcp_server_send(sockfd, (char *)sso_string_get(&response_str), response_str.length, 0);
-    if (first_send <= 0) return first_send;
+    char combined_data[response_str.length + data_length + 1];
 
-    ssize_t second_send = 0;
-
+    memcpy(combined_data, sso_string_get(&response_str), response_str.length);
     if (data_length > 0)
     {
-        second_send = tcp_server_send(sockfd, (char *)data, data_length, 0);
-        if (second_send <= 0) return second_send;
+        memcpy(combined_data + response_str.length, data, data_length);
+    }
+    combined_data[response_str.length + data_length] = '\0';
 
-        if (has_connection_close)
-            tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, 0);
-    };
+    ssize_t total_send = tcp_server_send(sockfd, combined_data, response_str.length + data_length, 0);
+    if (total_send <= 0) return total_send;
+
+    if (has_connection_close)
+        tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, 0);
 
     return 1;
 };
@@ -125,10 +114,6 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
 int http_server_parse_request(struct web_server *server, struct web_client *client, struct http_server_parsing_state *current_state)
 {
     socket_t sockfd = client->tcp_client->sockfd;
-
-    char boffy[4096] = {0};
-    int x = recv(sockfd, boffy, 4095, MSG_PEEK);
-    printf("[%d] boffy///: %s\n", x, boffy);
 
     size_t MAX_HTTP_METHOD_LEN = (server->http_server_config.max_method_len ? server->http_server_config.max_method_len : 7);
     size_t MAX_HTTP_PATH_LEN = (server->http_server_config.max_path_len ? server->http_server_config.max_path_len : 2000);
@@ -141,7 +126,6 @@ int http_server_parse_request(struct web_server *server, struct web_client *clie
     vector_init(&current_state->request.headers, 8, sizeof(struct http_header));
 
 parse_start:
-    printf("current state: %d\n", current_state->parsing_state);
     errno = 0;
     switch (current_state->parsing_state)
     {
@@ -208,9 +192,7 @@ parse_start:
         {
             /** Test for CRLF. */
             char crlf[2] = {0};
-            ssize_t check_crlf = recv(sockfd, crlf, sizeof(crlf), MSG_PEEK);
-            printf("bit bots:\n");
-            print_bytes(crlf, 2);
+            recv(sockfd, crlf, sizeof(crlf), MSG_PEEK);
 
             if (crlf[0] == '\r')
             {
@@ -246,8 +228,6 @@ parse_start:
                     else return REQUEST_PARSE_ERROR_RECV;
                 };
             };
-
-            printf("[header name]: %s\n", sso_string_get(&header->name));
 
             current_state->parsing_state = REQUEST_PARSING_STATE_HEADER_VALUE;
             goto parse_start;
@@ -285,8 +265,6 @@ parse_start:
             if (strcasecmp(sso_string_get(&header->name), "Upgrade") == 0 && strcasecmp(sso_string_get(&header->value), "websocket") == 0)
                 current_state->request.upgrade_websocket = true;                
 
-            printf("[header value]: %s\n", sso_string_get(&header->value));
-
             vector_push(headers, header);
             memset(header, 0, sizeof(struct http_header));
 
@@ -295,9 +273,6 @@ parse_start:
         };
         case REQUEST_PARSING_STATE_CHUNK_SIZE:
         {
-            printf("WOW\n");
-            printf("chunk size %d\n", current_state->chunk_size);
-
             if (current_state->chunk_data.size == 0)
             {
                 current_state->chunk_size = -1;
@@ -311,8 +286,6 @@ parse_start:
                 char *delimiter = length == 1 ? "\n" : "\r\n";
 
                 int bytes_received_chunk_length = socket_recv_until_fixed(sockfd, current_state->chunk_length + preexisting_chunk_length, length, delimiter, 1);
-                printf("bytes recv chunk len");
-                print_bytes(current_state->chunk_length, length);
                 if (bytes_received_chunk_length <= 0)
                 {
                     if (errno == EWOULDBLOCK) return 1;
@@ -323,14 +296,13 @@ parse_start:
                 memset(&current_state->chunk_length, 0, sizeof(current_state->chunk_length));
             };
 
-            printf("chunk size %d\n", current_state->chunk_size);
-
             if (current_state->chunk_size == 0)
             {
                 /** Test for CRLF. */
                 char crlf[2] = {0};
-                ssize_t check_crlf = recv(sockfd, crlf, sizeof(crlf), MSG_PEEK);
-                if (memcmp(crlf, "\r\n", 2) == 0)
+                recv(sockfd, crlf, sizeof(crlf), MSG_PEEK);
+
+                if (crlf[0] == '\r' && crlf[1] == '\n')
                 {
                     if (recv(sockfd, crlf, sizeof(crlf), 0) <= 0) return REQUEST_PARSE_ERROR_RECV;
                     break;
@@ -390,9 +362,6 @@ parse_start:
                 if (errno == EWOULDBLOCK) return 1;
                 else return REQUEST_PARSE_ERROR_RECV;
             } else current_state->request.body_size += bytes_received_body;
-
-            printf("body: %s\n", current_state->request.body);
-            printf("bytes_recieved_body vs length: %d vs %d\n", bytes_received_body, length);
 
             if (bytes_received_body < length) return 1;
             else break;

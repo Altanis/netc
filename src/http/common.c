@@ -77,7 +77,6 @@ void http_response_build(struct http_response *response, char *version, int stat
     response->status_code = status_code;
 
     const char *status_message = http_status_code_to_message(status_code);
-    printf("[stat] %s\n", status_message);
     sso_string_init(&response->status_message, status_message);
 
     vector_init(&response->headers, headers_length, sizeof(struct http_header));
@@ -138,18 +137,6 @@ void http_header_set_value(struct http_header *header, const char *value) { sso_
 
 const char *http_query_get_key(const struct http_query *query) { return sso_string_get(&query->key); };
 const char *http_query_get_value(const struct http_query *query) { return sso_string_get(&query->value); };
-
-void print_bytes(const char *bytes, size_t bytes_len)
-{
-    for (size_t i = 0; i < bytes_len; ++i)
-    {
-        if (bytes[i] == '\r') printf("[r]");
-        else if (bytes[i] == '\n') printf("[n]");
-        else printf("%c", bytes[i]);
-    };
-
-    printf("\n");
-};
 
 void http_url_percent_encode(char *url, char *encoded)
 {

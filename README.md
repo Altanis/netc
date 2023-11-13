@@ -32,7 +32,7 @@ This library requires OpenSSL for SHA1 functionality.
     - [x] Masked Messages
     - [ ] Protocols
     - [ ] Ping/Pong
-    - [ ] Permessage-Deflate support
+    - [ ] Extensions (RSV Bits)
 - [ ] Threadpool
 - [ ] SSL/TLS Support (for HTTP/1.1 and WS Client)
 <!-- In my opinion, there is no point of providing SSL suport for servers due to reverse proxies providing them. -->

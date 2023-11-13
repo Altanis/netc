@@ -122,6 +122,8 @@ enum http_request_parsing_states
 /** An enum representing the different states during parsing a response. */
 enum http_response_parsing_states
 {
+    /** Initial state. */
+    RESPONSE_PARSING_STATE_INITIAL = -1,
     // RESPONSE LINE
     /** The version is being parsed. */
     RESPONSE_PARSING_STATE_VERSION,
@@ -351,8 +353,6 @@ void http_header_set_value(struct http_header *header, const char *value);
 const char *http_query_get_key(const struct http_query *query);
 /** Gets the value of a query's value. */
 const char *http_query_get_value(const struct http_query *query);
-
-void print_bytes(const char *bytes, size_t bytes_len);
 
 /** Percent encodes a URL. */
 void http_url_percent_encode(char *url, char *encoded);

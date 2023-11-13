@@ -12,9 +12,14 @@ int http_client_send_chunked_data(struct web_client *client, char *data, size_t 
 
     int send_result = 0;
 
-    if ((send_result = tcp_client_send(client->tcp_client, length_str, strlen(length_str), 0)) <= 0) return send_result;
-    if (data_length != 0 && ((send_result = tcp_client_send(client->tcp_client, data_length == 0 ? "" : data, data_length, 0)) <= 0)) return send_result;    
-    if ((send_result = tcp_client_send(client->tcp_client, "\r\n", 2, 0)) <= 2) return send_result;
+    char combined_data[strlen(length_str) + data_length + 2];
+    strcpy(combined_data, length_str);
+
+    if (data_length != 0) strcat(combined_data, data);
+    strcat(combined_data, "\r\n");
+
+    send_result = tcp_client_send(client->tcp_client, combined_data, sizeof(combined_data), 0);
+    if (send_result <= 0) return send_result;
 
     return 1;
 };
@@ -65,16 +70,13 @@ int http_client_send_request(struct web_client *client, struct http_request *req
 
     sso_string_concat_buffer(&request_str, "\r\n");
 
-    printf("[BAD THINGS ALWAYS] %s ..\n", sso_string_get(&request_str));
+    char concatenated_string[request_str.length + data_length + 1];
+    memcpy(concatenated_string, sso_string_get(&request_str), request_str.length);
+    if (data_length > 0) memcpy(concatenated_string + request_str.length, data, data_length);
+    concatenated_string[request_str.length + data_length] = '\0';
 
-    ssize_t first_send = tcp_client_send(client->tcp_client, (char *)sso_string_get(&request_str), request_str.length, 0);
-    if (first_send <= 0) return first_send;
-    
-    if (data_length > 0)
-    {
-        ssize_t second_send = tcp_client_send(client->tcp_client, (char *)data, data_length, 0);
-        if (second_send <= 0) return second_send;
-    };
+    ssize_t send_result = tcp_client_send(client->tcp_client, concatenated_string, request_str.length + data_length, 0);
+    if (send_result <= 0) return send_result;
 
     return 1;
 };
@@ -85,11 +87,10 @@ int http_client_parse_response(struct web_client *client, struct http_client_par
     vector_init(&current_state->response.headers, 8, sizeof(struct http_header));
 
 parse_start:
-    printf("state %d\n", current_state->parsing_state);
     errno = 0;
     switch (current_state->parsing_state)
     {
-        case -1:
+        case RESPONSE_PARSING_STATE_INITIAL:
         {
             current_state->parsing_state = RESPONSE_PARSING_STATE_VERSION;
             goto parse_start;
@@ -100,7 +101,6 @@ parse_start:
             if (version->length == 0) sso_string_init(version, "");
             
             ssize_t bytes_received = socket_recv_until_dynamic(sockfd, version, " ", 1, 8 + 1);
-            printf("ssize_t %d\n", bytes_received);
             if (bytes_received <= 0)
             {
                 if (bytes_received == -2 || errno == EWOULDBLOCK) return 1;
@@ -142,7 +142,7 @@ parse_start:
         case RESPONSE_PARSING_STATE_HEADER_NAME:
         {
             char crlf[2] = {0};
-            ssize_t check_crlf = recv(sockfd, crlf, sizeof(crlf), MSG_PEEK);
+            recv(sockfd, crlf, sizeof(crlf), MSG_PEEK);
 
             if (crlf[0] == '\r')
             {
@@ -172,8 +172,6 @@ parse_start:
                 else return RESPONSE_PARSE_ERROR_RECV;
             };
 
-            printf("cli header %s\n", sso_string_get(&header->name));
-
             if (strcasecmp(sso_string_get(&header->name), "Sec-WebSocket-Accept") == 0)
                 current_state->response.accept_websocket = true;
 
@@ -192,8 +190,6 @@ parse_start:
                 if (bytes_received == -2 || errno == EWOULDBLOCK) return 1;
                 else return RESPONSE_PARSE_ERROR_RECV;
             };
-
-            printf("cli value %s\n", sso_string_get(&header->value));
 
             if (strcasecmp(sso_string_get(&header->name), "Content-Length") == 0)
                 current_state->content_length = atoi(sso_string_get(&header->value));
@@ -225,28 +221,21 @@ parse_start:
                 char *delimiter = length == 1 ? "\n" : "\r\n";
 
                 int bytes_received = socket_recv_until_fixed(sockfd, current_state->chunk_length + preexisting_chunk_length, length, delimiter, 1);
-                printf("[by recv] %d\n", bytes_received);
                 if (bytes_received <= 0)
                 {
-                    printf("CCURR STATE %d\n", current_state->parsing_state);
                     if (errno == EWOULDBLOCK) return 1;
                     else return RESPONSE_PARSE_ERROR_RECV;
                 };
-
-                print_bytes(current_state->chunk_length, bytes_received);
 
                 current_state->chunk_size = strtoul(current_state->chunk_length, NULL, 16);
                 memset(&current_state->chunk_length, 0, sizeof(current_state->chunk_length));
             };
 
-            printf("current chunk size %d\n", current_state->chunk_size);
-
             if (current_state->chunk_size == 0)
             {
                 char crlf[2] = {0};
-                ssize_t check_crlf = recv(sockfd, crlf, sizeof(crlf), MSG_PEEK);
-                printf("CCURR STATE %d\n", current_state->parsing_state);
-                if (memcmp(crlf, "\r\n", 2) == 0)
+                recv(sockfd, crlf, sizeof(crlf), MSG_PEEK);
+                if (crlf[0] == '\r' && crlf[1] == '\n')
                 {
                     if (recv(sockfd, crlf, sizeof(crlf), 0) <= 0) return RESPONSE_PARSE_ERROR_RECV;
                     break;
@@ -294,7 +283,6 @@ parse_start:
             ssize_t bytes_received = recv(sockfd, current_state->response.body, current_state->content_length, 0);
             if (bytes_received <= 0)
             {
-                printf("WHATS HAPPENED??? %d %d\n", current_state->content_length, bytes_received);
                 if (errno == EWOULDBLOCK) return 1;
                 else return RESPONSE_PARSE_ERROR_RECV;
             };

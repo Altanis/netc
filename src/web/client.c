@@ -14,8 +14,6 @@ static void _tcp_on_connect(struct tcp_client *client)
 
 static void _tcp_on_data(struct tcp_client *client)
 {
-    printf("and a new data is borne.\n");
-
     struct web_client *web_client = client->data;
     switch (web_client->connection_type)
     {
@@ -32,7 +30,6 @@ static void _tcp_on_data(struct tcp_client *client)
                         web_client->on_ws_malformed_frame(web_client, result);
                 };
 
-                printf("WAITING FOR INCOMING DATA.\n");
                 return;
             };
 
@@ -60,12 +57,7 @@ static void _tcp_on_data(struct tcp_client *client)
 
             free(ws_parsing_state->message.buffer);
             memset(ws_parsing_state, 0, sizeof(struct ws_frame_parsing_state));
-                char lookahead[4096];
-                int size = recv(client->sockfd, lookahead, 4096, MSG_PEEK);
-                printf("eyes on the prise man %d:\n", size);
-                for (int i = 0; i < size; ++i) printf("%x ", (uint8_t)lookahead[i]);
-                printf("\n");
-
+    
             break;
         };
         case CONNECTION_HTTP:
@@ -75,10 +67,8 @@ static void _tcp_on_data(struct tcp_client *client)
             int result = 0;
             if ((result = http_client_parse_response(web_client, http_client_parsing_state)) != 0)
             {
-                printf("no more stlal.\n");
                 if (result < 0)
                 {
-                    printf("%d\n", result);
                     if (web_client->on_http_malformed_response != NULL)
                         web_client->on_http_malformed_response(web_client, result);
                                 
@@ -91,7 +81,6 @@ static void _tcp_on_data(struct tcp_client *client)
                     return;
                 };
 
-                printf("WAITING.??\n");
                 return;
             };
 
@@ -121,8 +110,6 @@ static void _tcp_on_data(struct tcp_client *client)
 static void _tcp_on_disconnect(struct tcp_client *client, bool is_error)
 {
     struct web_client *web_client = client->data;
-
-    printf("wankers.\n");
 
     if (web_client->on_http_disconnect != NULL && web_client->connection_type == CONNECTION_HTTP)
         web_client->on_http_disconnect(web_client, is_error);

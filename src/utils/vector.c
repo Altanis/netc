@@ -28,7 +28,6 @@ int vector_resize(struct vector *vec, size_t new_capacity)
 
 void vector_push(struct vector *vec, void *element)
 {
-    printf("size: %zu, capacity: %zu\n", vec->size, vec->capacity);
     if (vec->size + 1 > vec->capacity) vector_resize(vec, vec->capacity * 2);
 
     void *dest = vec->elements + vec->element_size * vec->size;

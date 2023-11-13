@@ -21,8 +21,6 @@ int ws_client_connect(struct web_client *client, const char *hostname, const cha
     char websocket_key[((4 * sizeof(rand_bytes) / 3) + 3) & ~3];
     http_base64_encode(rand_bytes, sizeof(rand_bytes), websocket_key);
 
-    printf("%s\n", websocket_key);
-
     const char *headers[5][2] =
     {
         {"Host", hostname},
@@ -37,6 +35,21 @@ int ws_client_connect(struct web_client *client, const char *hostname, const cha
 
     int result = 0;
     if ((result = http_client_send_request(client, &request, NULL, 0)) < 1) return result;
+
+    return 1;
+};
+
+int ws_client_close(struct web_client *client, uint16_t code, char *reason)
+{
+    size_t payload_length = strlen(reason);
+
+    struct ws_message message;
+    ws_build_message(&message, WS_OPCODE_CLOSE, strlen(reason), reason);
+
+    (void) ws_send_message(client, &message, NULL, 1); // Doesn't matter too much if this fails.
+
+    int result = tcp_client_close(client->tcp_client, false);
+    if (result < 1) return result;
 
     return 1;
 };

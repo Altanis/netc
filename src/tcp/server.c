@@ -232,6 +232,7 @@ int tcp_server_receive(socket_t sockfd, char *message, size_t msglen, int flags)
 int tcp_server_close_self(struct tcp_server *server)
 {
     server->listening = 0;
+    socket_t sockfd = server->sockfd;
 
 #ifdef _WIN32
     int result = closesocket(server->sockfd);
@@ -241,15 +242,13 @@ int tcp_server_close_self(struct tcp_server *server)
     if (result == -1) return netc_error(CLOSE);
 
     if (server->on_disconnect != NULL) 
-        server->on_disconnect(server, server->sockfd, 0);
+        server->on_disconnect(server, sockfd, 0);
         
     return 0;
 };
 
 int tcp_server_close_client(struct tcp_server *server, socket_t sockfd, bool is_error)
 {
-    if (server->on_disconnect != NULL) server->on_disconnect(server, sockfd, is_error);
-
 #ifdef _WIN32
     int result = closesocket(sockfd);
     for (size_t i = 0; i < server->events.size; ++i)
@@ -266,6 +265,7 @@ int tcp_server_close_client(struct tcp_server *server, socket_t sockfd, bool is_
 #endif
 
     if (result == -1) return netc_error(CLOSE);
+    if (server->on_disconnect != NULL) server->on_disconnect(server, sockfd, is_error);
 
     --server->client_count;
 

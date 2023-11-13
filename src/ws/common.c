@@ -26,29 +26,22 @@ void ws_build_masking_key(uint8_t masking_key[4])
     masking_key[3] = seed++ * 97;
 };
 
-void ws_build_frame(struct ws_frame *frame, uint8_t rsv1, uint8_t rsv2, uint8_t rsv3, uint8_t opcode, bool masked, uint8_t masking_key[4], uint64_t payload_length)
+void ws_build_message(struct ws_message *message, uint8_t opcode, uint64_t payload_length, uint8_t *payload_data)
 {
-    frame->header.fin = 0;
-    frame->header.rsv1 = rsv1;
-    frame->header.rsv2 = rsv2;
-    frame->header.rsv3 = rsv3;
-    frame->header.opcode = opcode;
-    frame->mask = masked;
-    frame->payload_length = payload_length;
-
-    if (masked == true)
-    {
-        memcpy(frame->masking_key, masking_key, sizeof(frame->masking_key));
-    };
+    message->opcode = opcode;
+    message->payload_length = payload_length;
+    message->buffer = payload_data;
 };
 
-int ws_send_frame(struct web_client *client, struct ws_frame *frame, const char *payload_data, size_t num_frames)
+int ws_send_message(struct web_client *client, struct ws_message *message, uint8_t masking_key[4], size_t num_frames)
 {
     socket_t sockfd = client->tcp_client->sockfd;
 
+    bool mask = masking_key != NULL;
+
     uint64_t frame_sizes[num_frames];
-    uint64_t remainder = frame->payload_length % num_frames;
-    uint64_t split_payload_len = frame->payload_length / num_frames;
+    uint64_t remainder = message->payload_length % num_frames;
+    uint64_t split_payload_len = message->payload_length / num_frames;
 
     for (size_t i = 0; i < num_frames; ++i)
     {
@@ -61,18 +54,16 @@ int ws_send_frame(struct web_client *client, struct ws_frame *frame, const char 
     {
         uint8_t header = 0;
         header |= (((i + 1 == num_frames) ? 1 : 0) << 7);
-        header |= (frame->header.rsv1 << 6);
-        header |= (frame->header.rsv2 << 5);
-        header |= (frame->header.rsv3 << 4);
-        header |= i == 0 ? frame->header.opcode : WS_OPCODE_CONTINUE;
-
-        printf("header: %x\n", header);
+        header |= (0 << 6);
+        header |= (0 << 5);
+        header |= (0 << 4);
+        header |= i == 0 ? message->opcode : WS_OPCODE_CONTINUE;
 
         uint64_t frame_payload_length = frame_sizes[i];
         uint8_t payload_encoded = (frame_payload_length <= 125 ? frame_payload_length : (frame_payload_length <= 0xFFFF ? 126 : 127));
 
         uint8_t payload_length = 0;
-        payload_length |= (frame->mask << 7);
+        payload_length |= (mask << 7);
         payload_length |= payload_encoded;
 
         // TODO(Altanis): Ensure endianness.
@@ -92,14 +83,14 @@ int ws_send_frame(struct web_client *client, struct ws_frame *frame, const char 
         const char *payload_masking_key = NULL;
         const char *payload_data_encoded = NULL;
 
-        if (payload_data != NULL)
+        if (message->payload_length != NULL)
         {
-            payload_masking_key = frame->mask == 1 ? (const char *)frame->masking_key : NULL;
-            payload_data_encoded = payload_data;
+            payload_masking_key = mask ? (const char *)masking_key : NULL;
+            payload_data_encoded = message->buffer;
             
             if (payload_masking_key != NULL)
             {
-                payload_data_encoded = strdup(payload_data);
+                payload_data_encoded = strdup(message->buffer);
                 for (size_t j = 0; j < frame_payload_length; ++j)
                 {
                     ((char *)payload_data_encoded)[num_bytes_passed + j] ^= payload_masking_key[j % 4];
@@ -132,18 +123,9 @@ int ws_send_frame(struct web_client *client, struct ws_frame *frame, const char 
 
 int ws_parse_frame(struct web_client *client, struct ws_frame_parsing_state *current_state, size_t MAX_PAYLOAD_LENGTH)
 {
-    printf("isolation. %d\n", current_state->payload_data.size);
-    
     socket_t sockfd = client->tcp_client->sockfd;
 
-    char lookahead[4096];
-    int size = recv(sockfd, lookahead, 4096, MSG_PEEK);
-    printf("lookahead %d:\n", size);
-    for (int i = 0; i < size; ++i) printf("%x ", (uint8_t)lookahead[i]);
-    printf("\n");
-
 parse_start:
-    printf("state: %d\n", current_state->parsing_state);
     switch (current_state->parsing_state)
     {
         case -1:
@@ -209,25 +191,18 @@ parse_start:
             };
 
             size_t length = (const uint8_t *)ptr_to_null - (const uint8_t *)&current_state->real_payload_length;
-            printf("[length[ %d\n", length);
             size_t num_bytes_recv = 0;
 
             if (current_state->frame.payload_length <= 125) 
             {
-                printf("payload len: %d\n", current_state->frame.payload_length);
                 current_state->real_payload_length = current_state->frame.payload_length;
 
                 if (current_state->real_payload_length + current_state->payload_data.size > MAX_PAYLOAD_LENGTH)
-                {
-                    printf("%d %d\n", current_state->real_payload_length + current_state->payload_data.size, MAX_PAYLOAD_LENGTH);
                     return WS_FRAME_PARSE_ERROR_PAYLOAD_TOO_BIG;
-                };
                 
                 if (current_state->payload_data.size == 0) 
-                {
                     vector_init(&current_state->payload_data, current_state->real_payload_length + (current_state->message.opcode == WS_OPCODE_TEXT ? 1 : 0), sizeof(uint8_t));
-                    printf("initialised!!!\n");
-                };
+
                 current_state->message.payload_length = current_state->real_payload_length;
 
                 if (current_state->frame.mask == 1)
@@ -253,12 +228,9 @@ parse_start:
 
             if (bytes_received <= 0)
             {
-                printf("recv <= 0\n");
                 if (errno == EWOULDBLOCK) return 1;
                 else return WS_FRAME_PARSE_ERROR_RECV;
             };
-
-            printf("current payload len: %d\n", current_state->real_payload_length);
 
 #if __BYTE_ORDER__ == __BIG_ENDIAN
             for (ssize_t i = 0; i < bytes_received; ++i)
@@ -277,10 +249,7 @@ parse_start:
             if (bytes_received == num_bytes_recv - length)
             {
                 if (current_state->real_payload_length + current_state->payload_data.size > MAX_PAYLOAD_LENGTH)
-                {
-                    printf("%d %d\n", current_state->real_payload_length + current_state->payload_data.size, MAX_PAYLOAD_LENGTH);
                     return WS_FRAME_PARSE_ERROR_PAYLOAD_TOO_BIG;
-                };
 
                 if (current_state->payload_data.size == 0) 
                     vector_init(&current_state->payload_data, current_state->real_payload_length + (current_state->message.opcode == WS_OPCODE_TEXT ? 1 : 0), sizeof(uint8_t));
@@ -309,28 +278,20 @@ parse_start:
             };
 
             if (length + bytes_received == 4)
-            {
                 current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_DATA;
-                printf("masking key: %d %d %d %d\n", masking_key[0], masking_key[1], masking_key[2], masking_key[3]);
-            };
 
             goto parse_start;
         };
         case WS_FRAME_PARSING_STATE_PAYLOAD_DATA:
         {
-            printf("wow.\n");
             if (current_state->message.payload_length == 0) break;
 
             uint64_t received_length = current_state->received_length;
 
-            printf("payload size: %D\n", current_state->payload_data.size);
-            
             vector_resize(&current_state->payload_data, current_state->payload_data.size + current_state->real_payload_length - received_length);
-            printf("resizing to %d, currently using %d\n", current_state->payload_data.capacity, current_state->payload_data.size);
             char *buffer_ptr = current_state->payload_data.elements + current_state->payload_data.size;
 
             ssize_t bytes_received = recv(sockfd, buffer_ptr, current_state->real_payload_length - received_length, 0);
-            printf("tell me why %s\n", buffer_ptr);
             
             current_state->payload_data.size += bytes_received;
             current_state->received_length += bytes_received;
@@ -343,16 +304,11 @@ parse_start:
 
             if (current_state->frame.mask == 1)
             {
-                printf("maskin????g\n");
                 for (size_t i = 0; i < bytes_received; ++i)
                 {
                     buffer_ptr[i] ^= current_state->frame.masking_key[(received_length + i) % 4];
                 };
             };
-
-            printf("FOREVERs? %s\n", vector_get(&current_state->payload_data, 0));
-            printf("[wow!] currecv: %s notcurrrecv: %s\n", buffer_ptr, current_state->payload_data.elements);
-            printf("%d %d\n", bytes_received, current_state->real_payload_length, received_length);
 
             if (bytes_received == current_state->real_payload_length - received_length) break;
             else return 1;
@@ -361,24 +317,17 @@ parse_start:
 
     uint8_t old_fin = current_state->frame.header.fin;
 
-    printf("wow %d\n", current_state->payload_data.size);
     current_state->parsing_state = -1;
     current_state->real_payload_length = 0;
     current_state->received_length = 0;
     memset(&current_state->frame, 0, sizeof(current_state->frame));
-    printf("so %d\n", current_state->payload_data.size);
 
     if (old_fin == 1)
     {
-        printf("[bef] FOREVER [%d] %s\n", current_state->payload_data.size, current_state->payload_data.elements);
         if (current_state->message.opcode == WS_OPCODE_TEXT) vector_push(&current_state->payload_data, &(char){'\0'});
-        printf("[aft] FOREVER [%d] %s\n", current_state->payload_data.size, current_state->payload_data.elements);
         current_state->message.payload_length = current_state->payload_data.size;
         current_state->message.buffer = current_state->payload_data.elements;
 
         return 0;
-    } else {
-        printf("ull stay with me. %s\n", current_state->payload_data.elements);
-        return 1;
-    };
+    } else return 1;
 };

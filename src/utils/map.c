@@ -5,6 +5,8 @@
 #include <stdint.h>
 #include <string.h>
 
+static int wow = 0;
+
 /** Jenkins hash algorithm. */
 size_t map_hash(void *key, size_t key_size)
 {
@@ -48,19 +50,21 @@ void *map_get(struct map *map, void *key, size_t key_size)
     size_t index = map_hash(key, key_size) % map->capacity;
     size_t start = index;
 
-    while (map->entries[index].key == NULL)
+    while (map->entries[index].key != NULL)
     {
-        index = (index + 1) % map->capacity;
+        if (memcmp(key, map->entries[index].key, key_size) == 0) break;
 
-        if (map->entries[index].key != NULL && memcmp(key, map->entries[index].key, key_size) == 0) break;
+        index = (index + 1) % map->capacity;
         if (index == start) return NULL;
     };
 
     return map->entries[index].value;
-}
+};
 
 void map_set(struct map *map, void *key, void *value, size_t key_size)
 {
+    map_resize(map);
+
     size_t index = map_hash(key, key_size) % map->capacity;
     size_t start = index;
 
@@ -69,20 +73,15 @@ void map_set(struct map *map, void *key, void *value, size_t key_size)
         if (memcmp(key, map->entries[index].key, key_size) == 0) break;
 
         index = (index + 1) % map->capacity;
-        if (index == start)
-        {
-            map_resize(map);
-            index = map_hash(key, key_size) % map->capacity;
-            start = index;
-        }
+        if (index == start) return;
     };
+
+    printf("stored at idx %zu\n", index);
+    if (map->entries[index].key == NULL) ++map->size;
 
     map->entries[index].key = key;
     map->entries[index].value = value;
-
-    ++map->size;
-
-    if (map->size >= map->capacity) map_resize(map);
+    printf("%p\n", map->entries[index].value);
 };
 
 void map_delete(struct map *map, void *key, size_t key_size)

@@ -50,7 +50,6 @@ int udp_client_main_loop(struct udp_client *client)
 
             if (event.revents & POLLIN && client->on_data != NULL) client->on_data(client);
 #elif __APPLE__
-        socket_t sockfd = client->sockfd;
         if (events[0].flags & EVFILT_READ && client->on_data != NULL) client->on_data(client);
 #endif
     };

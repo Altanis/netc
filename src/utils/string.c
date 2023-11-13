@@ -107,33 +107,6 @@ void sso_string_concat_char(string_t *dest, char src)
     sso_string_ensure_null_terminated(dest);
 };
 
-// void sso_string_backspace(string_t *string, size_t n)
-// {
-//     size_t new_length = string->length - n;
-
-//     if (new_length > SSO_STRING_MAX_LENGTH)
-//     {
-//         if (string->length > SSO_STRING_MAX_LENGTH) string->long_string[new_length] = '\0';
-//         else
-//         {
-//             strcpy(string->long_string, string->short_string);
-//             string->long_string[new_length] = '\0';
-//         }
-//     }
-//     else
-//     {
-//         if (string->length > SSO_STRING_MAX_LENGTH)
-//         {
-//             strcpy(string->short_string, string->long_string);
-//             string->short_string[new_length] = '\0';
-//             printf("short: %s\n", string->short_string);
-//         }
-//         else string->short_string[new_length] = '\0';
-//     };
-
-//     string->length = new_length;
-// };
-
 void sso_string_backspace(string_t *string, size_t n)
 {
     size_t new_length = string->length > n ? string->length - n : 0;

@@ -101,10 +101,6 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
 int ws_server_close_client(struct web_server *server, struct web_client *client, uint16_t code, char *reason)
 {
     size_t reason_len = reason != NULL ? strlen(reason) : 0;
-
-    struct ws_frame frame;
-    ws_build_frame(&frame, 0, 0, 0, WS_OPCODE_CLOSE, 0, NULL, 2 + reason_len);
-
     char payload_data[2 + reason_len];
     payload_data[0] = (code >> 8) & 0xFF;
     payload_data[1] = code & 0xFF;
@@ -114,6 +110,12 @@ int ws_server_close_client(struct web_server *server, struct web_client *client,
         memcpy(payload_data + 2, reason, reason_len);
     };
 
-    ws_send_frame(client, &frame, payload_data, 1);
+    uint8_t mask[4];
+    ws_build_masking_key(mask);
+
+    struct ws_message message;
+    ws_build_message(&message, WS_OPCODE_CLOSE, 2 + reason_len, payload_data);
+
+    ws_send_message(client, &message, mask, 1);
     return tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, false);
 };

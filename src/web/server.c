@@ -1,6 +1,7 @@
 #include "../../include/web/server.h"
 #include "../../include/utils/error.h"
 
+#include <unistd.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -48,7 +49,6 @@ int _path_matches(const char *path, const char *pattern)
 
 static void _tcp_on_connect(struct tcp_server *server)
 {
-    printf("dedi.\n");
     struct web_server *http_server = server->data;
 
     struct web_client *client = malloc(sizeof(struct web_client));
@@ -58,8 +58,12 @@ static void _tcp_on_connect(struct tcp_server *server)
 
     tcp_server_accept(server, client->tcp_client);
 
-    printf("[sockfd] %d\n", client->tcp_client->sockfd);
-    map_set(&http_server->clients, &(socket_t){client->tcp_client->sockfd}, client, sizeof(client->tcp_client->sockfd));
+    socket_t *sockfd = malloc(sizeof(socket_t));
+    *sockfd = client->tcp_client->sockfd;
+
+    printf("%p\n", client);
+    map_set(&http_server->clients, sockfd, client, sizeof(client->tcp_client->sockfd));
+    printf("sockfd itsuka %d\n", client->tcp_client->sockfd);
 
     if (http_server->on_connect != NULL)
         http_server->on_connect(http_server, client);
@@ -68,10 +72,9 @@ static void _tcp_on_connect(struct tcp_server *server)
 static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 {
     struct web_server *web_server = server->data;
-    printf("[sockfd data] %d\n", sockfd);
     struct web_client *client = map_get(&web_server->clients, &sockfd, sizeof(sockfd));
-
-    if (client == NULL) printf("what.\n");
+    // printf("sockfd %d\n", sockfd);
+    if (client == NULL) return;
 
     switch (client->connection_type)
     {
@@ -82,7 +85,6 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 
             if (route == NULL) return;
 
-            printf("cooooooooked hehhehehehehe %d\n", ws_parsing_state->payload_data.size);
             int result = 0;
 
             if ((result = ws_parse_frame(client, ws_parsing_state, web_server->ws_server_config.max_payload_len ? web_server->ws_server_config.max_payload_len : 65536)) != 0)
@@ -90,14 +92,11 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 if (result < 0)
                 {
                     /** TODO(Altanis): Fix one WS request partitioned into two causing two event calls. */
-                    printf("[ws] malformed request: %d\n", result);
-
                     /** Malformed request. */
                     if (route->on_ws_malformed_frame != NULL)
                         route->on_ws_malformed_frame(server, client, result);
                 };
 
-                printf("WAITING FOR INCOMING DATA... %d\n", ws_parsing_state->payload_data.size);
                 return;
             };
 
@@ -110,10 +109,6 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 if (ws_parsing_state->message.payload_length >= 2)
                 {
                     close_code = (uint16_t)ws_parsing_state->message.buffer[0] << 8 | (uint16_t)ws_parsing_state->message.buffer[1];
-                    printf("a%d\n", (unsigned char)ws_parsing_state->message.buffer[2]);
-                    printf("b%d\n", (unsigned char)ws_parsing_state->message.buffer[3]);
-                    printf("c%d\n", (unsigned char)ws_parsing_state->message.buffer[3]);
-                    printf("d%d\n", (unsigned char)ws_parsing_state->message.buffer[5]);
 
                     if (ws_parsing_state->message.payload_length > 2)
                     {
@@ -148,13 +143,11 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     if (web_server->on_http_malformed_request)
                     {
                         /** TODO(Altanis): Fix one HTTP request partitioned into two causing two event calls. */
-                        printf("[http] malformed request: %d\n", result);
                         web_server->on_http_malformed_request(web_server, client, result);
                     }
                 }
 
                 // > 0 means the http request is incomplete and waiting for incoming data
-                printf("WAITING FOR INCOMING DATA...\n");
                 return;
             };
 
@@ -242,7 +235,8 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool is_error)
 {
     struct web_server *web_server = server->data;
-    struct web_client *web_client = map_get(&web_server->clients, &sockfd, sizeof(sockfd));
+    struct web_client *web_client = map_get(&web_server->clients, &(int){11}, sizeof(sockfd));
+    if (web_client == NULL) return;
 
     if (web_client->connection_type == CONNECTION_HTTP)
     {
@@ -251,6 +245,10 @@ static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool 
     }
     else if (web_client->connection_type == CONNECTION_WS)
     {
+        printf("sockfd %d\n", sockfd);
+        printf("server sockfd %d\n", server->sockfd);
+        printf("client sockfd %d\n", web_client->tcp_client->sockfd);
+
         struct web_server_route *route = web_server_find_route(web_server, web_client->path);
         if (route != NULL && route->on_ws_close != NULL)
             route->on_ws_close(web_server, web_client, 0, NULL);
@@ -328,5 +326,34 @@ void web_server_remove_route(struct web_server *server, const char *path)
 
 int web_server_close(struct web_server *server)
 {
+    for (size_t i = 0; i < server->clients.capacity; ++i)
+    {
+        if (server->clients.entries[i].key == NULL) continue;
+
+        struct map_entry entry = server->clients.entries[i];
+        struct web_client *client = entry.value;
+
+        if (client->connection_type == CONNECTION_WS)
+        {
+            struct ws_message message;
+            ws_build_message(&message, WS_OPCODE_CLOSE, 0, NULL);
+            ws_send_message(client, &message, NULL, 1);
+#ifdef _WIN32
+            closesocket(client->tcp_client->sockfd);
+            for (size_t i = 0; i < server->tcp_server->events.size; ++i)
+            {
+                WSAPOLLFD *event = vector_get(&server->tcp_server->events, i);
+                if (event->fd == client->tcp_client->sockfd)
+                {
+                    vector_delete(&server->tcp_server->events, i);
+                    break;
+                };
+            };
+#else
+            close(client->tcp_client->sockfd);
+#endif
+        };
+    };
+
     return tcp_server_close_self(server->tcp_server);
 };
