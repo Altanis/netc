@@ -5,22 +5,23 @@
 
 #include "../../include/web/client.h"
 
+static int wow = 0;
+
 int http_client_send_chunked_data(struct web_client *client, char *data, size_t data_length)
 {
     char length_str[16] = {0};
     sprintf(length_str, "%zx\r\n", data_length);
 
+    socket_t sockfd = client->tcp_client->sockfd;
+
     int send_result = 0;
 
-    char combined_data[strlen(length_str) + data_length + 2];
-    strcpy(combined_data, length_str);
+    char buffer[data_length + strlen(length_str) + 2];
+    memcpy(buffer, length_str, strlen(length_str));
+    memcpy(buffer + strlen(length_str), data, data_length);
+    memcpy(buffer + strlen(length_str) + data_length, "\r\n", 2);
 
-    if (data_length != 0) strcat(combined_data, data);
-    strcat(combined_data, "\r\n");
-
-    send_result = tcp_client_send(client->tcp_client, combined_data, sizeof(combined_data), 0);
-    if (send_result <= 0) return send_result;
-
+    if ((send_result = tcp_client_send(client->tcp_client, buffer, data_length + strlen(length_str) + 2, 0)) <= 0) return send_result;
     return 1;
 };
 

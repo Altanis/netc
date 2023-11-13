@@ -16,6 +16,8 @@
 #include <sys/event.h>
 #endif
 
+static int woffy = 0;
+
 int http_server_send_chunked_data(struct web_server *server, struct web_client *client, char *data, size_t data_length)
 {
     char length_str[16] = {0};
@@ -331,7 +333,6 @@ parse_start:
             };
 
             current_state->chunk_data.size += bytes_received;
-            vector_resize(&current_state->chunk_data, current_state->chunk_data.size);
             
             if (current_state->chunk_data.size >= current_state->request.body_size + current_state->chunk_size + 2)
             {
@@ -368,7 +369,7 @@ parse_start:
         };
     };
 
-    if (current_state->request.body_size > 0)
+    if (current_state->chunk_data.size > 0)
     {
         vector_push(&current_state->chunk_data, &(char){'\0'});
         current_state->request.body = (char *)current_state->chunk_data.elements;

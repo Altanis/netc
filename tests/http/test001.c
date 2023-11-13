@@ -348,7 +348,8 @@ static void http_test001_client_on_data(struct web_client *client, struct http_r
 
             char buffer[8192];
             size_t bytes_read;
-            while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0) {
+            while ((bytes_read = fread(buffer, 1, sizeof(buffer), file)) > 0)
+            {
                 http_client_send_chunked_data(client, buffer, bytes_read);
             };
 
