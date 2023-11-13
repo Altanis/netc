@@ -61,7 +61,6 @@ static void _tcp_on_connect(struct tcp_server *server)
     socket_t *sockfd = malloc(sizeof(socket_t));
     *sockfd = client->tcp_client->sockfd;
 
-    printf("%p\n", client);
     map_set(&http_server->clients, sockfd, client, sizeof(client->tcp_client->sockfd));
     printf("sockfd itsuka %d\n", client->tcp_client->sockfd);
 
@@ -235,7 +234,11 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool is_error)
 {
     struct web_server *web_server = server->data;
-    struct web_client *web_client = map_get(&web_server->clients, &(int){11}, sizeof(sockfd));
+
+    if (sockfd == server->sockfd && web_server->on_disconnect != NULL)
+        return web_server->on_disconnect(web_server, sockfd, is_error);
+
+    struct web_client *web_client = map_get(&web_server->clients, &sockfd, sizeof(sockfd));
     if (web_client == NULL) return;
 
     if (web_client->connection_type == CONNECTION_HTTP)
@@ -332,6 +335,8 @@ int web_server_close(struct web_server *server)
 
         struct map_entry entry = server->clients.entries[i];
         struct web_client *client = entry.value;
+
+        if (client == NULL) continue;
 
         if (client->connection_type == CONNECTION_WS)
         {
