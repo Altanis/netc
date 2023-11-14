@@ -53,6 +53,8 @@ struct web_server
     {
         /** The maximum number of bytes of one payload/message. */
         size_t max_payload_len;
+        /** Whether or not the server should reply to pongs with pings. */
+        bool reply_to_pongs;
     } ws_server_config;
     
     /** The callback for when a client connects, for both HTTP and WS. */
@@ -73,6 +75,8 @@ struct web_server_route
 
     /** The callback for when a client requests an upgrade to websocket. Set to NULL if you want to reject upgrades. */
     void (*on_ws_handshake_request)(struct web_server *server, struct web_client *client, struct http_request *request);
+    /** The callback for when a WebSocket client sends a heartbeat (ping/pong) frame. */
+    void (*on_heartbeat)(struct web_server *server, struct web_client *client, struct ws_message *message);
     /** The callback for when a WebSocket client sends a message to the server. */
     void (*on_ws_message)(struct web_server *server, struct web_client *client, struct ws_message *message);
     /** The callback for when a request is malformed for WS. */

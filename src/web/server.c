@@ -97,7 +97,22 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 return;
             };
 
-            if (ws_parsing_state->message.opcode == WS_OPCODE_CLOSE && route->on_ws_close)
+            if (ws_parsing_state->message.opcode == WS_OPCODE_PING || ws_parsing_state->message.opcode == WS_OPCODE_PONG)
+            {
+                if (route->on_heartbeat != NULL)
+                    route->on_heartbeat(web_server, client, &ws_parsing_state->message);
+                
+                if (
+                    (web_server->ws_server_config.reply_to_pongs == true && ws_parsing_state->message.opcode == WS_OPCODE_PONG) // pong + reply_to_pongs
+                    || (ws_parsing_state->message.opcode == WS_OPCODE_PING) // ping
+                )
+                {
+                    struct ws_message message;
+                    ws_build_message(&message, ws_parsing_state->message.opcode == WS_OPCODE_PING ? WS_OPCODE_PONG : WS_OPCODE_PING, ws_parsing_state->message.payload_length, ws_parsing_state->message.buffer);
+                    ws_send_message(client, &message, NULL, 1);
+                };
+            }
+            else if (ws_parsing_state->message.opcode == WS_OPCODE_CLOSE && route->on_ws_close)
             {
                 size_t message_size = ws_parsing_state->message.payload_length - 2 + 1;
                 uint16_t close_code = 0;
