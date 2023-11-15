@@ -1,7 +1,7 @@
 # Compiler settings
 CC := clang
 CFLAGS := -g -Wall -O0 # -Werror -Wpedantic
-LDLIBS := -lcrypto
+LDLIBS := -lcrypto -lpthread
 
 # Source file directories
 INCLUDE_DIR := include

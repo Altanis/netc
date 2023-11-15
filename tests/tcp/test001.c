@@ -17,7 +17,13 @@
 #include <ws2tcpip.h>
 #else
 #include <errno.h>
-#include <sys/_endian.h>
+
+#ifdef __APPLE__
+#include <machine/endian.h>
+#else
+#include <endian.h>
+#endif
+
 #endif
 
 #undef IP
