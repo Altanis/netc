@@ -13,6 +13,18 @@
 #include <sys/socket.h>
 #endif
 
+void print_bytes(char *bytes, size_t length)
+{
+    for (size_t i = 0; i < length; i++)
+    {
+        if (bytes[i] == '\r') printf("\\r");
+        else if (bytes[i] == '\n') printf("\\n");
+        else printf("%c", bytes[i]);
+    };
+
+    printf("\n");
+};
+
 int socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char *bytes, int remove_delimiter, size_t max_bytes_received)
 {
     size_t bytes_len = bytes == NULL ? 0 : strlen(bytes);

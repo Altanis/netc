@@ -17,6 +17,8 @@
     typedef int socket_t;
 #endif
 
+void print_bytes(char *bytes, size_t length);
+
 /** Dynamically receives from a socket until a certain byte pattern. */
 int socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char *bytes, int remove_delimiter, size_t max_bytes_received);
 /** Receives from a socket until a certain byte pattern, or until a fixed length has been surpassed. */

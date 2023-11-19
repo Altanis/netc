@@ -27,7 +27,7 @@ int _path_matches(const char *path, const char *pattern)
             if (*(pattern + 1) == '\0') return 1;
 
             /** Recursively try all positions for the wildcard match. */
-            while (*path) 
+            while (*path)
             {
                 if (_path_matches(path, pattern + 1)) return 1;
                 else ++path;
@@ -144,13 +144,14 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 
         case CONNECTION_HTTP:
         {
-            struct http_server_parsing_state http_parsing_state = client->http_server_parsing_state;
+            // struct http_server_parsing_state http_parsing_state = client->http_server_parsing_state;
 
             int result = 0;
-            if ((result = http_server_parse_request(web_server, client, &http_parsing_state)) != 0)
+            if ((result = http_server_parse_request(web_server, client, &client->http_server_parsing_state)) != 0)
             {
                 if (result < 0)
                 {
+                    printf("why did we waste it. %d\n", result);
                     /** Malformed request. */
                     if (web_server->on_http_malformed_request)
                     {
@@ -160,17 +161,18 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 }
 
                 // > 0 means the http request is incomplete and waiting for incoming data
+                printf("WAITING FOR MORE DATA\n");
                 return;
             };
 
-            char *path = strdup(sso_string_get(&http_parsing_state.request.path));
+            char *path = strdup(sso_string_get(&client->http_server_parsing_state.request.path));
             /** Check for query strings to parse. */
             char *query_string = strchr(path, '?');
             if (query_string != NULL)
             {
                 path[query_string - path] = '\0';
 
-                vector_init(&http_parsing_state.request.query, 8, sizeof(struct http_query));
+                vector_init(&client->http_server_parsing_state.request.query, 8, sizeof(struct http_query));
 
                 char *token = strtok(query_string + 1, "&");
                 while (token != NULL)
@@ -187,7 +189,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     sso_string_set(&query.key, token);
                     sso_string_set(&query.value, value + 1);
 
-                    vector_push(&http_parsing_state.request.query, &query);
+                    vector_push(&client->http_server_parsing_state.request.query, &query);
                 };
             };
 
@@ -204,14 +206,14 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 tcp_server_send(sockfd, (char *)notfound_message, strlen(notfound_message), 0);
                 
                 free(path);
-                http_request_free(&http_parsing_state.request);
-                memset(&http_parsing_state.request, 0, sizeof(http_parsing_state.request));
-                http_parsing_state.parsing_state = -1;
+                http_request_free(&client->http_server_parsing_state.request);
+                memset(&client->http_server_parsing_state.request, 0, sizeof(client->http_server_parsing_state.request));
+                client->http_server_parsing_state.parsing_state = -1;
 
                 return;        
             };
 
-            if (http_parsing_state.request.upgrade_websocket == true)
+            if (client->http_server_parsing_state.request.upgrade_websocket == true)
             {
                 void (*handshake_request_cb)(struct web_server *server, struct web_client *client, struct http_request *request) = route->on_ws_handshake_request;
                 if (handshake_request_cb == NULL)
@@ -226,18 +228,18 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     
                     tcp_server_send(sockfd, (char *)badrequest_message, strlen(badrequest_message), 0);
                 }
-                else handshake_request_cb(web_server, client, &http_parsing_state.request);
+                else handshake_request_cb(web_server, client, &client->http_server_parsing_state.request);
             }
             else
             {
                 void (*callback)(struct web_server *server, struct web_client *client, struct http_request request) = route->on_http_message;
-                if (callback != NULL) callback(web_server, client, http_parsing_state.request);
+                if (callback != NULL) callback(web_server, client, client->http_server_parsing_state.request);
             };
 
             free(path);
-            http_request_free(&http_parsing_state.request);
-            memset(&http_parsing_state.request, 0, sizeof(http_parsing_state.request));
-            http_parsing_state.parsing_state = -1;
+            http_request_free(&client->http_server_parsing_state.request);
+            memset(&client->http_server_parsing_state, 0, sizeof(client->http_server_parsing_state));
+            client->http_server_parsing_state.parsing_state = -1;
 
             break;
         };

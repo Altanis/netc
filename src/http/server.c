@@ -16,7 +16,7 @@
 #include <sys/event.h>
 #endif
 
-static int woffy = 0;
+static int x = 0;
 
 int http_server_send_chunked_data(struct web_server *server, struct web_client *client, char *data, size_t data_length)
 {
@@ -115,6 +115,11 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
 // TODO: replace calloc with vector
 int http_server_parse_request(struct web_server *server, struct web_client *client, struct http_server_parsing_state *current_state)
 {
+    char buffer[8192] = {0};
+    int r = recv(client->tcp_client->sockfd, buffer, sizeof(buffer) - 1, MSG_PEEK);
+    if (r <= 0) printf("recv error: %d\n", r);
+    else print_bytes(buffer, 8191);
+
     socket_t sockfd = client->tcp_client->sockfd;
 
     size_t MAX_HTTP_METHOD_LEN = (server->http_server_config.max_method_len ? server->http_server_config.max_method_len : 7);
@@ -128,6 +133,7 @@ int http_server_parse_request(struct web_server *server, struct web_client *clie
     vector_init(&current_state->request.headers, 8, sizeof(struct http_header));
 
 parse_start:
+    printf("current_state->parsing_state: %d\n", current_state->parsing_state);
     errno = 0;
     switch (current_state->parsing_state)
     {
@@ -277,9 +283,10 @@ parse_start:
         {
             if (current_state->chunk_data.size == 0)
             {
+                printf("wow so i was 0\n");
                 current_state->chunk_size = -1;
                 vector_init(&current_state->chunk_data, 8, sizeof(char));
-            };
+            } else printf("wow so i was %d\n", current_state->chunk_data.size);
 
             if (current_state->chunk_size == -1)
             {
@@ -308,11 +315,16 @@ parse_start:
                 {
                     if (recv(sockfd, crlf, sizeof(crlf), 0) <= 0) return REQUEST_PARSE_ERROR_RECV;
                     break;
-                } else return 1;
+                }
+                else if (++x == 2)
+                {
+                    exit(0);
+                }
             };
 
             if (current_state->request.body_size + current_state->chunk_size > MAX_HTTP_BODY_LEN) return REQUEST_PARSE_ERROR_BODY_TOO_BIG;
 
+            printf("WTF? %d\n", current_state->chunk_size);
             current_state->parsing_state = REQUEST_PARSING_STATE_CHUNK_DATA;
             goto parse_start;
         };

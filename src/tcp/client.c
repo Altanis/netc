@@ -51,7 +51,7 @@ int tcp_client_main_loop(struct tcp_client *client)
         socket_t sockfd = ev.data.fd;
 
         if (ev.events & EPOLLIN && client->on_data != NULL)
-                client->on_data(client);
+            client->on_data(client);
         else if (ev.events & EPOLLOUT)
         {
             int error = 0;
@@ -61,15 +61,16 @@ int tcp_client_main_loop(struct tcp_client *client)
             if (result == -1 || error != 0)
                 return netc_error(HANGUP);
             else if (client->on_connect != NULL)
-                    client->on_connect(client);
+                client->on_connect(client);
 
-            ev.events = EPOLLOUT;
-            if (epoll_ctl(pfd, EPOLL_CTL_DEL, sockfd, &ev) == -1) return netc_error(POLL_FD);
+            struct epoll_event ev;
+            ev.events = EPOLLIN | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
+            ev.data.fd = sockfd;
+
+            if (epoll_ctl(pfd, EPOLL_CTL_MOD, sockfd, &ev) == -1) return netc_error(POLL_FD);
         }
-        else if (ev.events & EPOLLERR || ev.events & EPOLLHUP)
-        {
+        else if (ev.events & EPOLLERR || ev.events & EPOLLHUP || ev.events & EPOLLRDHUP)
             if (tcp_client_close(client, ev.events & EPOLLERR) != 0) return netc_error(CLOSE);
-        }
 #elif _WIN32
         WSAPOLLFD event = events[0];
         SOCKET sockfd = event.fd;
@@ -85,7 +86,7 @@ int tcp_client_main_loop(struct tcp_client *client)
             if (result == -1 || error != 0)
                 return netc_error(HANGUP);
             else if (client->on_connect != NULL)
-                    client->on_connect(client);
+                client->on_connect(client);
         }
         else if (event.revents & POLLERR || event.revents & POLLHUP)
         {
@@ -142,8 +143,9 @@ int tcp_client_init(struct tcp_client *client, struct sockaddr addr, int non_blo
     if (client->pfd == -1) return netc_error(EVCREATE);
 
     struct epoll_event ev;
-    ev.events = EPOLLIN | EPOLLOUT | EPOLLRDHUP;
+    ev.events = EPOLLIN | EPOLLOUT | EPOLLERR | EPOLLHUP | EPOLLRDHUP;
     ev.data.fd = client->sockfd;
+
     if (epoll_ctl(client->pfd, EPOLL_CTL_ADD, client->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32
 #elif __APPLE__

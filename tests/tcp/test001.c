@@ -17,6 +17,7 @@
 #include <ws2tcpip.h>
 #else
 #include <errno.h>
+#include <unistd.h>
 
 #ifdef __APPLE__
 #include <machine/endian.h>
@@ -90,7 +91,8 @@ static void tcp_test001_server_on_data(struct tcp_server *server, socket_t sockf
     int recv_result = tcp_server_receive(sockfd, buffer, 17, 0);
     if (recv_result != 17)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to receive");;
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to receive %d", recv_result);
+        exit(1);
         return;
     };
     printf("[TCP TEST CASE 001] message received. socket id: %d, message: %s\n", sockfd, buffer);
@@ -98,7 +100,7 @@ static void tcp_test001_server_on_data(struct tcp_server *server, socket_t sockf
     int send_result = tcp_server_send(sockfd, "hello from server", 17, 0);
     if (send_result != 17)
     {
-        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to send");;
+        netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to send");
         return;
     };
 
@@ -136,7 +138,7 @@ static void tcp_tet001_client_on_connect(struct tcp_client *client)
 
 static void tcp_test001_client_on_data(struct tcp_client *client)
 {
-    // printf("wow!\n");
+    printf("wow!\n");
     char *buffer = calloc(18, sizeof(char));
 
     int recv_result = tcp_client_receive(client, buffer, 17, 0);

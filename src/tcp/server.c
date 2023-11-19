@@ -56,21 +56,21 @@ int tcp_server_main_loop(struct tcp_server *server)
 
             if (sockfd == server->sockfd)
             {
-                if (ev.events & EPOLLERR || ev.events & EPOLLHUP) // server socket closed
+                if (ev.events & EPOLLERR || ev.events & EPOLLHUP || ev.events & EPOLLRDHUP) // server socket closed
                     return netc_error(HANGUP);
 
-                 if (server->on_connect != NULL) server->on_connect(server);
+                if (server->on_connect != NULL) server->on_connect(server);
             }
             else
             {
-                if (ev.events & EPOLLERR || ev.events & EPOLLHUP) // client socket closed
+                if (ev.events & EPOLLERR || ev.events & EPOLLHUP || ev.events & EPOLLRDHUP) // client socket closed
                 {
                     if (tcp_server_close_client(server, sockfd, ev.events & EPOLLERR) != 0)
                         return netc_error(CLOSE);
                 }
                 else if (ev.events & EPOLLIN && server->on_data != NULL) 
                 {
-                     server->on_data(server, sockfd);
+                    server->on_data(server, sockfd);
                 }
             }
 #elif _WIN32
@@ -140,7 +140,7 @@ int tcp_server_init(struct tcp_server *server, struct sockaddr address, bool non
     if (server->pfd == -1) return netc_error(EVCREATE);
 
     struct epoll_event ev;
-    ev.events = EPOLLIN;
+    ev.events = EPOLLIN | EPOLLRDHUP;
     ev.data.fd = server->sockfd;
     if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, server->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32
@@ -198,7 +198,7 @@ int tcp_server_accept(struct tcp_server *server, struct tcp_client *client)
 
 #ifdef __linux__
     struct epoll_event ev;
-    ev.events = EPOLLIN;
+    ev.events = EPOLLIN | EPOLLRDHUP;
     ev.data.fd = client->sockfd;
     if (epoll_ctl(server->pfd, EPOLL_CTL_ADD, client->sockfd, &ev) == -1) return netc_error(POLL_FD);
 #elif _WIN32

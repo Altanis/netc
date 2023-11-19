@@ -101,7 +101,7 @@ int udp_client_connect(struct udp_client *client)
     socklen_t addrlen = sizeof(addr);
 
     int result = connect(sockfd, &addr, addrlen);
-    if (result == -1) return netc_error(CONNECT);
+    if (result == -1 && errno != EINPROGRESS) return netc_error(CONNECT);
 
     return 0;
 };

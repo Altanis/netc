@@ -36,49 +36,54 @@ void sso_string_concat(string_t *dest, const string_t *src)
 
     if (total_length > SSO_STRING_MAX_LENGTH)
     {
-        char *new_long_string = (char *)malloc(total_length + 1);
-        memcpy(new_long_string, sso_string_get(dest), dest->length);
-        strcat(new_long_string, sso_string_get(src));
-        sso_string_free(dest);
-        dest->long_string = new_long_string;
+        if (dest->length > SSO_STRING_MAX_LENGTH)
+        {
+            char *new_long_string = (char *)realloc(dest->long_string, total_length + 1);
+            dest->long_string = new_long_string;
+        }
+        else
+        {
+            char *new_long_string = (char *)malloc(total_length + 1);
+            memcpy(new_long_string, dest->short_string, dest->length);
+            dest->long_string = new_long_string;
+        }
+
+        memcpy(dest->long_string + dest->length, sso_string_get(src), src->length + 1);
     }
-    else
-    {
-        strcat(dest->short_string, sso_string_get(src));
-        dest->length = total_length;
-    };
+    else memcpy(dest->short_string + dest->length, sso_string_get(src), src->length + 1);
 
+    dest->length = total_length;
     dest->capacity = total_length;
-
     sso_string_ensure_null_terminated(dest);
 };
 
 void sso_string_concat_buffer(string_t *dest, const char *src)
 {
-    size_t total_length = dest->length + strlen(src);
+    size_t src_length = strlen(src);
+    size_t total_length = dest->length + src_length;
 
     if (total_length > SSO_STRING_MAX_LENGTH)
     {
-        char *new_long_string = (char *)malloc(total_length + 1);
-        
-        memcpy(new_long_string, sso_string_get(dest), dest->length);
-        strcat(new_long_string, src);
-        sso_string_free(dest);
+        if (dest->length > SSO_STRING_MAX_LENGTH)
+        {
+            char *new_long_string = (char *)realloc(dest->long_string, total_length + 1);
+            dest->long_string = new_long_string;
+        }
+        else
+        {
+            char *new_long_string = (char *)malloc(total_length + 1);
+            memcpy(new_long_string, dest->short_string, dest->length);
+            dest->long_string = new_long_string;
+        }
 
-        dest->long_string = new_long_string;
-        dest->length = total_length;
+        memcpy(dest->long_string + dest->length, src, src_length + 1);
     }
-    else
-    {
-        strcat(dest->short_string, src);
-        dest->length = total_length;
-    };
+    else memcpy(dest->short_string + dest->length, src, src_length + 1);
 
+    dest->length = total_length;
     dest->capacity = total_length;
-
     sso_string_ensure_null_terminated(dest);
 };
-
 void sso_string_concat_char(string_t *dest, char src)
 {
     size_t total_length = dest->length + 1;
@@ -92,6 +97,7 @@ void sso_string_concat_char(string_t *dest, char src)
         new_long_string[total_length] = '\0';
         sso_string_free(dest);
 
+        dest->capacity = total_length;
         dest->long_string = new_long_string;
         dest->length = total_length;
     }
@@ -177,5 +183,6 @@ void sso_string_free(string_t *string)
     };
 
     string->length = 0;
+    string->long_string = NULL;
     string->capacity = SSO_STRING_MAX_LENGTH;
 };
