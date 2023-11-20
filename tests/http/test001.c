@@ -130,7 +130,9 @@ static void http_test001_server_on_connect(struct web_server *server, struct web
 
 static void http_test001_server_on_data(struct web_server *server, struct web_client *client, struct http_request *h_request)
 {
+    printf("hey hey @you %p\n", h_request);
     struct http_request request = *h_request;
+    printf("wow i suck.\n");
     socket_t sockfd = client->tcp_client->sockfd;
 
     ++http_test001_server_data;
