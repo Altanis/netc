@@ -232,9 +232,9 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
             }
             else
             {
-                void (*callback)(struct web_server *server, struct web_client *client, struct http_request request) = route->on_http_message;
+                void (*callback)(struct web_server *server, struct web_client *client, struct http_request *request) = route->on_http_message;
                 printf("wow so. %p\n", client->http_server_parsing_state.request);
-                if (callback != NULL) callback(web_server, client, client->http_server_parsing_state.request);
+                if (callback != NULL) callback(web_server, client, &client->http_server_parsing_state.request);
                 printf("i'm dead?\n");
             };
 
