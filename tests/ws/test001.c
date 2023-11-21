@@ -83,7 +83,7 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
     printf("[WS TEST CASE 001] server received unspecified message %s\n", h_message->buffer);
     struct ws_message message = *h_message;
 
-    if (strcmp(message.buffer, "hello server basic") == 0)
+    if (strcmp((const char *)message.buffer, "hello server basic") == 0)
     {
         send_basic_client++;
         printf("[WS TEST CASE 001] server received basic message\n");
@@ -92,7 +92,7 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
         size_t payload_length = strlen(payload_data);
 
         struct ws_message message;
-        ws_build_message(&message, WS_OPCODE_TEXT, payload_length, payload_data);
+        ws_build_message(&message, WS_OPCODE_TEXT, payload_length, (uint8_t *)payload_data);
 
         int r = 0;
         if ((r = ws_send_message(client, &message, NULL, 1)) < 1)
@@ -100,7 +100,7 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
             netc_perror("Error occured when sending basic message server");
         };
     }
-    else if (strcmp(message.buffer, "hello server multiple frames") == 0)
+    else if (strcmp((const char *)message.buffer, "hello server multiple frames") == 0)
     {
         send_multiple_frames_client++;
         printf("[WS TEST CASE 001] server received multiple frames message\n");
@@ -109,7 +109,7 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
         size_t payload_length = strlen(payload_data);
 
         struct ws_message message;
-        ws_build_message(&message, WS_OPCODE_TEXT, payload_length, payload_data);
+        ws_build_message(&message, WS_OPCODE_TEXT, payload_length, (uint8_t *)payload_data);
 
         int r = 0;
         if ((r = ws_send_message(client, &message, NULL, FRAME_SPLIT)) < 1)
@@ -117,7 +117,7 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
             netc_perror("Error occured when sending multiple frames message server");
         };
     }
-    else if (strcmp(message.buffer, "hello server masked") == 0)
+    else if (strcmp((const char *)message.buffer, "hello server masked") == 0)
     {
         send_masked_client++;
         printf("[WS TEST CASE 001] server received masked message\n");
@@ -129,7 +129,7 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
         size_t payload_length = strlen(payload_data);
 
         struct ws_message message;
-        ws_build_message(&message, WS_OPCODE_TEXT, payload_length, payload_data);
+        ws_build_message(&message, WS_OPCODE_TEXT, payload_length, (uint8_t *)payload_data);
 
         int r = 0;
         if ((r = ws_send_message(client, &message, masking_key, 1)) < 1)
@@ -137,7 +137,7 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
             netc_perror("Error occured when sending masked message server");
         };
     }
-    else if (strcmp(message.buffer, "hello server multiple frames masked") == 0)
+    else if (strcmp((const char *)message.buffer, "hello server multiple frames masked") == 0)
     {
         send_multiple_frames_masked_client++;
         printf("[WS TEST CASE 001] server received multiple frames masked message\n");
@@ -149,7 +149,7 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
         size_t payload_length = strlen(payload_data);
 
         struct ws_message message;
-        ws_build_message(&message, WS_OPCODE_TEXT, payload_length, payload_data);
+        ws_build_message(&message, WS_OPCODE_TEXT, payload_length, (uint8_t *)payload_data);
 
         int r = 0;
         if ((r = ws_send_message(client, &message, masking_key, FRAME_SPLIT)) < 1)
@@ -189,7 +189,7 @@ static void ws_client_on_connect(struct web_client *client)
     size_t payload_length = strlen(message);
 
     struct ws_message s_message;
-    ws_build_message(&s_message, WS_OPCODE_TEXT, payload_length, message);
+    ws_build_message(&s_message, WS_OPCODE_TEXT, payload_length, (uint8_t *)message);
 
     int r = 0;
     if ((r = ws_send_message(client, &s_message, NULL, 1)) < 1)
@@ -204,7 +204,7 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
 
     struct ws_message message = *h_message;
     
-    if (strcmp(message.buffer, "hello client basic") == 0)
+    if (strcmp((const char *)message.buffer, "hello client basic") == 0)
     {
         send_basic_server++;
         printf("[WS TEST CASE 001] client received basic message\n");
@@ -213,7 +213,7 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
         size_t payload_length = strlen(message);
 
         struct ws_message s_message;
-        ws_build_message(&s_message, WS_OPCODE_TEXT, payload_length, message);
+        ws_build_message(&s_message, WS_OPCODE_TEXT, payload_length, (uint8_t *)message);
 
         int r = 0;
         if ((r = ws_send_message(client, &s_message, NULL, FRAME_SPLIT)) < 1)
@@ -221,7 +221,7 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
             netc_perror("Error occured when sending multiple frames message client");
         };
     }
-    else if (strcmp(message.buffer, "hello client multiple frames") == 0)
+    else if (strcmp((const char *)message.buffer, "hello client multiple frames") == 0)
     {
         send_multiple_frames_server++;
         printf("[WS TEST CASE 001] client received multiple frames message\n");
@@ -233,7 +233,7 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
         ws_build_masking_key(masking_key);
 
         struct ws_message s_message;
-        ws_build_message(&s_message, WS_OPCODE_TEXT, payload_length, message);
+        ws_build_message(&s_message, WS_OPCODE_TEXT, payload_length, (uint8_t *)message);
 
         int r = 0;
         if ((r = ws_send_message(client, &s_message, masking_key, 1)) < 1)
@@ -241,7 +241,7 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
             netc_perror("Error occured when sending masked message client");
         };
     }
-    else if (strcmp(message.buffer, "hello client masked") == 0)
+    else if (strcmp((const char *)message.buffer, "hello client masked") == 0)
     {
         send_masked_server++;
         printf("[WS TEST CASE 001] client received masked message\n");
@@ -253,7 +253,7 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
         ws_build_masking_key(masking_key);
 
         struct ws_message s_message;
-        ws_build_message(&s_message, WS_OPCODE_TEXT, payload_length, message);
+        ws_build_message(&s_message, WS_OPCODE_TEXT, payload_length, (uint8_t *)message);
 
         int r = 0;
         if ((r = ws_send_message(client, &s_message, masking_key, FRAME_SPLIT)) < 1)
@@ -261,7 +261,7 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
             netc_perror("Error occured when sending multiple frames masked message client");
         };
     }
-    else if (strcmp(message.buffer, "hello client multiple frames masked") == 0)
+    else if (strcmp((const char *)message.buffer, "hello client multiple frames masked") == 0)
     {
         send_multiple_frames_masked_server++;
         printf("[WS TEST CASE 001] client received multiple frames masked message\n");

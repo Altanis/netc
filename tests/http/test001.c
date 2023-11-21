@@ -58,7 +58,6 @@ static int http_test001_client_disconnect = 0;
 static void http_test001_server_on_connect(struct web_server *server, struct web_client *client);
 static void http_test001_server_on_data(struct web_server *server, struct web_client *client, struct http_request *request);
 static void http_test001_server_on_data_wrong_route(struct web_server *server, struct web_client *client, struct http_request *request);
-static void http_test001_server_on_data_wildcard_route(struct web_server *server, struct web_client *client, struct http_request *request);
 static void http_test001_server_on_http_malformed_request(struct web_server *server, struct web_client *client, enum parse_request_error_types error);
 static void http_test001_server_on_disconnect(struct web_server *server, socket_t sockfd, bool is_error);
 
@@ -238,8 +237,6 @@ static void http_test001_server_on_data_wrong_route(struct web_server *server, s
 
     http_server_send_response(server, client, &response, "later", 5);
 };
-
-// static void http_test001_server_on_data_wildcard_route(struct web_server *server, struct web_client *client, struct http_request *request) { printf("[HTTP TEST CASE 001] defaulted to /* ... failure...\n"); };
 
 static void http_test001_server_on_http_malformed_request(struct web_server *server, struct web_client *client, enum parse_request_error_types error)
 {

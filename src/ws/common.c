@@ -116,7 +116,6 @@ int ws_send_message(struct web_client *client, struct ws_message *message, uint8
 
         if (payload_masking_key != NULL) free((void *)payload_data_encoded);
         if ((result = tcp_server_send(sockfd, frame_data, sizeof(frame_data), 0)) <= 0) return result;
-        printf("%d\n", result);
     };
 
     return 1;

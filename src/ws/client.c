@@ -42,7 +42,7 @@ int ws_client_connect(struct web_client *client, const char *hostname, const cha
 int ws_client_close(struct web_client *client, uint16_t code, const char *reason)
 {
     struct ws_message message;
-    ws_build_message(&message, WS_OPCODE_CLOSE, strlen(reason), (const uint8_t *)reason);
+    ws_build_message(&message, WS_OPCODE_CLOSE, strlen(reason), (uint8_t *)reason);
 
     (void) ws_send_message(client, &message, NULL, 1); // Doesn't matter too much if this fails.
 
