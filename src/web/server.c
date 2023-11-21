@@ -51,7 +51,7 @@ static void _tcp_on_connect(struct tcp_server *server)
 {
     struct web_server *http_server = server->data;
 
-    struct web_client *client = malloc(sizeof(struct web_client));
+    struct web_client *client = calloc(1, sizeof(struct web_client));
     client->tcp_client = malloc(sizeof(struct tcp_client));
     client->server_close_flag = 0;
     client->connection_type = CONNECTION_HTTP /** default */;
@@ -91,7 +91,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     /** TODO(Altanis): Fix one WS request partitioned into two causing two event calls. */
                     /** Malformed request. */
                     if (route->on_ws_malformed_frame != NULL)
-                        route->on_ws_malformed_frame(server, client, result);
+                        route->on_ws_malformed_frame(web_server, client, result);
                 };
 
                 return;
@@ -133,7 +133,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 client->path = NULL;
                 
                 tcp_server_close_client(server, sockfd, false);
-                route->on_ws_close(server, client, close_code, message);
+                route->on_ws_close(web_server, client, close_code, message);
             } else if (route->on_ws_message != NULL) route->on_ws_message(web_server, client, &ws_parsing_state->message);
 
             free(ws_parsing_state->message.buffer);
@@ -144,8 +144,6 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 
         case CONNECTION_HTTP:
         {
-            // struct http_server_parsing_state http_parsing_state = client->http_server_parsing_state;
-
             int result = 0;
             if ((result = http_server_parse_request(web_server, client, &client->http_server_parsing_state)) != 0)
             {
@@ -233,9 +231,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
             else
             {
                 void (*callback)(struct web_server *server, struct web_client *client, struct http_request *request) = route->on_http_message;
-                printf("wow so. %p\n", client->http_server_parsing_state.request);
                 if (callback != NULL) callback(web_server, client, &client->http_server_parsing_state.request);
-                printf("i'm dead?\n");
             };
 
             free(path);
@@ -250,6 +246,8 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 
 static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool is_error)
 {
+    // TODO(Altanis): Free client.
+    
     struct web_server *web_server = server->data;
 
     if (sockfd == server->sockfd && web_server->on_disconnect != NULL)
@@ -268,6 +266,8 @@ static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool 
         struct web_server_route *route = web_server_find_route(web_server, web_client->path);
         if (route != NULL && route->on_ws_close != NULL)
             route->on_ws_close(web_server, web_client, 0, NULL);
+
+        free(web_client->path);
         web_client->path = NULL;
     };
 };
@@ -350,6 +350,8 @@ int web_server_close(struct web_server *server)
         struct web_client *client = entry.value;
 
         if (client == NULL) continue;
+        printf("%p\n", client);
+        
 
         if (client->connection_type == CONNECTION_WS)
         {
@@ -371,6 +373,8 @@ int web_server_close(struct web_server *server)
             close(client->tcp_client->sockfd);
 #endif
         };
+
+        // TODO(Altanis): Free clients?
     };
 
     return tcp_server_close_self(server->tcp_server);

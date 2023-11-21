@@ -37,7 +37,7 @@ struct tcp_client
     /** The callback for when the client has received a message from the server. */
     void (*on_data)(struct tcp_client *client);
     /** The callback for when the client has disconnected from the server. */
-    void (*on_disconnect)(struct tcp_client *client, int is_error);
+    void (*on_disconnect)(struct tcp_client *client, bool is_error);
 };
 
 /** A structure representing a TCP server. */

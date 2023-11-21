@@ -35,12 +35,12 @@ void vector_push(struct vector *vec, void *element)
     ++vec->size;
 };
 
-void *vector_get(struct vector *vec, size_t index)
+void *vector_get(const struct vector *vec, size_t index)
 {
     return vec->elements + vec->element_size * index;
 };
 
-void *vector_get_buffer(struct vector *vec)
+void *vector_get_buffer(const struct vector *vec)
 {
     return vec->elements + (vec->element_size * vec->size);
 };
@@ -56,7 +56,7 @@ void vector_delete(struct vector *vec, size_t index)
     --vec->size;
 };
 
-void vector_free(struct vector *vec)
+void vector_free(const struct vector *vec)
 {
     free(vec->elements);
 };

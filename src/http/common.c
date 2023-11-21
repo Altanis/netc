@@ -17,7 +17,7 @@ const char *http_status_code_to_message(int status_code)
     return NULL;
 };
 
-void http_request_build(struct http_request *request, char *method, char *path, char *version, const char *headers[][2], size_t headers_length)
+void http_request_build(struct http_request *request, const char *method, const char *path, const char *version, const char *headers[][2], size_t headers_length)
 {
     sso_string_init(&request->method, method);
     sso_string_init(&request->path, path);
@@ -27,8 +27,8 @@ void http_request_build(struct http_request *request, char *method, char *path, 
 
     for (size_t i = 0; i < headers_length; ++i)
     {
-        char *name = headers[i][0];
-        char *value = headers[i][1];
+        const char *name = headers[i][0];
+        const char *value = headers[i][1];
 
         struct http_header header = {0};
         sso_string_init(&header.name, name);
@@ -83,8 +83,8 @@ void http_response_build(struct http_response *response, char *version, int stat
 
     for (size_t i = 0; i < headers_length; ++i)
     {
-        char *name = headers[i][0];
-        char *value = headers[i][1];
+        const char *name = headers[i][0];
+        const char *value = headers[i][1];
 
         struct http_header header = {0};
         sso_string_init(&header.name, name);
@@ -122,7 +122,7 @@ const char *http_response_get_body(const struct http_response *response) { retur
 void http_response_set_version(struct http_response *response, const char *version) { sso_string_set(&response->version, version); };
 void http_response_set_status_message(struct http_response *response, const char *status_message) { sso_string_set(&response->status_message, status_message); };
 
-void http_header_init(const struct http_header *header, char *name, char *value) { sso_string_init(&header->name, name); sso_string_init(&header->value, value); };
+void http_header_init(struct http_header *header, const char *name, const char *value) { sso_string_init(&header->name, name); sso_string_init(&header->value, value); };
 void http_header_free(struct http_header *header)
 {
     sso_string_free(&header->name);
@@ -196,10 +196,10 @@ void http_base64_encode(const char *bytes, size_t bytes_len, char *encoded)
         char b2 = i + 1 < bytes_len ? bytes[i + 1] : 0;
         char b3 = i + 2 < bytes_len ? bytes[i + 2] : 0;
 
-        char b1_1 = (b1 & 0xFC) >> 2;
-        char b1_2 = (b1 & 0x03) << 4 | (b2 & 0xF0) >> 4;
-        char b2_1 = (b2 & 0x0F) << 2 | (b3 & 0xC0) >> 6;
-        char b2_2 = (b3 & 0x3F);
+        unsigned char b1_1 = (b1 & 0xFC) >> 2;
+        unsigned char b1_2 = (b1 & 0x03) << 4 | (b2 & 0xF0) >> 4;
+        unsigned char b2_1 = (b2 & 0x0F) << 2 | (b3 & 0xC0) >> 6;
+        unsigned char b2_2 = (b3 & 0x3F);
 
         *encoded_ptr++ = base64_chars[b1_1];
         *encoded_ptr++ = base64_chars[b1_2];

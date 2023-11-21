@@ -50,13 +50,9 @@ int udp_server_main_loop(struct udp_server *server)
 
 #ifdef __linux__
         struct epoll_event ev = events[0];
-        socket_t sockfd = ev.data.fd;
-
         if (ev.events & EPOLLIN && server->on_data != NULL) server->on_data(server);
 #elif _WIN32
         WSAPOLLFD event = events[0];
-        SOCKET sockfd = event.fd;
-
         if (event.revents & POLLIN && server->on_data != NULL) server->on_data(server);
 #elif __APPLE__
         if (events[0].flags & EVFILT_READ && server->on_data != NULL) server->on_data(server);

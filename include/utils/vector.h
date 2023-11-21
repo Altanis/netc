@@ -24,13 +24,13 @@ int vector_resize(struct vector *vec, size_t new_capacity);
 /** Pushes an element to the vector. */
 void vector_push(struct vector *vec, void *element);
 /** Gets an element from the vector. */
-void *vector_get(struct vector *vec, size_t index);
+void *vector_get(const struct vector *vec, size_t index);
 /** Returns a pointer to a writable buffer. */
-void *vector_get_buffer(struct vector *vec);
+void *vector_get_buffer(const struct vector *vec);
 /** Removes an element from the vector. */
 void vector_delete(struct vector *vec, size_t index);
 
 /** Frees the vector. */
-void vector_free(struct vector *vec);
+void vector_free(const struct vector *vec);
 
 #endif // VECTOR_H

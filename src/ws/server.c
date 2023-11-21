@@ -60,13 +60,13 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     };
 
     char websocket_accept_id[SHA_DIGEST_LENGTH];
-    SHA1(websocket_key_id, sizeof(websocket_key_id), websocket_accept_id);
+    SHA1((const uint8_t *)websocket_key_id, sizeof(websocket_key_id), (uint8_t *)websocket_accept_id);
 
 
     char websocket_accept_id_base64[((4 * sizeof(websocket_accept_id) / 3) + 3) & ~3];
     http_base64_encode(websocket_accept_id, sizeof(websocket_accept_id), websocket_accept_id_base64);
 
-    char* headers[][2] =
+    const char *headers[3][2] =
     {
         { "Connection", "upgrade" },
         { "Upgrade", "websocket" },
@@ -114,7 +114,7 @@ int ws_server_close_client(struct web_server *server, struct web_client *client,
     ws_build_masking_key(mask);
 
     struct ws_message message;
-    ws_build_message(&message, WS_OPCODE_CLOSE, 2 + reason_len, payload_data);
+    ws_build_message(&message, WS_OPCODE_CLOSE, 2 + reason_len, (uint8_t *)payload_data);
 
     ws_send_message(client, &message, mask, 1);
     return tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, false);

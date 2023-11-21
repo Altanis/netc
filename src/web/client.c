@@ -51,7 +51,7 @@ static void _tcp_on_data(struct tcp_client *client)
                 };
 
                 tcp_client_close(client, false);
-                web_client->on_ws_disconnect(client, close_code, message);
+                web_client->on_ws_disconnect(web_client, close_code, message);
                 web_client->is_closed = true;
             } else if (web_client->on_ws_message != NULL) web_client->on_ws_message(web_client, &ws_parsing_state->message);
 

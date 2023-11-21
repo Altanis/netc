@@ -94,6 +94,9 @@ const char *http_status_code_to_message(int status_code);
 /** An enum representing the different states during parsing a request. */
 enum http_request_parsing_states
 {
+    /** No parsing state has been assigned yet. */
+    REQUEST_PARSING_STATE_NIL = -1,
+
     // REQUEST LINE
     /** The method is being parsed. */
     REQUEST_PARSING_STATE_METHOD,
@@ -291,7 +294,7 @@ struct http_client_parsing_state
 };
 
 /** Builds an HTTP request. */
-void http_request_build(struct http_request *request, char *method, char *path, char *version, const char *headers[][2], size_t headers_length);
+void http_request_build(struct http_request *request, const char *method, const char *path, const char *version, const char *headers[][2], size_t headers_length);
 /** Frees an HTTP request. */
 void http_request_free(struct http_request *request);
 
@@ -335,7 +338,7 @@ void http_response_set_version(struct http_response *response, const char *versi
 void http_response_set_status_message(struct http_response *response, const char *status_message);
 
 /** Initializes an HTTP header. */
-void http_header_init(const struct http_header *header, char *name, char *value);
+void http_header_init(struct http_header *header, const char *name, const char *value);
 /** Frees an HTTP header. */
 void http_header_free(struct http_header *header);
 

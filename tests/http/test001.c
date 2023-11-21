@@ -60,12 +60,12 @@ static void http_test001_server_on_data(struct web_server *server, struct web_cl
 static void http_test001_server_on_data_wrong_route(struct web_server *server, struct web_client *client, struct http_request *request);
 static void http_test001_server_on_data_wildcard_route(struct web_server *server, struct web_client *client, struct http_request *request);
 static void http_test001_server_on_http_malformed_request(struct web_server *server, struct web_client *client, enum parse_request_error_types error);
-static void http_test001_server_on_disconnect(struct web_server *server, socket_t sockfd, int is_error);
+static void http_test001_server_on_disconnect(struct web_server *server, socket_t sockfd, bool is_error);
 
 static void http_test001_client_on_connect(struct web_client *client);
 static void http_test001_client_on_data(struct web_client *client, struct http_response *response);
 static void http_test001_client_on_malformed_response(struct web_client *client, enum parse_response_error_types error);
-static void http_test001_client_on_disconnect(struct web_client *client, int is_error);
+static void http_test001_client_on_disconnect(struct web_client *client, bool is_error);
 
 static void print_request(struct http_request request);
 static void print_response(struct http_response response);
@@ -130,10 +130,7 @@ static void http_test001_server_on_connect(struct web_server *server, struct web
 
 static void http_test001_server_on_data(struct web_server *server, struct web_client *client, struct http_request *h_request)
 {
-    printf("hey hey @you %p\n", h_request);
     struct http_request request = *h_request;
-    printf("wow i suck.\n");
-    socket_t sockfd = client->tcp_client->sockfd;
 
     ++http_test001_server_data;
     
@@ -151,7 +148,7 @@ static void http_test001_server_on_data(struct web_server *server, struct web_cl
     };
 
     struct http_response response = {0};
-    http_response_build(&response, "HTTP/1.1", 200, (char *[][2]){ {"Content-Type", "text/plain"} }, 1);    
+    http_response_build(&response, "HTTP/1.1", 200, (const char *[][2]){ {"Content-Type", "text/plain"} }, 1);    
 
     if (http_test001_server_data == 8)
     {
@@ -220,7 +217,6 @@ static void http_test001_server_on_data(struct web_server *server, struct web_cl
 static void http_test001_server_on_data_wrong_route(struct web_server *server, struct web_client *client, struct http_request *h_request)
 {
     struct http_request request = *h_request;
-    socket_t sockfd = client->tcp_client->sockfd;
 
     ++http_test001_server_data;
     printf("Sending \"later\"\n");
@@ -243,15 +239,14 @@ static void http_test001_server_on_data_wrong_route(struct web_server *server, s
     http_server_send_response(server, client, &response, "later", 5);
 };
 
-static void http_test001_server_on_data_wildcard_route(struct web_server *server, struct web_client *client, struct http_request *request) { printf("[HTTP TEST CASE 001] defaulted to /* ... failure...\n"); };
+// static void http_test001_server_on_data_wildcard_route(struct web_server *server, struct web_client *client, struct http_request *request) { printf("[HTTP TEST CASE 001] defaulted to /* ... failure...\n"); };
 
 static void http_test001_server_on_http_malformed_request(struct web_server *server, struct web_client *client, enum parse_request_error_types error)
 {
-    socket_t sockfd = client->tcp_client->sockfd;
     printf("[HTTP TEST CASE 001] server could not process request from %s\n", client->data);
 };
 
-static void http_test001_server_on_disconnect(struct web_server *server, socket_t sockfd, int is_error)
+static void http_test001_server_on_disconnect(struct web_server *server, socket_t sockfd, bool is_error)
 {
     if (sockfd == server->tcp_server->sockfd)
     {
@@ -261,7 +256,13 @@ static void http_test001_server_on_disconnect(struct web_server *server, socket_
     else
     {
         struct web_client *client = map_get(&server->clients, &sockfd, sizeof(sockfd));
-        printf("[HTTP TEST CASE 001] client disconnected from server %d\n", sockfd);
+        if (client->tcp_client->sockfd != sockfd)
+        {
+            printf("error with map.\n");
+            exit(1);
+        };
+
+        printf("[HTTP TEST CASE 001] client disconnected from server %d\n", client->tcp_client->sockfd);
     };
 };
 
@@ -391,7 +392,7 @@ static void http_test001_client_on_malformed_response(struct web_client *client,
     printf(ANSI_RED "[HTTP TEST CASE 001] client received malformed response\n%s", ANSI_RESET);
 };
 
-static void http_test001_client_on_disconnect(struct web_client *client, int is_error)
+static void http_test001_client_on_disconnect(struct web_client *client, bool is_error)
 {
     http_test001_client_disconnect = 1;
 

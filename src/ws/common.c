@@ -16,7 +16,7 @@
 #include "../../include/ws/server.h"
 #include "../../include/tcp/server.h"
 
-static __thread seed = 0;
+static __thread int seed = 0;
 
 void ws_build_masking_key(uint8_t masking_key[4])
 {
@@ -83,14 +83,14 @@ int ws_send_message(struct web_client *client, struct ws_message *message, uint8
         const char *payload_masking_key = NULL;
         const char *payload_data_encoded = NULL;
 
-        if (message->payload_length != NULL)
+        if (message->payload_length != 0)
         {
             payload_masking_key = mask ? (const char *)masking_key : NULL;
-            payload_data_encoded = message->buffer;
+            payload_data_encoded = (char *)message->buffer;
             
             if (payload_masking_key != NULL)
             {
-                payload_data_encoded = strdup(message->buffer);
+                payload_data_encoded = strdup((char *)message->buffer);
                 for (size_t j = 0; j < frame_payload_length; ++j)
                 {
                     ((char *)payload_data_encoded)[num_bytes_passed + j] ^= payload_masking_key[j % 4];
@@ -114,8 +114,9 @@ int ws_send_message(struct web_client *client, struct ws_message *message, uint8
             num_bytes_passed += frame_payload_length;
         };
 
-        if (payload_masking_key != NULL) free(payload_data_encoded);
+        if (payload_masking_key != NULL) free((void *)payload_data_encoded);
         if ((result = tcp_server_send(sockfd, frame_data, sizeof(frame_data), 0)) <= 0) return result;
+        printf("%d\n", result);
     };
 
     return 1;
@@ -128,7 +129,7 @@ int ws_parse_frame(struct web_client *client, struct ws_frame_parsing_state *cur
 parse_start:
     switch (current_state->parsing_state)
     {
-        case -1:
+        case WS_FRAME_NIL:
         {
             current_state->parsing_state = WS_FRAME_PARSING_STATE_FIRST_BYTE;
             goto parse_start;

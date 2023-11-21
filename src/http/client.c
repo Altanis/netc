@@ -5,14 +5,10 @@
 
 #include "../../include/web/client.h"
 
-static int wow = 0;
-
 int http_client_send_chunked_data(struct web_client *client, char *data, size_t data_length)
 {
     char length_str[16] = {0};
     sprintf(length_str, "%zx\r\n", data_length);
-
-    socket_t sockfd = client->tcp_client->sockfd;
 
     int send_result = 0;
 

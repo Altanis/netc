@@ -137,7 +137,7 @@ parse_start:
     errno = 0;
     switch (current_state->parsing_state)
     {
-        case -1:
+        case REQUEST_PARSING_STATE_NIL:
         {
             current_state->parsing_state = REQUEST_PARSING_STATE_METHOD;
             goto parse_start;
@@ -283,10 +283,9 @@ parse_start:
         {
             if (current_state->chunk_data.size == 0)
             {
-                printf("wow so i was 0\n");
                 current_state->chunk_size = -1;
                 vector_init(&current_state->chunk_data, 8, sizeof(char));
-            } else printf("wow so i was %d\n", current_state->chunk_data.size);
+            };
 
             if (current_state->chunk_size == -1)
             {
@@ -324,7 +323,6 @@ parse_start:
 
             if (current_state->request.body_size + current_state->chunk_size > MAX_HTTP_BODY_LEN) return REQUEST_PARSE_ERROR_BODY_TOO_BIG;
 
-            printf("WTF? %d\n", current_state->chunk_size);
             current_state->parsing_state = REQUEST_PARSING_STATE_CHUNK_DATA;
             goto parse_start;
         };
@@ -353,7 +351,7 @@ parse_start:
 
             current_state->request.body_size += current_state->chunk_size;
             current_state->chunk_size = -1;
-            current_state->parsing_state = RESPONSE_PARSING_STATE_CHUNK_SIZE;
+            current_state->parsing_state = REQUEST_PARSING_STATE_CHUNK_SIZE;
 
             goto parse_start;
         };

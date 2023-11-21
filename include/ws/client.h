@@ -13,6 +13,6 @@ struct web_client;
 int ws_client_connect(struct web_client *client, const char *hostname, const char *path, const char *protocols[]);
 
 /** Closes a WebSocket client connection. Returns `1` if the connection closed */
-int ws_client_close(struct web_client *client, uint16_t code, char *reason);
+int ws_client_close(struct web_client *client, uint16_t code, const char *reason);
 
 #endif // WS_CLIENT_H

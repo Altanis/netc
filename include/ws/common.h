@@ -52,6 +52,8 @@ enum ws_frame_parsing_errors
 /** The parsing state of a frame. */
 enum ws_frame_parsing_states
 {
+    /** The start of parsing. */
+    WS_FRAME_NIL,
     /** The first byte is being parsed. */
     WS_FRAME_PARSING_STATE_FIRST_BYTE,
     /** The second byte is being parsed. */
