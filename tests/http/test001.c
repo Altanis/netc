@@ -69,6 +69,8 @@ static void http_test001_client_on_disconnect(struct web_client *client, bool is
 static void print_request(struct http_request request);
 static void print_response(struct http_response response);
 
+static int http_test001();
+
 static void print_request(struct http_request request)
 {
     printf("\n\nmethod: %s\n", http_request_get_method(&request));
@@ -124,7 +126,7 @@ static void http_test001_server_on_connect(struct web_server *server, struct web
     };
 
     client->data = ip;
-    printf("[HTTP TEST CASE 001] server accepting client. ip: %s\n", client->data);
+    printf("[HTTP TEST CASE 001] server accepting client. ip: %s\n", (char *)client->data);
 };
 
 static void http_test001_server_on_data(struct web_server *server, struct web_client *client, struct http_request *h_request)
@@ -133,7 +135,7 @@ static void http_test001_server_on_data(struct web_server *server, struct web_cl
 
     ++http_test001_server_data;
     
-    printf("[HTTP TEST CASE 001] server received data from %s at endpoint \"/\"\n", client->data);
+    printf("[HTTP TEST CASE 001] server received data from %s at endpoint \"/\"\n", (char *)client->data);
     print_request(request);
 
     int chunked = 0;
@@ -220,7 +222,7 @@ static void http_test001_server_on_data_wrong_route(struct web_server *server, s
     ++http_test001_server_data;
     printf("Sending \"later\"\n");
     
-    printf("[HTTP TEST CASE 001] server received data from %s at endpoint \"/test\"\n", client->data);
+    printf("[HTTP TEST CASE 001] server received data from %s at endpoint \"/test\"\n", (char *)client->data);
     print_request(request);
 
     struct http_response response = {0};
@@ -240,7 +242,7 @@ static void http_test001_server_on_data_wrong_route(struct web_server *server, s
 
 static void http_test001_server_on_http_malformed_request(struct web_server *server, struct web_client *client, enum parse_request_error_types error)
 {
-    printf("[HTTP TEST CASE 001] server could not process request from %s\n", client->data);
+    printf("[HTTP TEST CASE 001] server could not process request from %s\n", (char *)client->data);
 };
 
 static void http_test001_server_on_disconnect(struct web_server *server, socket_t sockfd, bool is_error)

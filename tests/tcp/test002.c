@@ -58,6 +58,7 @@ static int tcp_test002_client_disconnect = 0;
 
 static void *tcp_test002_server_thread_blocking_main(void *arg);
 static void *tcp_test002_client_thread_blocking_main(void *arg);
+static int tcp_test002();
 
 static void *tcp_test002_server_thread_blocking_main(void *arg)
 {

@@ -66,6 +66,8 @@ static void tcp_tet001_client_on_connect(struct tcp_client *client);
 static void tcp_test001_client_on_data(struct tcp_client *client);
 static void tcp_test001_client_on_disconnect(struct tcp_client *client, bool is_error);
 
+static int tcp_test001();
+
 static void *tcp_test001_server_thread_nonblocking_main(void *arg)
 {
     struct tcp_server *server = (struct tcp_server *)arg;

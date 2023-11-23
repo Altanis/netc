@@ -369,7 +369,7 @@ int web_server_close(struct web_server *server)
                     break;
                 };
             };
-#else
+ #else
             close(client->tcp_client->sockfd);
 #endif
         };
