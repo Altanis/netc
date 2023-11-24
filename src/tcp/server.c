@@ -3,6 +3,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <signal.h>
 #include <unistd.h>
 #include <sys/fcntl.h>
 
@@ -133,6 +134,8 @@ int tcp_server_init(struct tcp_server *server, struct sockaddr *address, bool no
 
     if (server->non_blocking == 0) return 0;
     if (socket_set_non_blocking(server->sockfd) != 0) return netc_error(FD_CTL);
+
+    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) return netc_error(SIGPIPE);
 
     /** Register event for the server socket. */
 #ifdef __linux__

@@ -1,6 +1,7 @@
 #include "../../include/udp/client.h"
 
 #include <stdio.h>
+#include <signal.h>
 #include <unistd.h>
 
 #ifdef __linux__
@@ -68,6 +69,8 @@ int udp_client_init(struct udp_client *client, struct sockaddr *addr, int non_bl
 
     if (non_blocking == 0) return 0;
     if (socket_set_non_blocking(client->sockfd) != 0) return netc_error(FD_CTL);
+
+    if (signal(SIGPIPE, SIG_IGN) == SIG_ERR) return netc_error(SIGPIPE);
 
     /** Register events for a nonblocking socket. */
 #ifdef __linux__
