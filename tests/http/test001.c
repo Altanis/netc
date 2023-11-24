@@ -114,14 +114,15 @@ static void http_test001_server_on_connect(struct web_server *server, struct web
     http_test001_server_connect = 1;
 
     char *ip = calloc(INET6_ADDRSTRLEN, sizeof(char));
-    if (client->tcp_client->sockaddr.sa_family == AF_INET)
+    printf("client->tcp_client->sockaddr->sa_family: %p\n", client->tcp_client->sockaddr);
+    if (client->tcp_client->sockaddr->sa_family == AF_INET)
     {
-        struct sockaddr_in *addr = (struct sockaddr_in *)&client->tcp_client->sockaddr;
+        struct sockaddr_in *addr = (struct sockaddr_in *)client->tcp_client->sockaddr;
         inet_ntop(AF_INET, &addr->sin_addr, ip, client->tcp_client->sockfd);
     }
     else
     {
-        struct sockaddr_in6 *addr = (struct sockaddr_in6 *)&client->tcp_client->sockaddr;
+        struct sockaddr_in6 *addr = (struct sockaddr_in6 *)client->tcp_client->sockaddr;
         inet_ntop(AF_INET6, &addr->sin6_addr, ip, client->tcp_client->sockfd);
     };
 
@@ -410,7 +411,7 @@ static int http_test001()
         .sin_port = htons(PORT)
     };
 
-    if (web_server_init(&server, *(struct sockaddr *)&addr, BACKLOG) != 0)
+    if (web_server_init(&server, (struct sockaddr *)&addr, BACKLOG) != 0)
     {
         printf(ANSI_RED "[HTTP TEST CASE 001] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -446,7 +447,7 @@ static int http_test001()
         return 1;
     };
 
-    if (web_client_init(&client, *(struct sockaddr *)&cliaddr) != 0)
+    if (web_client_init(&client, (struct sockaddr *)&cliaddr) != 0)
     {
         printf(ANSI_RED "[HTTP TEST CASE 001] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", errno, netc_errno_reason, ANSI_RESET);
         return 1;

@@ -19,7 +19,7 @@ struct udp_server
     /** The socket file descriptor. */
     socket_t sockfd;
     /** The server's address. */
-    struct sockaddr sockaddr;
+    struct sockaddr *sockaddr;
 
     /** Whether or not the server is polling. */
     int listening;
@@ -40,7 +40,7 @@ struct udp_server
 int udp_server_main_loop(struct udp_server *server);
 
 /** Initializes a UDP server. */
-int udp_server_init(struct udp_server *server, struct sockaddr addr, int non_blocking);
+int udp_server_init(struct udp_server *server, struct sockaddr *addr, int non_blocking);
 /** Binds a UDP server to an address. */
 int udp_server_bind(struct udp_server *server);
 

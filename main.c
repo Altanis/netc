@@ -75,7 +75,7 @@ int main()
     //     .sin_addr.s_addr = INADDR_ANY,
     // };
 
-    // if (web_server_init(&server, *(struct sockaddr *)&server_address, BACKLOG) != 0) 
+    // if (web_server_init(&server, (struct sockaddr *)&server_address, BACKLOG) != 0) 
     // {
     //     netc_perror("web_server_init");
     //     return 1;
@@ -111,7 +111,7 @@ int main()
     // };
 
     // if (inet_pton(AF_INET, "127.0.0.1", &cliaddr.sin_addr) < 0) perror("inet_pton");
-    // if (web_client_init(&client, *(struct sockaddr *)&cliaddr) < 0) netc_perror("web_client_init");
+    // if (web_client_init(&client, (struct sockaddr *)&cliaddr) < 0) netc_perror("web_client_init");
     
     // web_client_start(&client);
 

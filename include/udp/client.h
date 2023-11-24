@@ -9,7 +9,7 @@ struct udp_client
     /** The socket file descriptor. */
     socket_t sockfd;
         /** The client's address. */
-    struct sockaddr sockaddr;
+    struct sockaddr *sockaddr;
 
     /** Whether or not the client is polling. */
     int listening;
@@ -30,7 +30,7 @@ struct udp_client
 int udp_client_main_loop(struct udp_client *client);
 
 /** Initializes a UDP client. */
-int udp_client_init(struct udp_client *client, struct sockaddr addr, int non_blocking);
+int udp_client_init(struct udp_client *client, struct sockaddr *addr, int non_blocking);
 /** Connects a UDP client to a server. */
 int udp_client_connect(struct udp_client *client);
 

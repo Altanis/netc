@@ -36,7 +36,7 @@ struct sockaddr_in sockaddr =
 };
 
 /** Create the TCP server. */
-int init_result = tcp_server_init(&server, *(struct sockaddr *)&sockaddr, 1 /** use non-blocking mode or not */);
+int init_result = tcp_server_init(&server, (struct sockaddr *)&sockaddr, 1 /** use non-blocking mode or not */);
 if (init_result != 0) 
 {
     /** Handle error. */

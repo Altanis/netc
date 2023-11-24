@@ -88,7 +88,7 @@ struct web_client
 };
 
 /** Initializes the client. */
-int web_client_init(struct web_client *client, struct sockaddr address);
+int web_client_init(struct web_client *client, struct sockaddr *address);
 /** Starts a nonblocking event loop for the client. */
 int web_client_start(struct web_client *client);
 /** Closes the client. */

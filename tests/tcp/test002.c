@@ -183,7 +183,7 @@ static int tcp_test002()
     };
 
     int init_result = 0;
-    if ((init_result = tcp_server_init(server, *(struct sockaddr *)&saddr, SERVER_NON_BLOCKING)) != 0)
+    if ((init_result = tcp_server_init(server, (struct sockaddr *)&saddr, SERVER_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] server failed to initialize\nerrno: %d\nerrno reason: %d\n%s", init_result, netc_errno_reason, ANSI_RESET);
         return 1;
@@ -217,7 +217,7 @@ static int tcp_test002()
     struct tcp_client *client = malloc(sizeof(struct tcp_client));
 
     int client_init_result = 0;
-    if ((client_init_result = tcp_client_init(client, *(struct sockaddr *)&addr, CLIENT_NON_BLOCKING)) != 0)
+    if ((client_init_result = tcp_client_init(client, (struct sockaddr *)&addr, CLIENT_NON_BLOCKING)) != 0)
     {
         printf(ANSI_RED "[TCP TEST CASE 002] client failed to initialize\nerrno: %d\nerrno reason: %d\n%s", client_init_result, netc_errno_reason, ANSI_RESET);
         return 1;

@@ -42,6 +42,7 @@ extern __thread int netc_errno_reason;
 #define HANGUP         14     /** unexpected socket hangup */
 #define INETPTON       15     /** inet_pton syscall */
 #define WSA_STARTUP    16     /** WSAStartup() */
+#define SIGNAL         17     /** signal syscall ( `signal(SIGPIPE, SIG_IGN)` ) */
 
 /** Writes the error to a buffer. */
 void netc_strerror(char *buffer);

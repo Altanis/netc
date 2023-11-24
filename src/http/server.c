@@ -93,7 +93,6 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
 
     sso_string_concat_buffer(&response_str, "\r\n");
 
-    // TODO(Altanis): Concat strings.
     char combined_data[response_str.length + data_length + 1];
 
     memcpy(combined_data, sso_string_get(&response_str), response_str.length);
@@ -112,7 +111,6 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
     return 1;
 };
 
-// TODO: replace calloc with vector
 int http_server_parse_request(struct web_server *server, struct web_client *client, struct http_server_parsing_state *current_state)
 {
     char buffer[8192] = {0};

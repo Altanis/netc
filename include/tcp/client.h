@@ -9,7 +9,7 @@
 int tcp_client_main_loop(struct tcp_client *client);
 
 /** Initializes a TCP client. */
-int tcp_client_init(struct tcp_client *client, struct sockaddr addr, int non_blocking);
+int tcp_client_init(struct tcp_client *client, struct sockaddr *addr, int non_blocking);
 /** Connects the TCP client to the server. */
 int tcp_client_connect(struct tcp_client *client);
 /** Sends data to the server. Returns the result of the `send` syscall. */

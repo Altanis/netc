@@ -120,7 +120,7 @@ static void _tcp_on_disconnect(struct tcp_client *client, bool is_error)
     };
 };
 
-int web_client_init(struct web_client *client, struct sockaddr address)
+int web_client_init(struct web_client *client, struct sockaddr *address)
 {
     struct tcp_client *tcp_client = malloc(sizeof(struct tcp_client));
     tcp_client->data = client;

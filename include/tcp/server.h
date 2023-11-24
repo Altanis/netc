@@ -19,7 +19,7 @@ struct tcp_client
     /** The socket file descriptor. */
     socket_t sockfd;
     /** The address of the server to connect to. */
-    struct sockaddr sockaddr;
+    struct sockaddr *sockaddr;
 
     /** Whether or not the client is polling. */
     int listening;
@@ -46,7 +46,7 @@ struct tcp_server
     /** The socket file descriptor. */
     socket_t sockfd;
     /** The server's address. */
-    struct sockaddr address;
+    struct sockaddr *address;
 
     /** Whether or not the server is polling. */
     int listening;
@@ -79,7 +79,7 @@ struct tcp_server
 int tcp_server_main_loop(struct tcp_server *server);
 
 /** Initializes a TCP server. */
-int tcp_server_init(struct tcp_server *server, struct sockaddr address, bool non_blocking);
+int tcp_server_init(struct tcp_server *server, struct sockaddr *address, bool non_blocking);
 /** Binds a TCP server to an address. */
 int tcp_server_bind(struct tcp_server *server);
 /** Starts listening for connections on a TCP server. */

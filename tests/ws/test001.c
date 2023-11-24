@@ -291,7 +291,7 @@ static int ws_test001()
 
     ws_server.on_disconnect = NULL; // callback for when server disconnects
 
-    if (web_server_init(&ws_server, *(struct sockaddr *)&addr, BACKLOG) != 0)
+    if (web_server_init(&ws_server, (struct sockaddr *)&addr, BACKLOG) != 0)
     {
         netc_perror("web_server_init");
         return 1;
@@ -323,7 +323,7 @@ static int ws_test001()
     };
 
     if (inet_pton(AF_INET, IP, &cliaddr.sin_addr) < 0) perror("inet_pton");
-    if (web_client_init(&client, *(struct sockaddr *)&cliaddr) < 0) netc_perror("web_client_init");
+    if (web_client_init(&client, (struct sockaddr *)&cliaddr) < 0) netc_perror("web_client_init");
 
     web_client_start(&client);
     pthread_join(thread, NULL);

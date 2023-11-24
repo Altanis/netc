@@ -2,5 +2,8 @@
 /.cache
 compile_commands.json
 obj
-netc.dSYM
 .DS_Store
+netc.dSYM
+netc
+netc.out
+netc.exe

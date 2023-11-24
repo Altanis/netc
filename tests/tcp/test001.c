@@ -181,7 +181,7 @@ static int tcp_test001()
     };
 
     int init_result = 0;
-    if ((init_result = tcp_server_init(server, *(struct sockaddr *)&saddr, SERVER_NON_BLOCKING)) != 0)
+    if ((init_result = tcp_server_init(server, (struct sockaddr *)&saddr, SERVER_NON_BLOCKING)) != 0)
     {
         netc_perror(ANSI_RED "[TCP TEST CASE 001] server failed to initialize");;
         return 1;
@@ -229,7 +229,7 @@ static int tcp_test001()
     };
 
     int client_init_result = 0;
-    if ((client_init_result = tcp_client_init(client, *(struct sockaddr *)&addr, CLIENT_NON_BLOCKING)) != 0)
+    if ((client_init_result = tcp_client_init(client, (struct sockaddr *)&addr, CLIENT_NON_BLOCKING)) != 0)
     {
         netc_perror(ANSI_RED "[TCP TEST CASE 001] client failed to initialize");;
         return 1;

@@ -117,13 +117,13 @@ int tcp_server_main_loop(struct tcp_server *server)
     return 0;
 };
 
-int tcp_server_init(struct tcp_server *server, struct sockaddr address, bool non_blocking)
+int tcp_server_init(struct tcp_server *server, struct sockaddr *address, bool non_blocking)
 {
     if (server == NULL) return -1;
 
     server->non_blocking = non_blocking;
     server->address = address;
-    int protocol = address.sa_family;
+    int protocol = address->sa_family;
 
     server->sockfd = socket(protocol, SOCK_STREAM, 0); // IPv4, TCP, 0
     if (server->sockfd == -1) return netc_error(SOCKET_C);
@@ -162,10 +162,10 @@ int tcp_server_init(struct tcp_server *server, struct sockaddr address, bool non
 int tcp_server_bind(struct tcp_server *server)
 {
     socket_t sockfd = server->sockfd;
-    struct sockaddr addr = server->address;
-    socklen_t addrlen = sizeof(addr);
+    struct sockaddr *addr = server->address;
+    socklen_t addrlen = sizeof(struct sockaddr);
 
-    int result = bind(sockfd, &addr, addrlen);
+    int result = bind(sockfd, addr, addrlen);
     if (result == -1) return netc_error(BIND);
 
     return 0;
@@ -184,10 +184,10 @@ int tcp_server_listen(struct tcp_server *server, int backlog)
 int tcp_server_accept(struct tcp_server *server, struct tcp_client *client)
 {
     socket_t sockfd = server->sockfd;
-    struct sockaddr *addr = (struct sockaddr *)&client->sockaddr;
-    socklen_t addrlen = sizeof(client->sockaddr);
+    client->sockaddr = malloc(sizeof(struct sockaddr));
+    socklen_t addrlen = sizeof(struct sockaddr);
 
-    int result = accept(sockfd, addr, &addrlen);
+    int result = accept(sockfd, client->sockaddr, &addrlen);
     if (result == -1) return netc_error(ACCEPT);
 
     client->sockfd = result;

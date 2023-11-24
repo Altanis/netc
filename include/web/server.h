@@ -88,9 +88,9 @@ struct web_server_route
     char *path;
 };
 
-/** Initializes the HTTP server. */
-int web_server_init(struct web_server *http_server, struct sockaddr address, int backlog);
-/** Starts a nonblocking event loop for the HTTP server. */
+/** Initializes the web server. */
+int web_server_init(struct web_server *http_server, struct sockaddr *address, int backlog);
+/** Starts a nonblocking event loop for the web server. */
 int web_server_start(struct web_server *server);
 
 /** Creates a route for a path. Note that precedence works by whichever route is created first. */
@@ -100,7 +100,7 @@ struct web_server_route *web_server_find_route(struct web_server *server, const 
 /** Removes a route for a path. */
 void web_server_remove_route(struct web_server *server, const char *path);
 
-/** Closes the HTTP server. */
+/** Closes the web server. */
 int web_server_close(struct web_server *server);
 
 #endif // SERVER_CONNECTION_H

@@ -92,6 +92,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     /** Malformed request. */
                     if (route->on_ws_malformed_frame != NULL)
                         route->on_ws_malformed_frame(web_server, client, result);
+                    tcp_server_close_client(server, sockfd, true);
                 };
 
                 return;
@@ -155,6 +156,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     {
                         /** TODO(Altanis): Fix one HTTP request partitioned into two causing two event calls. */
                         web_server->on_http_malformed_request(web_server, client, result);
+                        tcp_server_close_client(server, sockfd, true);
                     }
                 }
 
@@ -246,7 +248,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 
 static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool is_error)
 {
-    // TODO(Altanis): Free client.
+    // TODO(Altanis): Free client?
     
     struct web_server *web_server = server->data;
 
@@ -272,7 +274,7 @@ static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool 
     };
 };
 
-int web_server_init(struct web_server *http_server, struct sockaddr address, int backlog)
+int web_server_init(struct web_server *http_server, struct sockaddr *address, int backlog)
 {
     vector_init(&http_server->routes, 8, sizeof(struct web_server_route));
     map_init(&http_server->clients, 8);
@@ -369,13 +371,16 @@ int web_server_close(struct web_server *server)
                     break;
                 };
             };
- #else
+#else
             close(client->tcp_client->sockfd);
 #endif
         };
 
         // TODO(Altanis): Free clients?
+        // free(client->tcp_client->sockaddr);
+        // free(client->tcp_client);
     };
 
+    // map_free(&server->clients);
     return tcp_server_close_self(server->tcp_server);
 };

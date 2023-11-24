@@ -54,12 +54,12 @@ int udp_client_main_loop(struct udp_client *client)
     return 0;
 };
 
-int udp_client_init(struct udp_client *client, struct sockaddr addr, int non_blocking)
+int udp_client_init(struct udp_client *client, struct sockaddr *addr, int non_blocking)
 {
     if (client == NULL) return -1;
 
     client->sockaddr = addr;
-    int protocol = addr.sa_family;
+    int protocol = addr->sa_family;
 
     client->sockfd = socket(protocol, SOCK_DGRAM, 0);
     if (client->sockfd == -1) return netc_error(SOCKET_C);
@@ -94,10 +94,10 @@ int udp_client_init(struct udp_client *client, struct sockaddr addr, int non_blo
 int udp_client_connect(struct udp_client *client)
 {
     socket_t sockfd = client->sockfd;
-    struct sockaddr addr = client->sockaddr;
-    socklen_t addrlen = sizeof(addr);
+    struct sockaddr *addr = client->sockaddr;
+    socklen_t addrlen = sizeof(struct sockaddr);
 
-    int result = connect(sockfd, &addr, addrlen);
+    int result = connect(sockfd, addr, addrlen);
     if (result == -1 && errno != EINPROGRESS) return netc_error(CONNECT);
 
     return 0;
