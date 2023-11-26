@@ -92,11 +92,13 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     /** Malformed request. */
                     if (route->on_ws_malformed_frame != NULL)
                         route->on_ws_malformed_frame(web_server, client, result);
-                    tcp_server_close_client(server, sockfd, true);
+                    ws_server_close_client(web_server, client, 1002, "Malformed frame.");
                 };
 
                 return;
             };
+
+            printf("MORE DATE please:()\n");
 
             if (ws_parsing_state->message.opcode == WS_OPCODE_PING || ws_parsing_state->message.opcode == WS_OPCODE_PONG)
             {
@@ -104,7 +106,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     route->on_heartbeat(web_server, client, &ws_parsing_state->message);
                 
                 if (
-                    (web_server->ws_server_config.reply_to_pongs == true && ws_parsing_state->message.opcode == WS_OPCODE_PONG) // pong + reply_to_pongs
+                    (web_server->ws_server_config.record_latency == true && ws_parsing_state->message.opcode == WS_OPCODE_PONG) // pong + record_latency
                     || (ws_parsing_state->message.opcode == WS_OPCODE_PING) // ping
                 )
                 {
@@ -227,8 +229,9 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                         "Upgrade to WebSocket is not supported.";
                     
                     tcp_server_send(sockfd, (char *)badrequest_message, strlen(badrequest_message), 0);
-                }
-                else handshake_request_cb(web_server, client, &client->http_server_parsing_state.request);
+                };
+
+                handshake_request_cb(web_server, client, &client->http_server_parsing_state.request);
             }
             else
             {
@@ -289,6 +292,16 @@ int web_server_init(struct web_server *http_server, struct sockaddr *address, in
     {
         /** Not essential. Do not return -1. */
     };
+
+    /** TODO(Altanis): These may overwrite config changes from before web_server_init() was called. */
+    http_server->ws_server_config.record_latency = false;
+    http_server->http_server_config.max_body_len = 0;
+    http_server->http_server_config.max_header_count = 0;
+    http_server->http_server_config.max_header_name_len = 0;
+    http_server->http_server_config.max_header_value_len = 0;
+    http_server->http_server_config.max_method_len = 0;
+    http_server->http_server_config.max_path_len = 0;
+    http_server->http_server_config.max_version_len = 0;
 
     int bind_result = tcp_server_bind(tcp_server);
     if (bind_result != 0) return bind_result;

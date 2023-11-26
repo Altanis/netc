@@ -33,7 +33,22 @@ static void _tcp_on_data(struct tcp_client *client)
                 return;
             };
 
-            if (ws_parsing_state->message.opcode == WS_OPCODE_CLOSE && web_client->on_ws_disconnect)
+            if (ws_parsing_state->message.opcode == WS_OPCODE_PING || ws_parsing_state->message.opcode == WS_OPCODE_PONG)
+            {
+                if (web_client->on_heartbeat != NULL)
+                    web_client->on_heartbeat(web_client, &ws_parsing_state->message);
+                
+                if (
+                    (web_client->ws_client_config.record_latency == true && ws_parsing_state->message.opcode == WS_OPCODE_PONG) // pong + record_latency
+                    || (ws_parsing_state->message.opcode == WS_OPCODE_PING) // ping
+                )
+                {
+                    struct ws_message message;
+                    ws_build_message(&message, ws_parsing_state->message.opcode == WS_OPCODE_PING ? WS_OPCODE_PONG : WS_OPCODE_PING, ws_parsing_state->message.payload_length, ws_parsing_state->message.buffer);
+                    ws_send_message(web_client, &message, NULL, 1);
+                };
+            }
+            else if (ws_parsing_state->message.opcode == WS_OPCODE_CLOSE && web_client->on_ws_disconnect)
             {
                 size_t message_size = ws_parsing_state->message.payload_length - 2 + 1;
                 uint16_t close_code = 0;
@@ -88,7 +103,16 @@ static void _tcp_on_data(struct tcp_client *client)
             {
                 web_client->connection_type = CONNECTION_WS;
                 if (web_client->on_ws_connect != NULL)
+                {
                     web_client->on_ws_connect(web_client);
+                    if (web_client->ws_client_config.record_latency == true)
+                    {
+                        struct ws_message message;
+                        ws_build_message(&message, WS_OPCODE_PING, 0, NULL);
+                        int r = ws_send_message(web_client, &message, NULL, 1);
+                        printf("ws_send_message: %d\n", r);
+                    };
+                }
             }
             else if (web_client->on_http_response != NULL)
                 web_client->on_http_response(web_client, &http_client_parsing_state->response);
@@ -152,7 +176,29 @@ int web_client_start(struct web_client *client)
     return tcp_client_main_loop(client->tcp_client);
 };
 
-int web_client_close(struct web_client *client)
+int web_client_close(struct web_client *client, uint16_t code, const char *reason)
 {
-    return tcp_client_close(client->tcp_client, 0);
+    if (client->connection_type == CONNECTION_WS)
+    {
+        size_t reason_length = reason != NULL ? strlen(reason) : 0;
+        if (code != 0)
+        {
+            reason_length += 2;
+        };
+
+        char reason_buffer[reason_length];
+        if (code != 0)
+        {
+            reason_buffer[0] = (code >> 8) & 0xFF;
+            reason_buffer[1] = code & 0xFF;
+            memcpy(reason_buffer + 2, reason, reason_length - 2);
+        } else memcpy(reason_buffer, reason, reason_length);
+
+        struct ws_message message;
+        ws_build_message(&message, WS_OPCODE_CLOSE, strlen(reason_buffer), (uint8_t *)reason_buffer);
+
+        (void) ws_send_message(client, &message, NULL, 1); // Doesn't matter too much if this fails.
+    };
+
+    return tcp_client_close(client->tcp_client, false);
 };

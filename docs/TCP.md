@@ -10,7 +10,6 @@
     2. [Handling Asynchronous Events](#handling-asynchronous-events-client)
     3. [Handling Blocking Mechanism](#handling-blocking-mechanism-client)
 
-
 ## TCP Server <a name="tcp-server"/>
 
 ### Creating a TCP Server <a name="creating-a-tcp-server"/>
@@ -18,7 +17,7 @@ Creating a TCP server is a straightforward process. The following code snippet s
 
 ```c
 #include <stdio.h>
-#include <netc/tcp/server.h>
+#include "netc/include/tcp/server.h"
 
 struct tcp_server server = {0};
 /** If you plan to use asynchronous events, you need to set the event callbacks. */
@@ -78,7 +77,7 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 ```c
 #include <stdio.h>
 #include <stdint.h>
-#include <netc/tcp/server.h>
+#include "netc/include/tcp/server.h"
 
 /** The server does not track current connected clients. You need to do it yourself. */
 /** You can use the map or vector structs provided by the library. */
@@ -131,7 +130,7 @@ void on_data(struct tcp_server *server, socket_t sockfd)
     };
 };
 
-void on_disconnect(struct tcp_server *server, socket_t sockfd)
+void on_disconnect(struct tcp_server *server, socket_t sockfd, bool is_error)
 {
     /** Do something with the client. */
     printf("Client disconnected. Their sockfd: %d\n", sockfd);
@@ -149,7 +148,7 @@ Use the functions as normal. They will block.
 
 ```c
 #include <stdio.h>
-#include <netc/tcp/server.h>
+#include "netc/include/tcp/server.h"
 
 // assume a blocking server is already set up as `server`.
 struct tcp_client client = {0};
@@ -174,7 +173,7 @@ Creating a TCP client is a straightforward process. The following code snippet s
 
 ```c
 #include <stdio.h>
-#include <netc/tcp/client.h>
+#include "netc/include/tcp/client.h"
 
 struct tcp_client client = {0};
 /** If you plan to use asynchronous events, you need to set the event callbacks. */
@@ -226,7 +225,7 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 ```c
 #include <stdio.h>
 #include <stdint.h>
-#include <netc/tcp/client.h>
+#include "netc/include/tcp/client.h"
 
 void on_connect(struct tcp_client *client)
 {
@@ -267,7 +266,7 @@ void on_data(struct tcp_client *client)
     };
 };
 
-void on_disconnect(struct tcp_client *client)
+void on_disconnect(struct tcp_client *client, bool is_error)
 {
     /** Do something with the client. */
     printf("Disconnected from server.\n");
@@ -285,7 +284,7 @@ Use the functions as normal. They will block.
 
 ```c
 #include <stdio.h>
-#include <netc/tcp/client.h>
+#include "netc/include/tcp/client.h"
 
 // assume a blocking client is already set up as `client`.
 

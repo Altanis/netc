@@ -17,7 +17,7 @@ Creating a UDP server is a straightforward process. The following code snippet s
 
 ```c
 #include <stdio.h>
-#include <netc/udp/server.h>
+#include "netc/include/udp/server.h"
 
 struct udp_server server = {0};
 /** If you plan to use asynchronous events, you need to set the event callbacks. */
@@ -66,7 +66,7 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 ```c
 #include <stdio.h>
 #include <stdint.h>
-#include <netc/udp/server.h>
+#include "netc/include/udp/server.h"
 
 void on_data(struct udp_server *server)
 {
@@ -108,7 +108,7 @@ Use the functions as normal. They will block.
 
 ```c
 #include <stdio.h>
-#include <netc/udp/server.h>
+#include "netc/include/udp/server.h"
 
 // assume a blocking server is already set up as `server`
 char buffer[1024];
@@ -136,7 +136,7 @@ Creating a UDP client is a straightforward process. The following code snippet s
 ```c
 #include <stdio.h>
 #include <string.h>
-#include <netc/udp/client.h>
+#include "netc/include/udp/client.h"
 
 struct udp_client client = {0};
 /** If you plan to use asynchronous events, you need to set the event callbacks. */
@@ -176,7 +176,7 @@ If you plan to use asynchronous events, you need to set the event callbacks. The
 ```c
 #include <stdio.h>
 #include <stdint.h>
-#include <netc/udp/client.h>
+#include "netc/include/udp/client.h"
 
 void on_data(struct udp_client *client)
 {
@@ -218,7 +218,7 @@ Use the functions as normal. They will block.
 
 ```c
 #include <stdio.h>
-#include <netc/udp/client.h>
+#include "netc/include/udp/client.h"
 
 // assume a blocking client is already set up as `client`
 char buffer[1024];

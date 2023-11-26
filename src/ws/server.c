@@ -94,6 +94,14 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     {
         client->path = strdup(sso_string_get(&request->path));
         client->connection_type = CONNECTION_WS;
+        
+        if (server->ws_server_config.record_latency == true)
+        {
+            struct ws_message message;
+            ws_build_message(&message, WS_OPCODE_PING, 0, NULL);
+            ws_send_message(client, &message, NULL, 1);
+        };
+
         return 0;
     } else return -1;
 };

@@ -66,6 +66,16 @@ struct web_client
        struct ws_frame_parsing_state ws_parsing_state;
     };
 
+     /** [WS ONLY] A structure representing the configuration for a WebSocket server. */
+    struct
+    {
+        /** 
+         * Whether or not the client should record latency (sends a ping on connection and replies to pongs with pings). 
+         * Do not set to `true` if the server replies to pong frames.
+        */
+        bool record_latency;
+    } ws_client_config;
+
     /** The callback for when the client connects via HTTP. */
     void (*on_http_connect)(struct web_client *client);
     /** The callback for when the client connects via WS. */
@@ -75,6 +85,8 @@ struct web_client
     void (*on_http_response)(struct web_client *client, struct http_response *response);
     /** The callback for when a WS message is received. */
     void (*on_ws_message)(struct web_client *client, struct ws_message *message);
+    /** The callback for when a WebSocket server sends a heartbeat (ping/pong) frame. */
+    void (*on_heartbeat)(struct web_client *client, struct ws_message *message);
 
     /** The callback for when a response is malformed. */
     void (*on_http_malformed_response)(struct web_client *client, enum parse_response_error_types error);
@@ -92,6 +104,6 @@ int web_client_init(struct web_client *client, struct sockaddr *address);
 /** Starts a nonblocking event loop for the client. */
 int web_client_start(struct web_client *client);
 /** Closes the client. */
-int web_client_close(struct web_client *client);
+int web_client_close(struct web_client *client, uint16_t code, const char *reason);
 
 #endif // CLIENT_CONNECTION_H

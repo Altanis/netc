@@ -53,8 +53,11 @@ struct web_server
     {
         /** The maximum number of bytes of one payload/message. */
         size_t max_payload_len;
-        /** Whether or not the server should reply to pongs with pings. */
-        bool reply_to_pongs;
+        /** 
+         * Whether or not the client should record latency (sends a ping on connection and replies to pongs with pings). 
+         * Do not set to `true` if the server replies to pong frames.
+        */
+        bool record_latency;
     } ws_server_config;
     
     /** The callback for when a client connects, for both HTTP and WS. */

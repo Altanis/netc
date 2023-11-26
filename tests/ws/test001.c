@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <pthread.h>
 #include <stdbool.h>
+#include <sys/time.h>
 
 #ifdef _WIN32
 #include <winsock2.h>
@@ -68,6 +69,9 @@ static int send_multiple_frames_client = 0;
 static int send_masked_client = 0;
 static int send_multiple_frames_masked_client = 0;
 static int send_close_client = 0;
+
+static struct timespec start_time;
+static double latency = 0;
 
 static void ws_server_on_connect(struct web_server *server, struct web_client *client, struct http_request *request)
 {
@@ -176,7 +180,7 @@ static void ws_client_on_http_connect(struct web_client *client)
     printf("[WS TEST CASE 001] client connected\n");
 
     int r = 0;
-    if ((r = ws_client_connect(client, "localhost:8923", "/", NULL) != 1))
+    if ((r = ws_client_connect(client, "localhost:8923", "/") != 1))
         printf("Failed to connect %d\n", r);
 };
 
@@ -196,6 +200,8 @@ static void ws_client_on_connect(struct web_client *client)
     {
         netc_perror("Error occured when sending basic message client");
     };
+
+    clock_gettime(CLOCK_MONOTONIC, &start_time);
 };
 
 static void ws_client_on_message(struct web_client *client, struct ws_message *h_message)
@@ -266,7 +272,7 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
         send_multiple_frames_masked_server++;
         printf("[WS TEST CASE 001] client received multiple frames masked message\n");
 
-        ws_client_close(client, 1000, "test");
+        web_client_close(client, 1000, "test");
     };
 };
 
@@ -279,6 +285,22 @@ static void ws_client_on_disconnect(struct web_client *client, uint16_t code, ch
 {
     send_close_server++;
     printf("[WS TEST CASE 001] client disconnected\n");
+};
+
+static  void ws_client_on_heartbeat(struct web_client *client, struct ws_message *message)
+{
+    if (message->opcode == WS_OPCODE_PONG)
+    {
+        struct timespec end_time;
+        clock_gettime(CLOCK_MONOTONIC, &end_time);
+
+        latency = (end_time.tv_sec - start_time.tv_sec) * 1000.0;
+        latency += (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
+
+        printf("[WS TEST CASE 001] client received pong with latency %fms\n", latency);
+
+        start_time = end_time;
+    };
 };
 
 static int ws_test001()
@@ -311,11 +333,13 @@ static int ws_test001()
     pthread_create(&thread, NULL, (void *)web_server_start, &ws_server);
 
     struct web_client client = {0};
+    client.ws_client_config.record_latency = true;
     client.on_http_connect = ws_client_on_http_connect;
     client.on_ws_connect = ws_client_on_connect;
     client.on_ws_message = ws_client_on_message;
     client.on_ws_malformed_frame = ws_client_on_malformed_request;
     client.on_ws_disconnect = ws_client_on_disconnect;
+    client.on_heartbeat = ws_client_on_heartbeat;
 
     struct sockaddr_in cliaddr = {
         .sin_family = AF_INET,

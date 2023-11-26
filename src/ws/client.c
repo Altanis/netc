@@ -8,7 +8,7 @@
 #include "../../include/ws/client.h"
 #include "../../include/tcp/client.h"
 
-int ws_client_connect(struct web_client *client, const char *hostname, const char *path, const char *protocols[])
+int ws_client_connect(struct web_client *client, const char *hostname, const char *path)
 {
     srand(time(NULL));
     
@@ -35,19 +35,6 @@ int ws_client_connect(struct web_client *client, const char *hostname, const cha
 
     int result = 0;
     if ((result = http_client_send_request(client, &request, NULL, 0)) < 1) return result;
-
-    return 1;
-};
-
-int ws_client_close(struct web_client *client, uint16_t code, const char *reason)
-{
-    struct ws_message message;
-    ws_build_message(&message, WS_OPCODE_CLOSE, strlen(reason), (uint8_t *)reason);
-
-    (void) ws_send_message(client, &message, NULL, 1); // Doesn't matter too much if this fails.
-
-    int result = tcp_client_close(client->tcp_client, false);
-    if (result < 1) return result;
 
     return 1;
 };
