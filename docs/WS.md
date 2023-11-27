@@ -60,7 +60,11 @@ void ws_on_message(struct web_server *server, struct web_client *client, struct 
     printf("Message received. DETAILS:\n");
     switch (message->opcode)
     {
-        case WS_OPCODE_CONTINUE: printf("Opcode: CONTINUE\n"); break;
+        /** The initial opcode from the message will be preserved.
+          * Unless the initial opcode was a CONTINUE (should not happen unless client is poorly made), this won't be invoked.
+        */
+        // case WS_OPCODE_CONTINUE: printf("Opcode: CONTINUE\n"); break;
+
         case WS_OPCODE_TEXT: printf("Opcode: TEXT\n"); break;
         case WS_OPCODE_BINARY: printf("Opcode: BINARY\n"); break;
 
@@ -231,7 +235,11 @@ void ws_on_ws_message(struct web_client *client, struct ws_message *message)
     printf("Message received. DETAILS:\n");
     switch (message->opcode)
     {
-        case WS_OPCODE_CONTINUE: printf("Opcode: CONTINUE\n"); break;
+        /** The initial opcode from the message will be preserved.
+          * Unless the initial opcode was a CONTINUE (should not happen unless client is poorly made), this won't be invoked.
+        */
+        // case WS_OPCODE_CONTINUE: printf("Opcode: CONTINUE\n"); break;
+
         case WS_OPCODE_TEXT: printf("Opcode: TEXT\n"); break;
         case WS_OPCODE_BINARY: printf("Opcode: BINARY\n"); break;
 
