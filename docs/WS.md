@@ -63,7 +63,10 @@ void ws_on_message(struct web_server *server, struct web_client *client, struct 
         case WS_OPCODE_CONTINUE: printf("Opcode: CONTINUE\n"); break;
         case WS_OPCODE_TEXT: printf("Opcode: TEXT\n"); break;
         case WS_OPCODE_BINARY: printf("Opcode: BINARY\n"); break;
-        case WS_OPCODE_CLOSE: printf("Opcode: CLOSE\n"); break;
+
+        /** This won't be run, it will be sent to the on_ws_disconnect event. */
+        // case WS_OPCODE_CLOSE: printf("Opcode: CLOSE\n"); break;
+
         /** These won't be run, they will be sent to the on_ws_heartbeat event.
         // case WS_OPCODE_PING: printf("Opcode: PING\n"); break;
         // case WS_OPCODE_PONG: printf("Opcode: PONG\n"); break;
@@ -231,7 +234,10 @@ void ws_on_ws_message(struct web_client *client, struct ws_message *message)
         case WS_OPCODE_CONTINUE: printf("Opcode: CONTINUE\n"); break;
         case WS_OPCODE_TEXT: printf("Opcode: TEXT\n"); break;
         case WS_OPCODE_BINARY: printf("Opcode: BINARY\n"); break;
-        case WS_OPCODE_CLOSE: printf("Opcode: CLOSE\n"); break;
+
+        /** This won't be run, it will be sent to the on_ws_disconnect event. */
+        // case WS_OPCODE_CLOSE: printf("Opcode: CLOSE\n"); break;
+
         /** These won't be run, they will be sent to the on_ws_heartbeat event.
         // case WS_OPCODE_PING: printf("Opcode: PING\n"); break;
         // case WS_OPCODE_PONG: printf("Opcode: PONG\n"); break;
