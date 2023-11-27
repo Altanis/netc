@@ -105,3 +105,25 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
         return 0;
     } else return -1;
 };
+
+int ws_server_close_client(struct web_server *server, struct web_client *client, uint16_t code, char *reason)
+{
+    size_t reason_len = reason != NULL ? strlen(reason) : 0;
+    char payload_data[2 + reason_len];
+    payload_data[0] = (code >> 8) & 0xFF;
+    payload_data[1] = code & 0xFF;
+
+    if (reason != NULL)
+    {
+        memcpy(payload_data + 2, reason, reason_len);
+    };
+
+    uint8_t mask[4];
+    ws_build_masking_key(mask);
+
+    struct ws_message message;
+    ws_build_message(&message, WS_OPCODE_CLOSE, 2 + reason_len, (uint8_t *)payload_data);
+
+    ws_send_message(client, &message, mask, 1);
+    return tcp_server_close_client(server->tcp_server, client->tcp_client->sockfd, false);
+};
