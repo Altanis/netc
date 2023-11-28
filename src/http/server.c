@@ -113,11 +113,6 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
 
 int http_server_parse_request(struct web_server *server, struct web_client *client, struct http_server_parsing_state *current_state)
 {
-    char buffer[8192] = {0};
-    int r = recv(client->tcp_client->sockfd, buffer, sizeof(buffer) - 1, MSG_PEEK);
-    if (r <= 0) printf("recv error: %d\n", r);
-    else print_bytes(buffer, 8191);
-
     socket_t sockfd = client->tcp_client->sockfd;
 
     size_t MAX_HTTP_METHOD_LEN = (server->http_server_config.max_method_len ? server->http_server_config.max_method_len : 7);
@@ -131,7 +126,6 @@ int http_server_parse_request(struct web_server *server, struct web_client *clie
     vector_init(&current_state->request.headers, 8, sizeof(struct http_header));
 
 parse_start:
-    printf("current_state->parsing_state: %d\n", current_state->parsing_state);
     errno = 0;
     switch (current_state->parsing_state)
     {

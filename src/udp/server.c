@@ -69,7 +69,6 @@ int udp_server_init(struct udp_server *server, struct sockaddr *addr, int non_bl
 
     server->sockaddr = addr;
     int protocol = addr->sa_family;
-    printf("ipv4 port: %d\n", ntohs(((struct sockaddr_in *)addr)->sin_port));
 
     server->sockfd = socket(protocol, SOCK_DGRAM, 0); // IPv4, UDP, 0
     if (server->sockfd == -1) return netc_error(SOCKET_C);

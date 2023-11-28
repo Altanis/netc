@@ -59,7 +59,7 @@ int main()
 
     if (testsuite_passed == 1)
     {
-        printf(ANSI_GREEN "\n\nTEST SUITE PASSED! i fucking love you and it breaks my heart when i see you talk to someone else i just want to be your boyfriend and put a heart in my profile linking to your profile and have a bunch of dms of you saying cute things i want to play video games talk in discord all night and watch a movie together but you just seem so uninterested in me it fucking kills me and i cant take it anymore i want to remove you but i care too much about you so please i'm begging you to either love me back or remove me and NEVER contact me again it hurts so much to say this because i need you by my side but if you don't love me then i want you to leave because seeing your icon in my friendlist would kill me everyday of my pathetic life..\n%s", ANSI_RESET);
+        printf(ANSI_GREEN "\n\nTEST SUITE PASSED!\n");
     }
     else
     {

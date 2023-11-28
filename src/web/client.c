@@ -109,8 +109,8 @@ static void _tcp_on_data(struct tcp_client *client)
                     {
                         struct ws_message message;
                         ws_build_message(&message, WS_OPCODE_PING, 0, NULL);
-                        int r = ws_send_message(web_client, &message, NULL, 1);
-                        printf("ws_send_message: %d\n", r);
+                        /** TOOO(Altanis): Notify if sending message fails. */
+                        (void) ws_send_message(web_client, &message, NULL, 1);
                     };
                 }
             }

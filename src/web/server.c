@@ -98,8 +98,6 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 return;
             };
 
-            printf("MORE DATE please:()\n");
-
             if (ws_parsing_state->message.opcode == WS_OPCODE_PING || ws_parsing_state->message.opcode == WS_OPCODE_PONG)
             {
                 if (route->on_heartbeat != NULL)
@@ -152,7 +150,6 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
             {
                 if (result < 0)
                 {
-                    printf("why did we waste it. %d\n", result);
                     /** Malformed request. */
                     if (web_server->on_http_malformed_request)
                     {
@@ -163,7 +160,6 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 }
 
                 // > 0 means the http request is incomplete and waiting for incoming data
-                printf("WAITING FOR MORE DATA\n");
                 return;
             };
 
@@ -364,9 +360,7 @@ int web_server_close(struct web_server *server)
         struct map_entry entry = server->clients.entries[i];
         struct web_client *client = entry.value;
 
-        if (client == NULL) continue;
-        printf("%p\n", client);
-        
+        if (client == NULL) continue;        
 
         if (client->connection_type == CONNECTION_WS)
         {
