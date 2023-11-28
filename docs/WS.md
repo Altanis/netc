@@ -93,9 +93,9 @@ void ws_on_malformed_frame(struct web_server *server, struct web_client *client,
         /** The recv syscall failed. */
         case WS_FRAME_PARSE_ERROR_RECV: printf("Error: RECV\n"); break;
         /** The payload length for the frame is invalid. */
-        case WS_FRAME_PARSE_ERROR_PAYLOAD_LENGTH: printf("Error: PAYLOAD_LENGTH\n"); break;
+        case WS_FRAME_PARSE_ERROR_INVALID_FRAME_LENGTH: printf("Error: PAYLOAD_LENGTH\n"); break;
         /** The payload length for the frame is too large. */
-        case WS_FRAME_PARSE_ERROR_PAYLOAD_LENGTH_TOO_LARGE: printf("Error: PAYLOAD_LENGTH_TOO_LARGE\n"); break;
+        case WS_FRAME_PARSE_ERROR_PAYLOAD_TOO_BIG: printf("Error: PAYLOAD_LENGTH_TOO_LARGE\n"); break;
     };
 
     /** Send any messages now, but the connection will be closed after this callback with error "1002 Malformed Frame". */
