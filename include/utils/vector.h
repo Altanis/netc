@@ -31,6 +31,8 @@ void *vector_get(const struct vector *vec, size_t index);
 void *vector_get_buffer(const struct vector *vec);
 /** Removes an element from the vector. */
 void vector_delete(struct vector *vec, size_t index);
+/** Clears the vector. */
+void vector_clear(struct vector *vec);
 
 /** Frees the vector. */
 void vector_free(const struct vector *vec);
