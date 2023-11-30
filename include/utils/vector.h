@@ -23,6 +23,8 @@ int vector_resize(struct vector *vec, size_t new_capacity);
 
 /** Pushes an element to the vector. */
 void vector_push(struct vector *vec, void *element);
+/** Sets an element at a specific index. */
+void vector_set_index(struct vector *vec, void *element, size_t index);
 /** Gets an element from the vector. */
 void *vector_get(const struct vector *vec, size_t index);
 /** Returns a pointer to a writable buffer. */
