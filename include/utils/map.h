@@ -2,6 +2,7 @@
 #define MAP_H
 
 #include <stddef.h>
+#include <stdbool.h>
 
 /** A struct representing a map. */
 struct map
@@ -36,6 +37,6 @@ void map_set(struct map *map, void *key, void *value, size_t key_size);
 void map_delete(struct map *map, void *key, size_t key_size);
 
 /** Frees the map. */
-void map_free(struct map *map);
+void map_free(struct map *map, bool free_keys, bool free_values);
 
 #endif // MAP_H

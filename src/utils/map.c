@@ -98,8 +98,17 @@ void map_delete(struct map *map, void *key, size_t key_size)
     --map->size;
 };
 
-void map_free(struct map *map)
+void map_free(struct map *map, bool free_keys, bool free_values)
 {
+    for (size_t i = 0; i < map->capacity; ++i)
+    {
+        if (map->entries[i].key != NULL && free_keys) free(map->entries[i].key);
+        if (map->entries[i].value != NULL && free_values) free(map->entries[i].value);
+    };
+
     free(map->entries);
-    free(map);
+    
+    map->entries = NULL;
+    map->size = 0;
+    map->capacity = 0;
 };
