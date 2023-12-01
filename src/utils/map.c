@@ -5,26 +5,6 @@
 #include <stdint.h>
 #include <string.h>
 
-/** Jenkins hash algorithm. */
-size_t map_hash(void *key, size_t key_size)
-{
-    size_t hash = 0;
-    const uint8_t *bytes = (const uint8_t *)key;
-
-    for (size_t i = 0; i < key_size; ++i)
-    {
-        hash += bytes[i];
-        hash += hash << 10;
-        hash ^= hash >> 6;
-    };
-
-    hash += hash << 3;
-    hash ^= hash >> 11;
-    hash += hash << 15;
-
-    return hash;
-};
-
 void map_init(struct map *map, size_t capacity)
 {
     map->entries = calloc(capacity, sizeof(struct map_entry));
@@ -43,14 +23,14 @@ int map_resize(struct map *map)
     return 0;
 };
 
-void *map_get(struct map *map, void *key, size_t key_size)
+void *map_get(struct map *map, int key)
 {
-    size_t index = map_hash(key, key_size) % map->capacity;
+    int index = key % map->capacity;
     size_t start = index;
 
     while (map->entries[index].key != NULL)
     {
-        if (memcmp(key, map->entries[index].key, key_size) == 0) break;
+        if (key == map->entries[index].key) break;
 
         index = (index + 1) % map->capacity;
         if (index == start) return NULL;
@@ -59,16 +39,16 @@ void *map_get(struct map *map, void *key, size_t key_size)
     return map->entries[index].value;
 };
 
-void map_set(struct map *map, void *key, void *value, size_t key_size)
+void map_set(struct map *map, int key, void *value)
 {
     map_resize(map);
 
-    size_t index = map_hash(key, key_size) % map->capacity;
+    int index = key % map->capacity;
     size_t start = index;
 
     while (map->entries[index].key != NULL)
     {
-        if (memcmp(key, map->entries[index].key, key_size) == 0) break;
+        if (key == map->entries[index].key) break;
 
         index = (index + 1) % map->capacity;
         if (index == start) return;
@@ -80,9 +60,9 @@ void map_set(struct map *map, void *key, void *value, size_t key_size)
     map->entries[index].value = value;
 };
 
-void map_delete(struct map *map, void *key, size_t key_size)
+void map_delete(struct map *map, int key)
 {
-    size_t index = map_hash(key, key_size) % map->capacity;
+    int index = key % map->capacity;
     size_t start = index;
 
     while (map->entries[index].key != NULL)
@@ -90,7 +70,7 @@ void map_delete(struct map *map, void *key, size_t key_size)
         index = (index + 1) % map->capacity;
         if (index == start) return;
 
-        if (memcmp(key, map->entries[index].key, key_size) == 0) break;
+        if (key == map->entries[index].key) break;
     };
 
     memset(&map->entries[index], 0, sizeof(struct map_entry));
@@ -102,7 +82,6 @@ void map_free(struct map *map, bool free_keys, bool free_values)
 {
     for (size_t i = 0; i < map->capacity; ++i)
     {
-        if (map->entries[i].key != NULL && free_keys) free(map->entries[i].key);
         if (map->entries[i].value != NULL && free_values) free(map->entries[i].value);
     };
 

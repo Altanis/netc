@@ -58,10 +58,9 @@ static void _tcp_on_connect(struct tcp_server *server)
 
     tcp_server_accept(server, client->tcp_client);
 
-    socket_t *sockfd = malloc(sizeof(socket_t));
-    *sockfd = client->tcp_client->sockfd;
+    socket_t sockfd = client->tcp_client->sockfd;
 
-    map_set(&http_server->clients, sockfd, client, sizeof(client->tcp_client->sockfd));
+    map_set(&http_server->clients, sockfd, client);
 
     if (http_server->on_connect != NULL)
         http_server->on_connect(http_server, client);
@@ -70,7 +69,7 @@ static void _tcp_on_connect(struct tcp_server *server)
 static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 {
     struct web_server *web_server = server->data;
-    struct web_client *client = map_get(&web_server->clients, &sockfd, sizeof(sockfd));
+    struct web_client *client = map_get(&web_server->clients, sockfd);
     if (client == NULL) return;
 
     switch (client->connection_type)
@@ -254,7 +253,7 @@ static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool 
     if (sockfd == server->sockfd && web_server->on_disconnect != NULL)
         return web_server->on_disconnect(web_server, sockfd, is_error);
 
-    struct web_client *web_client = map_get(&web_server->clients, &sockfd, sizeof(sockfd));
+    struct web_client *web_client = map_get(&web_server->clients, sockfd);
     if (web_client == NULL) return;
 
     if (web_client->connection_type == CONNECTION_HTTP)

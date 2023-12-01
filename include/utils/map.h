@@ -4,7 +4,7 @@
 #include <stddef.h>
 #include <stdbool.h>
 
-/** A struct representing a map. */
+/** A struct representing a map with int-only keys. */
 struct map
 {
     /** The number of entries in the map. */
@@ -19,7 +19,7 @@ struct map
 struct map_entry
 {
     /** The key of the entry. */
-    void *key;
+    int key;
     /** The value of the entry. */
     void *value;
 };
@@ -30,11 +30,11 @@ void map_init(struct map *map, size_t capacity);
 int map_resize(struct map *map);
 
 /** Gets an element. */
-void *map_get(struct map *map, void *key, size_t key_size);
+void *map_get(struct map *map, int key);
 /** Sets an element. */
-void map_set(struct map *map, void *key, void *value, size_t key_size);
+void map_set(struct map *map, int key, void *value);
 /** Removes an element. */
-void map_delete(struct map *map, void *key, size_t key_size);
+void map_delete(struct map *map, int key);
 
 /** Frees the map. */
 void map_free(struct map *map, bool free_keys, bool free_values);

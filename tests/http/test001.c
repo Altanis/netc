@@ -255,7 +255,7 @@ static void http_test001_server_on_disconnect(struct web_server *server, socket_
     }
     else
     {
-        struct web_client *client = map_get(&server->clients, &sockfd, sizeof(sockfd));
+        struct web_client *client = map_get(&server->clients, sockfd);
         if (client->tcp_client->sockfd != sockfd)
         {
             printf("error with map.\n");
