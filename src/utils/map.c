@@ -28,7 +28,7 @@ void *map_get(struct map *map, int key)
     int index = key % map->capacity;
     size_t start = index;
 
-    while (map->entries[index].key != NULL)
+    while (1)
     {
         if (key == map->entries[index].key) break;
 
@@ -46,7 +46,7 @@ void map_set(struct map *map, int key, void *value)
     int index = key % map->capacity;
     size_t start = index;
 
-    while (map->entries[index].key != NULL)
+    while (map->entries[index].initialised == true)
     {
         if (key == map->entries[index].key) break;
 
@@ -54,7 +54,7 @@ void map_set(struct map *map, int key, void *value)
         if (index == start) return;
     };
 
-    if (map->entries[index].key == NULL) ++map->size;
+    if (map->entries[index].initialised == false) ++map->size;
 
     map->entries[index].key = key;
     map->entries[index].value = value;
@@ -65,16 +65,15 @@ void map_delete(struct map *map, int key)
     int index = key % map->capacity;
     size_t start = index;
 
-    while (map->entries[index].key != NULL)
+    while (1)
     {
+        if (key == map->entries[index].key) break;
+
         index = (index + 1) % map->capacity;
         if (index == start) return;
-
-        if (key == map->entries[index].key) break;
     };
 
     memset(&map->entries[index], 0, sizeof(struct map_entry));
-
     --map->size;
 };
 

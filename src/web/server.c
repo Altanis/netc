@@ -354,9 +354,8 @@ int web_server_close(struct web_server *server)
 {
     for (size_t i = 0; i < server->clients.capacity; ++i)
     {
-        if (server->clients.entries[i].key == NULL) continue;
-
         struct map_entry entry = server->clients.entries[i];
+        if (entry.value == NULL) continue;
         struct web_client *client = entry.value;
 
         if (client == NULL) continue;        

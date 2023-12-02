@@ -22,6 +22,8 @@ struct map_entry
     int key;
     /** The value of the entry. */
     void *value;
+    /** Whether or not the entry has been initialised. */
+    bool initialised;
 };
 
 /** Initializes the map. */
