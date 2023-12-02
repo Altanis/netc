@@ -39,7 +39,9 @@ void vector_set_index(struct vector *vec, void *element, size_t index)
 {
     void *dest = vec->elements + vec->element_size * index;
     memcpy(dest, element, vec->element_size);
-}
+
+    if (index >= vec->size) ++vec->size;
+};
 
 void *vector_get(const struct vector *vec, size_t index)
 {
