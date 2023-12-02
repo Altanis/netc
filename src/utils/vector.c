@@ -10,7 +10,7 @@ void vector_init(struct vector *vec, size_t capacity, size_t element_size)
     vec->size = 0;
     vec->capacity = capacity;
     vec->element_size = element_size;
-    vec->elements = malloc(element_size * capacity);
+    vec->elements = calloc(element_size * capacity);
 };
 
 int vector_resize(struct vector *vec, size_t new_capacity)
