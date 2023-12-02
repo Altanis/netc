@@ -115,9 +115,6 @@ Sending messages is a straightforward process. The following code snippet shows 
 #include <stdio.h>
 #include "netc/include/ws/server.h"
 
-uint masking_key[4];
-ws_build_masking_key(masking_key); /** Generate a masking key. */
-
 /** Assume a server named `ws_server` was initialised. */
 struct ws_message message;
 ws_build_message(
@@ -130,7 +127,7 @@ ws_build_message(
 int r = ws_send_message(
     client, /** client to send to */
     &message /** message to send */
-    masking_key, /** masking key (optional, set to NULL if none) */
+    NULL, /** masking keys cannot be sent from the server */
     1, /** the number of frames to split the message into (set to 1 ideally) */
 );
 
