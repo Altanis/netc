@@ -297,6 +297,7 @@ int web_server_init(struct web_server *http_server, struct sockaddr *address, in
     http_server->http_server_config.max_method_len = 0;
     http_server->http_server_config.max_path_len = 0;
     http_server->http_server_config.max_version_len = 0;
+    http_server->ws_server_config.max_payload_len = 0;
 
     int bind_result = tcp_server_bind(tcp_server);
     if (bind_result != 0) return bind_result;
