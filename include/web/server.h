@@ -51,7 +51,7 @@ struct web_server
     /** [WS ONLY] A structure representing the configuration for a WebSocket server. */
     struct
     {
-        /** The maximum number of bytes of one payload/message. */
+        /** The maximum number of bytes of one payload/message. Defaults to `65536`. */
         size_t max_payload_len;
         /** 
          * Whether or not the client should record latency (sends a ping on connection and replies to pongs with pings). 
