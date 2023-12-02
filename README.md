@@ -30,8 +30,7 @@ This library requires OpenSSL for SHA1 functionality.
 - [ ] WebSocket Abstraction
     - [x] Multi-Framed Messages
     - [x] Masked Messages
-    - [ ] Ping/Pong
-    - [ ] Protocols
+    - [x] Ping/Pong
     - [ ] Extensions (RSV Bits)
 - [ ] Threadpool
 - [ ] SSL/TLS Support (for HTTP/1.1 and WS Client)
