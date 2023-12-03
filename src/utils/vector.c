@@ -64,7 +64,7 @@ void vector_delete(struct vector *vec, size_t index)
     --vec->size;
 };
 
-void vector_clear(const struct vector *vec)
+void vector_clear(struct vector *vec)
 {
     for (size_t i = 0; i < vec->size; ++i)
         vector_delete(vec, i);
@@ -79,8 +79,9 @@ void vector_reset(const struct vector *vec)
     };
 };
 
-void vector_free(const struct vector *vec)
+void vector_free(struct vector *vec)
 {
     vector_clear(vec);
     free(vec->elements);
+    vec->elements = NULL;
 };
