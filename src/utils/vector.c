@@ -67,6 +67,12 @@ void vector_delete(struct vector *vec, size_t index)
 void vector_clear(const struct vector *vec)
 {
     for (size_t i = 0; i < vec->size; ++i)
+        vector_delete(vec, i);
+};
+
+void vector_reset(const struct vector *vec)
+{
+    for (size_t i = 0; i < vec->size; ++i)
     {
         void *dest = vec->elements + vec->element_size * i;
         memset(dest, 0, vec->element_size);
