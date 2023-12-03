@@ -132,7 +132,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 free(client->path);
                 client->path = NULL;
                 
-                tcp_server_close_client(server, sockfd, false);
+                tcp_server_close_client(server, client->tcp_client->sockfd, false);
                 route->on_ws_close(web_server, client, close_code, message);
             } else if (route->on_ws_message != NULL) route->on_ws_message(web_server, client, &ws_parsing_state->message);
 
@@ -154,7 +154,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                     {
                         /** TODO(Altanis): Fix one HTTP request partitioned into two causing two event calls. */
                         web_server->on_http_malformed_request(web_server, client, result);
-                        tcp_server_close_client(server, sockfd, true);
+                        tcp_server_close_client(server, client->tcp_client->sockfd, true);
                     }
                 }
 
@@ -246,12 +246,13 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
 
 static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool is_error)
 {
-    // TODO(Altanis): Free client?
-    
     struct web_server *web_server = server->data;
+    if (web_server->is_closing == 1) return;
 
     if (sockfd == server->sockfd && web_server->on_disconnect != NULL)
         return web_server->on_disconnect(web_server, sockfd, is_error);
+
+    if (web_server->clients.entries == NULL) return;
 
     struct web_client *web_client = map_get(&web_server->clients, sockfd);
     if (web_client == NULL) return;
@@ -261,15 +262,24 @@ static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool 
         if (web_server->on_disconnect != NULL)
             web_server->on_disconnect(web_server, sockfd, is_error);
     }
-    else if (web_client->connection_type == CONNECTION_WS)
+    else if (web_client->connection_type == CONNECTION_WS && web_client->path != NULL)
     {
         struct web_server_route *route = web_server_find_route(web_server, web_client->path);
         if (route != NULL && route->on_ws_close != NULL)
             route->on_ws_close(web_server, web_client, 0, NULL);
 
+        if (web_server->is_closing == 1) return;
+    
         free(web_client->path);
         web_client->path = NULL;
     };
+
+    if (web_server->is_closing == 1) return;
+    
+    free(web_client->tcp_client->sockaddr);
+    free(web_client->tcp_client);
+    free(web_client);
+    map_delete(&web_server->clients, sockfd);
 };
 
 int web_server_init(struct web_server *http_server, struct sockaddr *address, int backlog)
@@ -298,6 +308,7 @@ int web_server_init(struct web_server *http_server, struct sockaddr *address, in
     http_server->http_server_config.max_path_len = 0;
     http_server->http_server_config.max_version_len = 0;
     http_server->ws_server_config.max_payload_len = 0;
+    http_server->is_closing = 0;
 
     int bind_result = tcp_server_bind(tcp_server);
     if (bind_result != 0) return bind_result;
@@ -353,6 +364,9 @@ void web_server_remove_route(struct web_server *server, const char *path)
 
 int web_server_close(struct web_server *server)
 {
+    server->is_closing = 1;
+    server->on_disconnect = NULL;
+
     for (size_t i = 0; i < server->clients.capacity; ++i)
     {
         struct map_entry entry = server->clients.entries[i];
@@ -382,11 +396,12 @@ int web_server_close(struct web_server *server)
 #endif
         };
 
-        // TODO(Altanis): Free clients?
-        // free(client->tcp_client->sockaddr);
-        // free(client->tcp_client);
+        free(client->path);
+        free(client->tcp_client->sockaddr);
+        free(client->tcp_client);
+        free(client);
     };
 
-    // map_free(&server->clients);
+    map_free(&server->clients, false);
     return tcp_server_close_self(server->tcp_server);
 };

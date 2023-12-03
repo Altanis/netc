@@ -50,7 +50,7 @@ static struct web_server server = {0};
 /** At the end of this test, all of these values must equal 1 unless otherwise specified. */
 static int http_test001_server_connect = 0;
 static int http_test001_server_data = 0; // 0 = passed /, 1 = passed /wow, 2 = passed /wow?x=1, 3 = passed /?x=1, 4 = passed /test (priority over /*)
-static int http_test001_server_disconnect = 0;
+static int http_test001_server_disconnect = 1; // server->on_disconnect is never called when the server is closed
 static int http_test001_client_connect = 0;
 static int http_test001_client_data = 0; // 0 = passed /, 1 = passed /wow, 2 = passed /wow?x=1, 3 = passed /?x=1, 4 = passed /test (priority over /*)
 static int http_test001_client_disconnect = 0;
@@ -114,7 +114,6 @@ static void http_test001_server_on_connect(struct web_server *server, struct web
     http_test001_server_connect = 1;
 
     char *ip = calloc(INET6_ADDRSTRLEN, sizeof(char));
-    printf("client->tcp_client->sockaddr->sa_family: %p\n", client->tcp_client->sockaddr);
     if (client->tcp_client->sockaddr->sa_family == AF_INET)
     {
         struct sockaddr_in *addr = (struct sockaddr_in *)client->tcp_client->sockaddr;
@@ -248,22 +247,14 @@ static void http_test001_server_on_http_malformed_request(struct web_server *ser
 
 static void http_test001_server_on_disconnect(struct web_server *server, socket_t sockfd, bool is_error)
 {
-    if (sockfd == server->tcp_server->sockfd)
+    struct web_client *client = map_get(&server->clients, sockfd);
+    if (client->tcp_client->sockfd != sockfd)
     {
-        http_test001_server_disconnect = 1;
-        printf("[HTTP TEST CASE 001] server disconnected from from %d\n", sockfd);
-    }
-    else
-    {
-        struct web_client *client = map_get(&server->clients, sockfd);
-        if (client->tcp_client->sockfd != sockfd)
-        {
-            printf("error with map.\n");
-            exit(1);
-        };
-
-        printf("[HTTP TEST CASE 001] client disconnected from server %d\n", client->tcp_client->sockfd);
+        printf("error with map.\n");
+        exit(1);
     };
+
+    printf("[HTTP TEST CASE 001] client disconnected from server %d\n", client->tcp_client->sockfd);
 };
 
 static void http_test001_client_on_connect(struct web_client *client)

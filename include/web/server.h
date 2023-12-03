@@ -59,6 +59,9 @@ struct web_server
         */
         bool record_latency;
     } ws_server_config;
+
+    /** Whether or not the server is closing. */
+    bool is_closing;
     
     /** The callback for when a client connects, for both HTTP and WS. */
     void (*on_connect)(struct web_server *server, struct web_client *client);

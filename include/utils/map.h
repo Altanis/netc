@@ -39,6 +39,6 @@ void map_set(struct map *map, int key, void *value);
 void map_delete(struct map *map, int key);
 
 /** Frees the map. */
-void map_free(struct map *map, bool free_keys, bool free_values);
+void map_free(struct map *map, bool free_values);
 
 #endif // MAP_H
