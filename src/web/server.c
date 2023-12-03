@@ -278,7 +278,6 @@ static void _tcp_on_disconnect(struct tcp_server *server, socket_t sockfd, bool 
     
     free(web_client->tcp_client->sockaddr);
     free(web_client->tcp_client);
-    free(web_client);
     map_delete(&web_server->clients, sockfd);
 };
 
