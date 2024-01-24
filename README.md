@@ -1,6 +1,6 @@
 # netc
 
-A cross-platform networking library for TCP, UDP, HTTP, and WS sockets. Written in C.
+A POSIX compliant networking library for TCP, UDP, HTTP, and WS sockets. Written in C.
 
 ## Prerequisites:
 This library requires OpenSSL for SHA1 functionality.
@@ -35,7 +35,7 @@ This library requires OpenSSL for SHA1 functionality.
 - [ ] Threadpool
 - [ ] SSL/TLS Support (for HTTP/1.1 and WS Client)
 <!-- In my opinion, there is no point of providing SSL suport for servers due to reverse proxies providing them. -->
-- [ ] Linux/Windows Support
+- [ ] Windows Support
 - [ ] Buffering
 - [ ] HTTP/2 Abstractions
 - [ ] HTTP/3 and QUIC Abstractions
