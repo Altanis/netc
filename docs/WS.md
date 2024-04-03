@@ -15,7 +15,7 @@
 ## WebSocket Server <a name="ws-server"/>
 
 ### Creating a WebSocket Server <a name="creating-a-ws-server"/>
-Creating a WebSocket server is a straightforward process. The following code snippet shows how to create a WebSocket server that listens on port 8080 and handles incoming connections.
+Creating a WebSocket server is a straightforward process. The following code snippet shows how to create a WebSocket server that listens on port 8923 and handles incoming connections.
 
 You need to create an [HTTP web server at first](https://github.com/Altanis/netc/blob/main/docs/HTTP.md#creating-an-http-server), then create a route which has WebSocket handlers as such:
 
@@ -187,7 +187,7 @@ client.on_ws_heartbeat = ws_on_ws_heartbeat;
 struct sockaddr_in addr =
 {
     .sin_family = AF_INET,
-    .sin_port = htons(8080),
+    .sin_port = htons(8923),
 };
 
 if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) <= 0)
@@ -215,7 +215,7 @@ void ws_on_http_connect(struct web_client *client, struct http_response *respons
 {
     printf("HTTP connection established.\n");
 
-    int r = ws_client_connect(client, "localhost:8080", "/ws");
+    int r = ws_client_connect(client, "localhost:8923", "/ws");
     if (r != 1) netc_perror("ws_client_connect %d", r);
     else printf("WebSocket connection established.\n");
 };

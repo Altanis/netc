@@ -20,7 +20,7 @@
 The HTTP component of this library is purely asynchronous, and the underlying TCP mechanism will only be nonblocking. The HTTP server only supports HTTP/1.1 for now.
 
 ### Creating an HTTP Server <a name="creating-an-http-server"/>
-Creating a HTTP server is a straightforward process. The following code snippet shows how to create a HTTP server that listens on port 8080 and handles incoming connections.
+Creating a HTTP server is a straightforward process. The following code snippet shows how to create a HTTP server that listens on port 8923 and handles incoming connections.
 
 ```c
 #include <stdio.h>
@@ -38,7 +38,7 @@ web_server.http_server_config.max_body_len = 2048;
 struct sockaddr_in addr =
 {
     .sin_family = AF_INET,
-    .sin_port = htons(8080),
+    .sin_port = htons(8923),
     .sin_addr.s_addr = INADDR_ANY
 };
 
@@ -328,7 +328,7 @@ void callback_echo(struct web_server *server, struct web_client *client, struct 
 The HTTP component of this library is purely asynchronous, and the underlying TCP mechanism will only be nonblocking. The HTTP client only supports HTTP/1.1 for now.
 
 ### Creating an HTTP Client <a name="creating-an-http-client"/>
-Creating a HTTP client is a straightforward process. The following code snippet shows how to create a HTTP client that connects to 127.0.0.1:8080.
+Creating a HTTP client is a straightforward process. The following code snippet shows how to create a HTTP client that connects to 127.0.0.1:8923.
 
 ```c
 #include <stdio.h>
@@ -344,7 +344,7 @@ client.on_http_disconnect = on_http_disconnect;
 struct sockaddr_in addr =
 {
     .sin_family = AF_INET,
-    .sin_port = htons(8080),
+    .sin_port = htons(8923),
 };
 
 if (inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr) != 0)

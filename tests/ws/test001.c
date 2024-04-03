@@ -53,7 +53,7 @@
 static struct web_server ws_server = {0};
 static int ws_test001();
 
-static const int FRAME_SPLIT = 3;
+static const int FRAME_SPLIT = 1;
 
 /** At the end of this test, all of these values must equal 1 unless otherwise specified. */
 static int on_connect_server = 0;
@@ -84,10 +84,30 @@ static void ws_server_on_connect(struct web_server *server, struct web_client *c
 
 static void ws_server_on_message(struct web_server *server, struct web_client *client, struct ws_message *h_message)
 {
-    printf("[WS TEST CASE 001] server received unspecified message %s\n", h_message->buffer);
+    // printf("[WS TEST CASE 001] server received unspecified message %s\n", h_message->buffer);
     struct ws_message message = *h_message;
 
-    if (strcmp((const char *)message.buffer, "hello server basic") == 0)
+    if (memcmp(message.buffer, (uint8_t[]){0, 233, 5, 11, 65, 115, 112, 101, 99, 116, 108, 44, 108, 44, 107}, sizeof(uint8_t) * 15) == 0)
+    {
+        send_masked_client++;
+        printf("[WS TEST CASE 001] server received binary masked message\n");
+
+        uint8_t masking_key[4];
+        ws_build_masking_key(masking_key);
+
+        char *payload_data = "hello client masked";
+        size_t payload_length = strlen(payload_data);
+
+        struct ws_message message;
+        ws_build_message(&message, WS_OPCODE_TEXT, payload_length, (uint8_t *)payload_data);
+
+        int r = 0;
+        if ((r = ws_send_message(client, &message, masking_key, 1)) < 1)
+        {
+            netc_perror("Error occured when sending masked message server");
+        };
+    }
+    else if (strcmp((const char *)message.buffer, "hello server basic") == 0)
     {
         send_basic_client++;
         printf("[WS TEST CASE 001] server received basic message\n");
@@ -119,26 +139,6 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
         if ((r = ws_send_message(client, &message, NULL, FRAME_SPLIT)) < 1)
         {
             netc_perror("Error occured when sending multiple frames message server");
-        };
-    }
-    else if (strcmp((const char *)message.buffer, "hello server masked") == 0)
-    {
-        send_masked_client++;
-        printf("[WS TEST CASE 001] server received masked message\n");
-
-        uint8_t masking_key[4];
-        ws_build_masking_key(masking_key);
-
-        char *payload_data = "hello client masked";
-        size_t payload_length = strlen(payload_data);
-
-        struct ws_message message;
-        ws_build_message(&message, WS_OPCODE_TEXT, payload_length, (uint8_t *)payload_data);
-
-        int r = 0;
-        if ((r = ws_send_message(client, &message, masking_key, 1)) < 1)
-        {
-            netc_perror("Error occured when sending masked message server");
         };
     }
     else if (strcmp((const char *)message.buffer, "hello server multiple frames masked") == 0)
@@ -206,8 +206,6 @@ static void ws_client_on_connect(struct web_client *client)
 
 static void ws_client_on_message(struct web_client *client, struct ws_message *h_message)
 {
-    printf("[WS TEST CASE 001] client received unspecified message\n");
-
     struct ws_message message = *h_message;
     
     if (strcmp((const char *)message.buffer, "hello client basic") == 0)
@@ -232,14 +230,14 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
         send_multiple_frames_server++;
         printf("[WS TEST CASE 001] client received multiple frames message\n");
 
-        const char *message = "hello server masked";
-        size_t payload_length = strlen(message);
+        char message[15] = {0, 233, 5, 11, 65, 115, 112, 101, 99, 116, 108, 44, 108, 44, 107};
+        size_t payload_length = 15;
 
         uint8_t masking_key[4];
         ws_build_masking_key(masking_key);
 
         struct ws_message s_message;
-        ws_build_message(&s_message, WS_OPCODE_TEXT, payload_length, (uint8_t *)message);
+        ws_build_message(&s_message, WS_OPCODE_BINARY, payload_length, (uint8_t *)message);
 
         int r = 0;
         if ((r = ws_send_message(client, &s_message, masking_key, 1)) < 1)
@@ -297,7 +295,7 @@ static  void ws_client_on_heartbeat(struct web_client *client, struct ws_message
         latency = (end_time.tv_sec - start_time.tv_sec) * 1000.0;
         latency += (end_time.tv_nsec - start_time.tv_nsec) / 1000000.0;
 
-        printf("[WS TEST CASE 001] client received pong with latency %fms\n", latency);
+        // printf("[WS TEST CASE 001] client received pong with latency %fms\n", latency);
 
         start_time = end_time;
     };

@@ -72,7 +72,8 @@ int ws_send_message(struct web_client *client, struct ws_message *message, uint8
         {
             payload_length_encoded[0] = (frame_payload_length >> 8) & 0xFF;
             payload_length_encoded[1] = frame_payload_length & 0xFF;
-        } else if (payload_encoded == 127)
+        } 
+        else if (payload_encoded == 127)
         {
             for (int i = 0; i < 8; ++i)
             {
@@ -80,7 +81,7 @@ int ws_send_message(struct web_client *client, struct ws_message *message, uint8
             };
         };
 
-        const char *payload_masking_key = NULL;
+        const uint8_t *payload_masking_key = NULL;
         const char *payload_data_encoded = NULL;
 
         if (message->payload_length != 0)
@@ -90,10 +91,21 @@ int ws_send_message(struct web_client *client, struct ws_message *message, uint8
             
             if (payload_masking_key != NULL)
             {
-                payload_data_encoded = strdup((char *)message->buffer);
-                for (size_t j = 0; j < frame_payload_length; ++j)
+                if (message->opcode == WS_OPCODE_TEXT)
                 {
-                    ((char *)payload_data_encoded)[num_bytes_passed + j] ^= payload_masking_key[j % 4];
+                    payload_data_encoded = strdup((char *)message->buffer);
+                }
+                else
+                {
+                    payload_data_encoded = malloc(payload_length);
+                    memcpy((void *)payload_data_encoded, message->buffer, frame_payload_length);
+                }
+
+                for (size_t i = 0; i < frame_payload_length; ++i)
+                {
+                    printf("(old/new) (%d", ((uint8_t *)payload_data_encoded)[i]);
+                    ((uint8_t *)payload_data_encoded)[i] ^= payload_masking_key[i % 4];
+                    printf("/%d)\n", ((uint8_t *)payload_data_encoded)[i]);
                 };
             };
         };
@@ -278,7 +290,9 @@ parse_start:
             };
 
             if (length + bytes_received == 4)
+            {
                 current_state->parsing_state = WS_FRAME_PARSING_STATE_PAYLOAD_DATA;
+            }
 
             goto parse_start;
         };
@@ -310,7 +324,10 @@ parse_start:
                 };
             };
 
-            if (bytes_received == current_state->real_payload_length - received_length) break;
+            if (bytes_received == current_state->real_payload_length - received_length)
+            {
+                break;
+            }
             else return 1;
         };
     };

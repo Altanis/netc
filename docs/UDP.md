@@ -13,7 +13,7 @@
 ## UDP Server <a name="udp-server"/>
 
 ### Creating a UDP Server <a name="creating-a-udp-server"/>
-Creating a UDP server is a straightforward process. The following code snippet shows how to create a UDP server that listens on port 8080 and handles incoming connections.
+Creating a UDP server is a straightforward process. The following code snippet shows how to create a UDP server that listens on port 8923 and handles incoming connections.
 
 ```c
 #include <stdio.h>
@@ -28,7 +28,7 @@ server.data = NULL; /** This data will be passed to the event callbacks if ever 
 struct sockaddr_in sockaddr = 
 {
     .sin_family = AF_INET,
-    .sin_port = htons(8080),
+    .sin_port = htons(8923),
     .sin_addr.s_addr = INADDR_ANY
 };
 
@@ -131,7 +131,7 @@ r = udp_server_send(server, buffer, 1024 /** sizeof buffer */, 0 /** flags */, &
 ## UDP Client <a name="udp-client"/>
 
 ### Creating a UDP Client <a name="creating-a-udp-client"/>
-Creating a UDP client is a straightforward process. The following code snippet shows how to create a UDP client that connects to localhost:8080.
+Creating a UDP client is a straightforward process. The following code snippet shows how to create a UDP client that connects to localhost:8923.
 
 ```c
 #include <stdio.h>
@@ -145,7 +145,7 @@ client.on_data = on_data;
 struct sockaddr_in sockaddr = 
 {
     .sin_family = AF_INET,
-    .sin_port = htons(8080),
+    .sin_port = htons(8923),
 };
 
 if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to convert address.\n"); /** Handle error. */

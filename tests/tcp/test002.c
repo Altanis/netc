@@ -38,7 +38,7 @@
 #undef ANSI_RESET
 
 #define IP "127.0.0.1"
-#define PORT 8080
+#define PORT 8923
 #define BACKLOG 3
 #define USE_IPV6 0
 #define SERVER_NON_BLOCKING 0

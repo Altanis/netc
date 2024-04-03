@@ -13,7 +13,7 @@
 ## TCP Server <a name="tcp-server"/>
 
 ### Creating a TCP Server <a name="creating-a-tcp-server"/>
-Creating a TCP server is a straightforward process. The following code snippet shows how to create a TCP server that listens on port 8080 and handles incoming connections.
+Creating a TCP server is a straightforward process. The following code snippet shows how to create a TCP server that listens on port 8923 and handles incoming connections.
 
 ```c
 #include <stdio.h>
@@ -30,7 +30,7 @@ server.data = NULL; /** This data will be passed to the event callbacks if ever 
 struct sockaddr_in sockaddr = 
 {
     .sin_family = AF_INET,
-    .sin_port = htons(8080),
+    .sin_port = htons(8923),
     .sin_addr.s_addr = INADDR_ANY
 };
 
@@ -169,7 +169,7 @@ A common approach to handling blocking mechanisms is to use threads for each cli
 ## TCP Client <a name="tcp-client"/>
 
 ### Creating a TCP Client <a name="creating-a-tcp-client"/>
-Creating a TCP client is a straightforward process. The following code snippet shows how to create a TCP client that connects to localhost:8080.
+Creating a TCP client is a straightforward process. The following code snippet shows how to create a TCP client that connects to localhost:8923.
 
 ```c
 #include <stdio.h>
@@ -186,7 +186,7 @@ client.data = NULL; /** This data will be passed to the event callbacks if ever 
 struct sockaddr_in sockaddr = 
 {
     .sin_family = AF_INET,
-    .sin_port = htons(8080),
+    .sin_port = htons(8923),
 };
 
 if (inet_pton(AF_INET, "127.0.0.1", &sockaddr.sin_addr) != 1) printf("failed to convert address.\n"); /** Handle error. */
