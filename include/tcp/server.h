@@ -88,9 +88,9 @@ int tcp_server_listen(struct tcp_server *server, int backlog);
 int tcp_server_accept(struct tcp_server *server, struct tcp_client *client);
 
 /** Sends a message to the client. Returns the result of the `send` syscall. */
-int tcp_server_send(socket_t sockfd, char *message, size_t msglen, int flags);
+int tcp_server_send(socket_t sockfd, const char *message, size_t msglen, int flags);
 /** Receives a message from the client. Returns the result of the `recv` syscall. */
-int tcp_server_receive(socket_t sockfd, char *message, size_t msglen, int flags);
+int tcp_server_receive(socket_t sockfd, const char *message, size_t msglen, int flags);
 
 /** Closes the TCP server. */
 int tcp_server_close_self(struct tcp_server *server);

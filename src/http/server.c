@@ -18,7 +18,7 @@
 
 static int x = 0;
 
-int http_server_send_chunked_data(struct web_server *server, struct web_client *client, char *data, size_t data_length)
+int http_server_send_chunked_data(struct web_server *server, struct web_client *client, const char *data, size_t data_length)
 {
     char length_str[16] = {0};
     sprintf(length_str, "%zx\r\n", data_length);
@@ -38,7 +38,7 @@ int http_server_send_chunked_data(struct web_server *server, struct web_client *
     return 1;
 };
 
-int http_server_send_response(struct web_server *server, struct web_client *client, struct http_response *response, char *data, size_t data_length)
+int http_server_send_response(struct web_server *server, struct web_client *client, struct http_response *response, const char *data, size_t data_length)
 {
     socket_t sockfd = client->tcp_client->sockfd;
 

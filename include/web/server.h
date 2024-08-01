@@ -88,10 +88,10 @@ struct web_server_route
     /** The callback for when a request is malformed for WS. */
     void (*on_ws_malformed_frame)(struct web_server *server, struct web_client *client, enum ws_frame_parsing_errors error);
     /** The callback for when a WebSocket connection closes. */
-    void (*on_ws_close)(struct web_server *server, struct web_client *client, uint16_t code, char *reason);
+    void (*on_ws_close)(struct web_server *server, struct web_client *client, uint16_t code, const char *reason);
 
     /** The path pattern. */
-    char *path;
+    const char *path;
 };
 
 /** Initializes the web server. */
@@ -102,9 +102,9 @@ int web_server_start(struct web_server *server);
 /** Creates a route for a path. Note that precedence works by whichever route is created first. */
 void web_server_create_route(struct web_server *server, struct web_server_route *route);
 /** Finds a route given a path. */
-struct web_server_route *web_server_find_route(struct web_server *server, char *path);
+struct web_server_route *web_server_find_route(struct web_server *server, const char *path);
 /** Removes a route for a path. */
-void web_server_remove_route(struct web_server *server, char *path);
+void web_server_remove_route(struct web_server *server, const char *path);
 
 /** Closes the web server. */
 int web_server_close(struct web_server *server);

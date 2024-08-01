@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-void sso_string_init(string_t *string, char *data)
+void sso_string_init(string_t *string, const char *data)
 {
     string->length = strlen(data);
     string->capacity = string->length > SSO_STRING_MAX_LENGTH ? string->length : SSO_STRING_MAX_LENGTH;
@@ -19,13 +19,13 @@ void sso_string_init(string_t *string, char *data)
     sso_string_ensure_null_terminated(string);
 };
 
-void sso_string_set(string_t *string, char *data)
+void sso_string_set(string_t *string, const char *data)
 {
     sso_string_free(string);
     sso_string_init(string, data);
 };
 
-char *sso_string_get(string_t *string)
+const char *sso_string_get(string_t *string)
 {
     return string->length > SSO_STRING_MAX_LENGTH ? string->long_string : string->short_string;
 };
@@ -57,7 +57,7 @@ void sso_string_concat(string_t *dest, string_t *src)
     sso_string_ensure_null_terminated(dest);
 };
 
-void sso_string_concat_buffer(string_t *dest, char *src)
+void sso_string_concat_buffer(string_t *dest, const  char *src)
 {
     size_t src_length = strlen(src);
     size_t total_length = dest->length + src_length;
@@ -84,7 +84,8 @@ void sso_string_concat_buffer(string_t *dest, char *src)
     dest->capacity = total_length;
     sso_string_ensure_null_terminated(dest);
 };
-void sso_string_concat_char(string_t *dest, char src)
+
+void sso_string_concat_char(string_t *dest, const char src)
 {
     size_t total_length = dest->length + 1;
 

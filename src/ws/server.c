@@ -62,7 +62,6 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     char websocket_accept_id[SHA_DIGEST_LENGTH];
     SHA1((uint8_t *)websocket_key_id, sizeof(websocket_key_id), (uint8_t *)websocket_accept_id);
 
-
     char websocket_accept_id_base64[((4 * sizeof(websocket_accept_id) / 3) + 3) & ~3];
     http_base64_encode(websocket_accept_id, sizeof(websocket_accept_id), websocket_accept_id_base64);
 
@@ -106,7 +105,7 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     } else return -1;
 };
 
-int ws_server_close_client(struct web_server *server, struct web_client *client, uint16_t code, char *reason)
+int ws_server_close_client(struct web_server *server, struct web_client *client, uint16_t code, const char *reason)
 {
     size_t reason_len = reason != NULL ? strlen(reason) : 0;
     char payload_data[2 + reason_len];

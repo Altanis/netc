@@ -8,7 +8,7 @@
 #include "../../include/ws/client.h"
 #include "../../include/tcp/client.h"
 
-int ws_client_connect(struct web_client *client, char *hostname, char *path)
+int ws_client_connect(struct web_client *client, const char *hostname, const char *path)
 {
     srand(time(NULL));
     

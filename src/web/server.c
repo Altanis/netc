@@ -15,7 +15,7 @@
 #include <sys/event.h>
 #endif
 
-int _path_matches(char *path, char *pattern) 
+int _path_matches(const char *path, const char *pattern) 
 {
     if (strcmp(path, pattern) == 0) return 1;
 
@@ -334,7 +334,7 @@ void web_server_create_route(struct web_server *server, struct web_server_route 
     vector_push(&server->routes, route);
 };
 
-struct web_server_route *web_server_find_route(struct web_server *server, char *path)
+struct web_server_route *web_server_find_route(struct web_server *server, const char *path)
 {
     if (path == NULL) return NULL;
 
@@ -348,7 +348,7 @@ struct web_server_route *web_server_find_route(struct web_server *server, char *
     return NULL;
 };
 
-void web_server_remove_route(struct web_server *server, char *path)
+void web_server_remove_route(struct web_server *server, const char *path)
 {
     for (size_t i = 0; i < server->routes.size; ++i)
     {

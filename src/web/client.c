@@ -176,7 +176,7 @@ int web_client_start(struct web_client *client)
     return tcp_client_main_loop(client->tcp_client);
 };
 
-int web_client_close(struct web_client *client, uint16_t code, char *reason)
+int web_client_close(struct web_client *client, uint16_t code, const char *reason)
 {
     if (client->connection_type == CONNECTION_WS)
     {

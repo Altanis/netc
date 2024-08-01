@@ -18,9 +18,9 @@
 #endif
 
 /** Dynamically receives from a socket until a certain byte pattern. */
-int socket_recv_until_dynamic(socket_t sockfd, string_t *string, char *bytes, int remove_delimiter, size_t max_bytes_received);
+int socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char *bytes, int remove_delimiter, size_t max_bytes_received);
 /** Receives from a socket until a certain byte pattern, or until a fixed length has been surpassed. */
-int socket_recv_until_fixed(socket_t sockfd, char *buffer, size_t buffer_size, char *bytes, int remove_delimiter);
+int socket_recv_until_fixed(socket_t sockfd, char *buffer, size_t buffer_size, const char *bytes, int remove_delimiter);
 
 /** Sets a socket to nonblocking mode. */
 int socket_set_non_blocking(socket_t sockfd);

@@ -5,7 +5,7 @@
 
 #include "../../include/web/client.h"
 
-int http_client_send_chunked_data(struct web_client *client, char *data, size_t data_length)
+int http_client_send_chunked_data(struct web_client *client, const char *data, size_t data_length)
 {
     char length_str[16] = {0};
     sprintf(length_str, "%zx\r\n", data_length);
@@ -21,7 +21,7 @@ int http_client_send_chunked_data(struct web_client *client, char *data, size_t 
     return 1;
 };
 
-int http_client_send_request(struct web_client *client, struct http_request *request, char *data, size_t data_length)
+int http_client_send_request(struct web_client *client, struct http_request *request, const char *data, size_t data_length)
 {
     string_t request_str = {0};
     sso_string_init(&request_str, "");

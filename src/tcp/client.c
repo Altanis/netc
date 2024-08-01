@@ -177,7 +177,7 @@ int tcp_client_connect(struct tcp_client *client)
     return 0;
 };
 
-int tcp_client_send(struct tcp_client *client, char *message, size_t msglen, int flags)
+int tcp_client_send(struct tcp_client *client, const char *message, size_t msglen, int flags)
 {
     socket_t sockfd = client->sockfd;
 
@@ -187,7 +187,7 @@ int tcp_client_send(struct tcp_client *client, char *message, size_t msglen, int
     return result;
 };
 
-int tcp_client_receive(struct tcp_client *client, char *message, size_t msglen, int flags)
+int tcp_client_receive(struct tcp_client *client, const char *message, size_t msglen, int flags)
 {
     socket_t sockfd = client->sockfd;
 

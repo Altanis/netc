@@ -45,9 +45,9 @@ int udp_server_init(struct udp_server *server, struct sockaddr *addr, int non_bl
 int udp_server_bind(struct udp_server *server);
 
 /** Sends a message to a client. Returns the result of the `sendto` syscall. */
-int udp_server_send(struct udp_server *server, char *message, size_t msglen, int flags, struct sockaddr *client_addr, socklen_t client_addrlen);
+int udp_server_send(struct udp_server *server, const char *message, size_t msglen, int flags, struct sockaddr *client_addr, socklen_t client_addrlen);
 /** Receives a message from a client. Returns the result of the `recvfrom` syscall. */
-int udp_server_receive(struct udp_server *server, char *message, size_t msglen, int flags, struct sockaddr *client_addr, socklen_t *client_addrlen);
+int udp_server_receive(struct udp_server *server, const char *message, size_t msglen, int flags, struct sockaddr *client_addr, socklen_t *client_addrlen);
 
 /** Closes the UDP server. */
 int udp_server_close(struct udp_server *server);

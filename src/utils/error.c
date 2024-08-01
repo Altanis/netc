@@ -36,7 +36,7 @@ void netc_strerror(char *buffer)
 #endif
 };
 
-void netc_perror(char *message, ...)
+void netc_perror(const char *message, ...)
 {
     char error[1024] = {0};
     netc_strerror(error);

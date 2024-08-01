@@ -22,18 +22,18 @@ typedef struct sso_string {
 } string_t;
 
 /** Initializes a SSO string. */
-void sso_string_init(string_t *string, char *data);
+void sso_string_init(string_t *string, const char *data);
 /** Sets the value of a SSO string. */
-void sso_string_set(string_t *string, char *data);
+void sso_string_set(string_t *string, const char *data);
 /** Gets the value of a SSO string. */
-char *sso_string_get(string_t *string);
+const char *sso_string_get(string_t *string);
 
 /** Concatenates two SSO strings. */
 void sso_string_concat(string_t *dest, string_t *src);
 /** Concatenates a SSO string and a char *buffer. */
-void sso_string_concat_buffer(string_t *dest, char *src);
+void sso_string_concat_buffer(string_t *dest, const char *src);
 /** Concatenates a SSO string and a char. */
-void sso_string_concat_char(string_t *dest, char src);
+void sso_string_concat_char(string_t *dest, const char src);
 /** Goes back `n` chars and inserts a null terminator. */
 void sso_string_backspace(string_t *string, size_t n);
 

@@ -216,7 +216,7 @@ int tcp_server_accept(struct tcp_server *server, struct tcp_client *client)
     return 0;
 };
 
-int tcp_server_send(socket_t sockfd, char *message, size_t msglen, int flags)
+int tcp_server_send(socket_t sockfd, const char *message, size_t msglen, int flags)
 {
     int result = send(sockfd, message, msglen, flags);
     if (result == -1) netc_error(BADSEND);
@@ -224,7 +224,7 @@ int tcp_server_send(socket_t sockfd, char *message, size_t msglen, int flags)
     return result;
 };
 
-int tcp_server_receive(socket_t sockfd, char *message, size_t msglen, int flags)
+int tcp_server_receive(socket_t sockfd, const char *message, size_t msglen, int flags)
 {
     int result = recv(sockfd, message, msglen, flags);
     if (result == -1) netc_error(BADRECV);

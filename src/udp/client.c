@@ -106,7 +106,7 @@ int udp_client_connect(struct udp_client *client)
     return 0;
 };
 
-int udp_client_send(struct udp_client *client, char *message, size_t msglen, int flags, struct sockaddr *server_addr, socklen_t server_addrlen)
+int udp_client_send(struct udp_client *client, const char *message, size_t msglen, int flags, struct sockaddr *server_addr, socklen_t server_addrlen)
 {
     socket_t sockfd = client->sockfd;
 
@@ -116,7 +116,7 @@ int udp_client_send(struct udp_client *client, char *message, size_t msglen, int
     return result;
 };
 
-int udp_client_receive(struct udp_client *client, char *message, size_t msglen, int flags, struct sockaddr *server_addr, socklen_t *server_addrlen)
+int udp_client_receive(struct udp_client *client, const char *message, size_t msglen, int flags, struct sockaddr *server_addr, socklen_t *server_addrlen)
 {
     socket_t sockfd = client->sockfd;
 

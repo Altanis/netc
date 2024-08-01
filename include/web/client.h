@@ -18,7 +18,7 @@ struct web_client
     enum connection_types connection_type;
 
     /** [WS SERVER ONLY] The path the client is connected to. */
-    char *path;
+    const char *path;
     /** [WS CLIENT ONLY] Whether or not the client has already closed. */
     bool is_closed;
 
@@ -96,7 +96,7 @@ struct web_client
     /** The callback for when a HTTP client disconnects. */
     void (*on_http_disconnect)(struct web_client *client, bool is_error);
     /** The callback for when a WebSocket client disconnects. */
-    void (*on_ws_disconnect)(struct web_client *client, uint16_t code, char *message);
+    void (*on_ws_disconnect)(struct web_client *client, uint16_t code, const char *message);
 };
 
 /** Initializes the client. */
@@ -104,6 +104,6 @@ int web_client_init(struct web_client *client, struct sockaddr *address);
 /** Starts a nonblocking event loop for the client. */
 int web_client_start(struct web_client *client);
 /** Closes the client. */
-int web_client_close(struct web_client *client, uint16_t code, char *reason);
+int web_client_close(struct web_client *client, uint16_t code, const char *reason);
 
 #endif // CLIENT_CONNECTION_H

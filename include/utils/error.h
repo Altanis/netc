@@ -47,6 +47,6 @@ extern __thread int netc_errno_reason;
 /** Writes the error to a buffer. */
 void netc_strerror(char *buffer);
 /** Prints the error to a file stream. */
-void netc_perror(char *message, ...);
+void netc_perror(const char *message, ...);
 
 #endif // ERROR_H
