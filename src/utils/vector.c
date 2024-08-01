@@ -43,12 +43,12 @@ void vector_set_index(struct vector *vec, void *element, size_t index)
     if (index >= vec->size) ++vec->size;
 };
 
-void *vector_get(const struct vector *vec, size_t index)
+void *vector_get(struct vector *vec, size_t index)
 {
     return vec->elements + vec->element_size * index;
 };
 
-void *vector_get_buffer(const struct vector *vec)
+void *vector_get_buffer(struct vector *vec)
 {
     return vec->elements + (vec->element_size * vec->size);
 };
@@ -72,7 +72,7 @@ void vector_clear(struct vector *vec)
     };
 };
 
-void vector_reset(const struct vector *vec)
+void vector_reset(struct vector *vec)
 {
     for (size_t i = 0; i < vec->size; ++i)
     {

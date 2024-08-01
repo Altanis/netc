@@ -21,7 +21,7 @@ int http_client_send_chunked_data(struct web_client *client, char *data, size_t 
     return 1;
 };
 
-int http_client_send_request(struct web_client *client, struct http_request *request, const char *data, size_t data_length)
+int http_client_send_request(struct web_client *client, struct http_request *request, char *data, size_t data_length)
 {
     string_t request_str = {0};
     sso_string_init(&request_str, "");
@@ -41,8 +41,8 @@ int http_client_send_request(struct web_client *client, struct http_request *req
     for (size_t i = 0; i < request->headers.size; ++i)
     {
         struct http_header *header = vector_get(&request->headers, i);
-        const char *name = sso_string_get(&header->name);
-        const char *value = sso_string_get(&header->value);
+        char *name = sso_string_get(&header->name);
+        char *value = sso_string_get(&header->value);
 
         if (!chunked && strcasecmp(name, "Transfer-Encoding") == 0 && strcasecmp(value, "chunked") == 0)
             chunked = 1;

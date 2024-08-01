@@ -82,14 +82,14 @@ enum http_status_code
 
 #define X(code, message) message,
 /** The HTTP status messages. */
-static const char *http_status_messages[] =
+static char *http_status_messages[] =
 {
     HTTP_STATUS_CODES
 };
 #undef X
 
 /** Converts an integer HTTP status code to it's status message (i.e. `200 -> OK`). */
-const char *http_status_code_to_message(int status_code);
+char *http_status_code_to_message(int status_code);
 
 /** An enum representing the different states during parsing a request. */
 enum http_request_parsing_states
@@ -294,68 +294,68 @@ struct http_client_parsing_state
 };
 
 /** Builds an HTTP request. */
-void http_request_build(struct http_request *request, const char *method, const char *path, const char *version, const char *headers[][2], size_t headers_length);
+void http_request_build(struct http_request *request, char *method, char *path, char *version, char *headers[][2], size_t headers_length);
 /** Frees an HTTP request. */
 void http_request_free(struct http_request *request);
 
 /** Gets the value of a request's method. */
-const char *http_request_get_method(const struct http_request *request);
+char *http_request_get_method(struct http_request *request);
 /** Gets the value of a request's path. */
-const char *http_request_get_path(const struct http_request *request);
+char *http_request_get_path(struct http_request *request);
 /** Gets the value of a request's version. */
-const char *http_request_get_version(const struct http_request *request);
+char *http_request_get_version(struct http_request *request);
 /** Gets the value of a request's header, given the name. */
-struct http_header *http_request_get_header(const struct http_request *request, const char *name);
+struct http_header *http_request_get_header(struct http_request *request, char *name);
 /** Gets the value of a request's body. */
-const char *http_request_get_body(const struct http_request *request);
+char *http_request_get_body(struct http_request *request);
 /** Gets the size of a request's body. */
-size_t http_request_get_body_size(const struct http_request *request);
+size_t http_request_get_body_size(struct http_request *request);
 
 /** Sets the value of a request's method. */
-void http_request_set_method(struct http_request *request, const char *method);
+void http_request_set_method(struct http_request *request, char *method);
 /** Sets the value of a request's path. */
-void http_request_set_path(struct http_request *request, const char *path);
+void http_request_set_path(struct http_request *request, char *path);
 /** Sets the value of a request's version. */
-void http_request_set_version(struct http_request *request, const char *version);
+void http_request_set_version(struct http_request *request, char *version);
 
 /** Builds an HTTP request. */
-void http_response_build(struct http_response *response, char *version, int status_code, const char *headers[][2], size_t headers_length);
+void http_response_build(struct http_response *response, char *version, int status_code, char *headers[][2], size_t headers_length);
 /** Frees an HTTP response. */
 void http_response_free(struct http_response *response);
 
 /** Gets the value of a response's version. */
-const char *http_response_get_version(const struct http_response *response);
+char *http_response_get_version(struct http_response *response);
 /** Gets the value of a response's status message. */
-const char *http_response_get_status_message(const struct http_response *response);
+char *http_response_get_status_message(struct http_response *response);
 /** Gets the value of a response's header, given the name. */
-const char *http_response_get_header(const struct http_response *response, const char *name);
+char *http_response_get_header(struct http_response *response, char *name);
 /** Gets the value of a response's body. */
-const char *http_response_get_body(const struct http_response *response);
+char *http_response_get_body(struct http_response *response);
 
 /** Sets the value of a response's version. */
-void http_response_set_version(struct http_response *response, const char *version);
+void http_response_set_version(struct http_response *response, char *version);
 /** Sets the value of a response's status message. */
-void http_response_set_status_message(struct http_response *response, const char *status_message);
+void http_response_set_status_message(struct http_response *response, char *status_message);
 
 /** Initializes an HTTP header. */
-void http_header_init(struct http_header *header, const char *name, const char *value);
+void http_header_init(struct http_header *header, char *name, char *value);
 /** Frees an HTTP header. */
 void http_header_free(struct http_header *header);
 
 /** Gets the value of a header's name. */
-const char *http_header_get_name(const struct http_header *header);
+char *http_header_get_name(struct http_header *header);
 /** Gets the value of a header's value. */
-const char *http_header_get_value(const struct http_header *header);
+char *http_header_get_value(struct http_header *header);
 
 /** Sets the value of a header's name. */
-void http_header_set_name(struct http_header *header, const char *name);
+void http_header_set_name(struct http_header *header, char *name);
 /** Sets the value of a header's value. */
-void http_header_set_value(struct http_header *header, const char *value);
+void http_header_set_value(struct http_header *header, char *value);
 
 /** Gets the value of a query's key. */
-const char *http_query_get_key(const struct http_query *query);
+char *http_query_get_key(struct http_query *query);
 /** Gets the value of a query's value. */
-const char *http_query_get_value(const struct http_query *query);
+char *http_query_get_value(struct http_query *query);
 
 /** Percent encodes a URL. */
 void http_url_percent_encode(char *url, char *encoded);
@@ -363,8 +363,8 @@ void http_url_percent_encode(char *url, char *encoded);
 void http_url_percent_decode(char *url, char *decoded);
 
 /** Base64 encodes a string. */
-void http_base64_encode(const char *bytes, size_t bytes_len, char *encoded);
+void http_base64_encode(char *bytes, size_t bytes_len, char *encoded);
 /** Base64 decodes a string. */
-void http_base64_decode(const char *encoded, char *bytes, size_t *bytes_len);
+void http_base64_decode(char *encoded, char *bytes, size_t *bytes_len);
 
 #endif // HTTP_HELPER_COMMON_H

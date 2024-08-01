@@ -21,7 +21,7 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     if (sec_websocket_key == NULL)
     {
         // That comedian...
-        const char *badrequest_message = "HTTP/1.1 400 Bad Request\r\n"
+        char *badrequest_message = "HTTP/1.1 400 Bad Request\r\n"
             "Content-Type: text/plain\r\n"
             "Content-Length: 33\r\n"
             "Connection: close\r\n"
@@ -37,7 +37,7 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     if (sec_websocket_version == NULL || strcmp(sso_string_get(&sec_websocket_version->value), WEBSOCKET_VERSION) != 0)
     {
         // That comedian...
-        const char *badrequest_message = "HTTP/1.1 426 Upgrade Required\r\n"
+        char *badrequest_message = "HTTP/1.1 426 Upgrade Required\r\n"
             "Content-Type: text/plain\r\n"
             "Content-Length: 41\r\n"
             "Sec-WebSocket-Version: 13\r\n" // reminder to change this
@@ -60,13 +60,13 @@ int ws_server_upgrade_connection(struct web_server *server, struct web_client *c
     };
 
     char websocket_accept_id[SHA_DIGEST_LENGTH];
-    SHA1((const uint8_t *)websocket_key_id, sizeof(websocket_key_id), (uint8_t *)websocket_accept_id);
+    SHA1((uint8_t *)websocket_key_id, sizeof(websocket_key_id), (uint8_t *)websocket_accept_id);
 
 
     char websocket_accept_id_base64[((4 * sizeof(websocket_accept_id) / 3) + 3) & ~3];
     http_base64_encode(websocket_accept_id, sizeof(websocket_accept_id), websocket_accept_id_base64);
 
-    const char *headers[3][2] =
+    char *headers[3][2] =
     {
         { "Connection", "upgrade" },
         { "Upgrade", "websocket" },

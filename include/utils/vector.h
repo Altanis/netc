@@ -26,16 +26,16 @@ void vector_push(struct vector *vec, void *element);
 /** Sets an element at a specific index. */
 void vector_set_index(struct vector *vec, void *element, size_t index);
 /** Gets an element from the vector. */
-void *vector_get(const struct vector *vec, size_t index);
+void *vector_get(struct vector *vec, size_t index);
 /** Returns a pointer to a writable buffer. */
-void *vector_get_buffer(const struct vector *vec);
+void *vector_get_buffer(struct vector *vec);
 /** Removes an element from the vector. */
 void vector_delete(struct vector *vec, size_t index);
 
 /** Clears the vector by deleting every element. */
 void vector_clear(struct vector *vec);
 /** Clears the vector by nullifying every element. */
-void vector_reset(const struct vector *vec);
+void vector_reset(struct vector *vec);
 
 /** Frees the vector. */
 void vector_free(struct vector *vec);

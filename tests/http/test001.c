@@ -149,7 +149,7 @@ static void http_test001_server_on_data(struct web_server *server, struct web_cl
     };
 
     struct http_response response = {0};
-    http_response_build(&response, "HTTP/1.1", 200, (const char *[][2]){ {"Content-Type", "text/plain"} }, 1);    
+    http_response_build(&response, "HTTP/1.1", 200, (char *[][2]){ {"Content-Type", "text/plain"} }, 1);    
 
     if (http_test001_server_data == 8)
     {
@@ -290,7 +290,7 @@ static void http_test001_client_on_data(struct web_client *client, struct http_r
 
     if (++http_test001_client_data <= 7)
     {
-        const char *path = (http_test001_client_data == 1 ? "/" : (http_test001_client_data == 2 ? "/wow" : (http_test001_client_data == 3 ? "/wow?x=1" : (http_test001_client_data == 4 ? "/?x=1" : 
+        char *path = (http_test001_client_data == 1 ? "/" : (http_test001_client_data == 2 ? "/wow" : (http_test001_client_data == 3 ? "/wow?x=1" : (http_test001_client_data == 4 ? "/?x=1" : 
         (http_test001_client_data == 5 ? "/test" : "/")))));
 
         struct http_request request = {0};

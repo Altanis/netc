@@ -4,7 +4,7 @@
 #include <string.h>
 #include <stdlib.h>
 
-void sso_string_init(string_t *string, const char *data)
+void sso_string_init(string_t *string, char *data)
 {
     string->length = strlen(data);
     string->capacity = string->length > SSO_STRING_MAX_LENGTH ? string->length : SSO_STRING_MAX_LENGTH;
@@ -19,18 +19,18 @@ void sso_string_init(string_t *string, const char *data)
     sso_string_ensure_null_terminated(string);
 };
 
-void sso_string_set(string_t *string, const char *data)
+void sso_string_set(string_t *string, char *data)
 {
     sso_string_free(string);
     sso_string_init(string, data);
 };
 
-const char *sso_string_get(const string_t *string)
+char *sso_string_get(string_t *string)
 {
     return string->length > SSO_STRING_MAX_LENGTH ? string->long_string : string->short_string;
 };
 
-void sso_string_concat(string_t *dest, const string_t *src)
+void sso_string_concat(string_t *dest, string_t *src)
 {
     size_t total_length = dest->length + src->length;
 
@@ -57,7 +57,7 @@ void sso_string_concat(string_t *dest, const string_t *src)
     sso_string_ensure_null_terminated(dest);
 };
 
-void sso_string_concat_buffer(string_t *dest, const char *src)
+void sso_string_concat_buffer(string_t *dest, char *src)
 {
     size_t src_length = strlen(src);
     size_t total_length = dest->length + src_length;
@@ -139,7 +139,7 @@ void sso_string_backspace(string_t *string, size_t n)
     string->length = new_length;
 };
 
-void sso_string_copy(string_t *dest, const string_t *src)
+void sso_string_copy(string_t *dest, string_t *src)
 {
     sso_string_free(dest);
 
@@ -152,18 +152,18 @@ void sso_string_copy(string_t *dest, const string_t *src)
     sso_string_ensure_null_terminated(dest);
 };
 
-void sso_string_copy_buffer(char *dest, const string_t *src)
+void sso_string_copy_buffer(char *dest, string_t *src)
 {
     memcpy(dest, sso_string_get(src), src->length);
     dest[src->length] = '\0';
 };
 
-size_t sso_string_length(const string_t *string)
+size_t sso_string_length(string_t *string)
 {
     return string->length;
 };
 
-int sso_string_compare(const string_t *string1, const string_t *string2)
+int sso_string_compare(string_t *string1, string_t *string2)
 {
     if (string1->length == string2->length) return memcmp(sso_string_get(string1), sso_string_get(string2), string1->length);
     else return strcmp(sso_string_get(string1), sso_string_get(string2));

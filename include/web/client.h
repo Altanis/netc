@@ -104,6 +104,6 @@ int web_client_init(struct web_client *client, struct sockaddr *address);
 /** Starts a nonblocking event loop for the client. */
 int web_client_start(struct web_client *client);
 /** Closes the client. */
-int web_client_close(struct web_client *client, uint16_t code, const char *reason);
+int web_client_close(struct web_client *client, uint16_t code, char *reason);
 
 #endif // CLIENT_CONNECTION_H

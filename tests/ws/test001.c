@@ -53,7 +53,7 @@
 static struct web_server ws_server = {0};
 static int ws_test001();
 
-static const int FRAME_SPLIT = 1;
+static int FRAME_SPLIT = 1;
 
 /** At the end of this test, all of these values must equal 1 unless otherwise specified. */
 static int on_connect_server = 0;
@@ -107,7 +107,7 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
             netc_perror("Error occured when sending masked message server");
         };
     }
-    else if (strcmp((const char *)message.buffer, "hello server basic") == 0)
+    else if (strcmp((char *)message.buffer, "hello server basic") == 0)
     {
         send_basic_client++;
         printf("[WS TEST CASE 001] server received basic message\n");
@@ -124,7 +124,7 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
             netc_perror("Error occured when sending basic message server");
         };
     }
-    else if (strcmp((const char *)message.buffer, "hello server multiple frames") == 0)
+    else if (strcmp((char *)message.buffer, "hello server multiple frames") == 0)
     {
         send_multiple_frames_client++;
         printf("[WS TEST CASE 001] server received multiple frames message\n");
@@ -141,7 +141,7 @@ static void ws_server_on_message(struct web_server *server, struct web_client *c
             netc_perror("Error occured when sending multiple frames message server");
         };
     }
-    else if (strcmp((const char *)message.buffer, "hello server multiple frames masked") == 0)
+    else if (strcmp((char *)message.buffer, "hello server multiple frames masked") == 0)
     {
         send_multiple_frames_masked_client++;
         printf("[WS TEST CASE 001] server received multiple frames masked message\n");
@@ -208,12 +208,12 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
 {
     struct ws_message message = *h_message;
     
-    if (strcmp((const char *)message.buffer, "hello client basic") == 0)
+    if (strcmp((char *)message.buffer, "hello client basic") == 0)
     {
         send_basic_server++;
         printf("[WS TEST CASE 001] client received basic message\n");
 
-        const char *message = "hello server multiple frames";
+        char *message = "hello server multiple frames";
         size_t payload_length = strlen(message);
 
         struct ws_message s_message;
@@ -225,7 +225,7 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
             netc_perror("Error occured when sending multiple frames message client");
         };
     }
-    else if (strcmp((const char *)message.buffer, "hello client multiple frames") == 0)
+    else if (strcmp((char *)message.buffer, "hello client multiple frames") == 0)
     {
         send_multiple_frames_server++;
         printf("[WS TEST CASE 001] client received multiple frames message\n");
@@ -245,12 +245,12 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
             netc_perror("Error occured when sending masked message client");
         };
     }
-    else if (strcmp((const char *)message.buffer, "hello client masked") == 0)
+    else if (strcmp((char *)message.buffer, "hello client masked") == 0)
     {
         send_masked_server++;
         printf("[WS TEST CASE 001] client received masked message\n");
 
-        const char *message = "hello server multiple frames masked";
+        char *message = "hello server multiple frames masked";
         size_t payload_length = strlen(message);
 
         uint8_t masking_key[4];
@@ -265,7 +265,7 @@ static void ws_client_on_message(struct web_client *client, struct ws_message *h
             netc_perror("Error occured when sending multiple frames masked message client");
         };
     }
-    else if (strcmp((const char *)message.buffer, "hello client multiple frames masked") == 0)
+    else if (strcmp((char *)message.buffer, "hello client multiple frames masked") == 0)
     {
         send_multiple_frames_masked_server++;
         printf("[WS TEST CASE 001] client received multiple frames masked message\n");

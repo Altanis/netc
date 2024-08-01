@@ -38,7 +38,7 @@ int http_server_send_chunked_data(struct web_server *server, struct web_client *
     return 1;
 };
 
-int http_server_send_response(struct web_server *server, struct web_client *client, struct http_response *response, const char *data, size_t data_length)
+int http_server_send_response(struct web_server *server, struct web_client *client, struct http_response *response, char *data, size_t data_length)
 {
     socket_t sockfd = client->tcp_client->sockfd;
 
@@ -62,8 +62,8 @@ int http_server_send_response(struct web_server *server, struct web_client *clie
     for (size_t i = 0; i < response->headers.size; ++i)
     {
         struct http_header *header = vector_get(&response->headers, i);
-        const char *name = sso_string_get(&header->name);
-        const char *value = sso_string_get(&header->value);
+        char *name = sso_string_get(&header->name);
+        char *value = sso_string_get(&header->value);
 
         if (!chunked && strcasecmp(name, "Transfer-Encoding") == 0 && strcasecmp(value, "chunked") == 0)
             chunked = 1;

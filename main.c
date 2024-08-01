@@ -12,7 +12,7 @@
 
 #include <time.h>
 
-const char *MAPPINGS[] = {
+char *MAPPINGS[] = {
     "[TCP TEST CASE 001]",
     "[TCP TEST CASE 002]",
     "[UDP TEST CASE 001]",
@@ -21,7 +21,7 @@ const char *MAPPINGS[] = {
     "[WS TEST CASE 001]",
 };
 
-const char *BANNER = "\
+char *BANNER = "\
 ███╗   ██╗███████╗████████╗ ██████╗\n\
 ████╗  ██║██╔════╝╚══██╔══╝██╔════╝\n\
 ██╔██╗ ██║█████╗     ██║   ██║     \n\

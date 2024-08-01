@@ -181,7 +181,7 @@ void callback_echo(struct web_server *server, struct web_client *client, struct 
     char *body = http_request_get_body(request);
     
     /** Send back headers. */
-    const char *headers[1][2] = 
+    char *headers[1][2] = 
     {
         "Content-Type", "text/plain",
         /** This is optional, as the library will automatically add this header if it is not present. If the data length is greater than 15 digits, manually fill this header in. */
@@ -209,7 +209,7 @@ The HTTP server supports sending files to clients. The following code snippet sh
 
 if (CHUNKED == 0)
 {
-    const char *headers[1][2] =
+    char *headers[1][2] =
     {
         {"Content-Type", "image/png"}
     };
@@ -240,7 +240,7 @@ if (CHUNKED == 0)
 }
 else
 {
-    const char *headers[1][2] =
+    char *headers[1][2] =
     {
         {"Content-Type", "image/png"}
     };
@@ -303,7 +303,7 @@ void callback_echo(struct web_server *server, struct web_client *client, struct 
     char *body = http_request_get_body(request);
     
     /** Send back headers. */
-    const char *headers[1][2] = 
+    char *headers[1][2] = 
     {
         "Content-Type", "text/plain",
         /** This is optional, as the library will automatically add this header if it is not present. If the data length is greater than 15 digits, manually fill this header in. */
@@ -435,7 +435,7 @@ void on_http_connect(struct web_client* client)
     printf("Connected to server!\n");
 
     /** Send back headers. */
-    const char *headers[1][2] = 
+    char *headers[1][2] = 
     {
         "Content-Type", "text/plain",
         /** This is optional, as the library will automatically add this header if it is not present. If the data length is greater than 15 digits, manually fill this header in. */
@@ -463,7 +463,7 @@ The HTTP client supports sending files to servers. The following code snippet sh
 
 if (CHUNKED == 0)
 {
-    const char *headers[1][2] =
+    char *headers[1][2] =
     {
         {"Content-Type", "image/png"}
     };
@@ -494,7 +494,7 @@ if (CHUNKED == 0)
 }
 else
 {
-    const char *headers[1][2] =
+    char *headers[1][2] =
     {
         {"Content-Type", "image/png"}
     };
@@ -557,7 +557,7 @@ void on_http_connect(struct web_client* client)
     client->client_close_flag = 1;
 
     /** Send back headers. */
-    const char *headers[1][2] = 
+    char *headers[1][2] = 
     {
         "Content-Type", "text/plain",
         /** This is optional, as the library will automatically add this header if it is not present. If the data length is greater than 15 digits, manually fill this header in. */

@@ -13,7 +13,7 @@
 #include <sys/socket.h>
 #endif
 
-int socket_recv_until_dynamic(socket_t sockfd, string_t *string, const char *bytes, int remove_delimiter, size_t max_bytes_received)
+int socket_recv_until_dynamic(socket_t sockfd, string_t *string, char *bytes, int remove_delimiter, size_t max_bytes_received)
 {
     size_t bytes_len = bytes == NULL ? 0 : strlen(bytes);
     ssize_t bytes_received = 0;

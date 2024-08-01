@@ -15,7 +15,7 @@
 #include <sys/event.h>
 #endif
 
-int _path_matches(const char *path, const char *pattern) 
+int _path_matches(char *path, char *pattern) 
 {
     if (strcmp(path, pattern) == 0) return 1;
 
@@ -194,7 +194,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
             if (route == NULL)
             {
                 // That comedian...
-                const char *notfound_message = "HTTP/1.1 404 Not Found\r\n"
+                char *notfound_message = "HTTP/1.1 404 Not Found\r\n"
                     "Content-Type: text/plain\r\n"
                     "Content-Length: 9\r\n"
                     "\r\n"
@@ -216,7 +216,7 @@ static void _tcp_on_data(struct tcp_server *server, socket_t sockfd)
                 if (handshake_request_cb == NULL)
                 {
                     // That comedian...
-                    const char *badrequest_message = "HTTP/1.1 400 Bad Request\r\n"
+                    char *badrequest_message = "HTTP/1.1 400 Bad Request\r\n"
                         "Content-Type: text/plain\r\n"
                         "Content-Length: 38\r\n"
                         "Connection: close\r\n"
@@ -334,7 +334,7 @@ void web_server_create_route(struct web_server *server, struct web_server_route 
     vector_push(&server->routes, route);
 };
 
-struct web_server_route *web_server_find_route(struct web_server *server, const char *path)
+struct web_server_route *web_server_find_route(struct web_server *server, char *path)
 {
     if (path == NULL) return NULL;
 
@@ -348,7 +348,7 @@ struct web_server_route *web_server_find_route(struct web_server *server, const 
     return NULL;
 };
 
-void web_server_remove_route(struct web_server *server, const char *path)
+void web_server_remove_route(struct web_server *server, char *path)
 {
     for (size_t i = 0; i < server->routes.size; ++i)
     {

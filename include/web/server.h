@@ -102,9 +102,9 @@ int web_server_start(struct web_server *server);
 /** Creates a route for a path. Note that precedence works by whichever route is created first. */
 void web_server_create_route(struct web_server *server, struct web_server_route *route);
 /** Finds a route given a path. */
-struct web_server_route *web_server_find_route(struct web_server *server, const char *path);
+struct web_server_route *web_server_find_route(struct web_server *server, char *path);
 /** Removes a route for a path. */
-void web_server_remove_route(struct web_server *server, const char *path);
+void web_server_remove_route(struct web_server *server, char *path);
 
 /** Closes the web server. */
 int web_server_close(struct web_server *server);

@@ -8,7 +8,7 @@
 #include "../../include/ws/client.h"
 #include "../../include/tcp/client.h"
 
-int ws_client_connect(struct web_client *client, const char *hostname, const char *path)
+int ws_client_connect(struct web_client *client, char *hostname, char *path)
 {
     srand(time(NULL));
     
@@ -21,7 +21,7 @@ int ws_client_connect(struct web_client *client, const char *hostname, const cha
     char websocket_key[((4 * sizeof(rand_bytes) / 3) + 3) & ~3];
     http_base64_encode(rand_bytes, sizeof(rand_bytes), websocket_key);
 
-    const char *headers[5][2] =
+    char *headers[5][2] =
     {
         {"Host", hostname},
         {"Connection", "Upgrade"},

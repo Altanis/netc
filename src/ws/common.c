@@ -81,12 +81,12 @@ int ws_send_message(struct web_client *client, struct ws_message *message, uint8
             };
         };
 
-        const uint8_t *payload_masking_key = NULL;
-        const char *payload_data_encoded = NULL;
+        uint8_t *payload_masking_key = NULL;
+        char *payload_data_encoded = NULL;
 
         if (message->payload_length != 0)
         {
-            payload_masking_key = mask ? (const char *)masking_key : NULL;
+            payload_masking_key = mask ? (uint8_t *)masking_key : NULL;
             payload_data_encoded = (char *)message->buffer;
             
             if (payload_masking_key != NULL)
@@ -103,9 +103,7 @@ int ws_send_message(struct web_client *client, struct ws_message *message, uint8
 
                 for (size_t i = 0; i < frame_payload_length; ++i)
                 {
-                    printf("(old/new) (%d", ((uint8_t *)payload_data_encoded)[i]);
                     ((uint8_t *)payload_data_encoded)[i] ^= payload_masking_key[i % 4];
-                    printf("/%d)\n", ((uint8_t *)payload_data_encoded)[i]);
                 };
             };
         };
@@ -189,7 +187,7 @@ parse_start:
         };
         case WS_FRAME_PARSING_STATE_PAYLOAD_LENGTH:
         {
-            void *ptr_to_null = memchr((const void *)&current_state->real_payload_length, 0x00, sizeof(uint64_t));
+            void *ptr_to_null = memchr((void *)&current_state->real_payload_length, 0x00, sizeof(uint64_t));
 
             if (ptr_to_null == NULL)
             {
@@ -202,7 +200,7 @@ parse_start:
                 goto parse_start;
             };
 
-            size_t length = (const uint8_t *)ptr_to_null - (const uint8_t *)&current_state->real_payload_length;
+            size_t length = (uint8_t *)ptr_to_null - (uint8_t *)&current_state->real_payload_length;
             size_t num_bytes_recv = 0;
 
             if (current_state->frame.payload_length <= 125) 
