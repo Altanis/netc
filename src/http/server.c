@@ -16,8 +16,6 @@
 #include <sys/event.h>
 #endif
 
-static int x = 0;
-
 int http_server_send_chunked_data(struct web_server *server, struct web_client *client, const char *data, size_t data_length)
 {
     char length_str[16] = {0};
@@ -306,10 +304,6 @@ parse_start:
                 {
                     if (recv(sockfd, crlf, sizeof(crlf), 0) <= 0) return REQUEST_PARSE_ERROR_RECV;
                     break;
-                }
-                else if (++x == 2)
-                {
-                    exit(0);
                 }
             };
 
